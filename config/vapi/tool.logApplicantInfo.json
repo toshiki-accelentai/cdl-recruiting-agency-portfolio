@@ -1,0 +1,67 @@
+{
+  "id": "41a0ca37-e396-4aac-bd6c-472a33a45ef1",
+  "createdAt": "2026-01-12T23:47:30.564Z",
+  "updatedAt": "2026-01-12T23:48:39.052Z",
+  "type": "function",
+  "function": {
+    "name": "logApplicantInfo",
+    "strict": true,
+    "description": "Use this tool to log applicant information and book a call with a recruiter.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the caller",
+          "type": "string",
+          "default": ""
+        },
+        "readiness": {
+          "description": "The candidate’s availability to start: within 3 days, within 7 days, within 14 days, or later.",
+          "type": "string",
+          "default": ""
+        },
+        "experience": {
+          "description": "Experience of the caller as a commercial truck driver (No experience / just got CDL/Under 6 months/6–12 months/1–2 years/2+ years\r\n)",
+          "type": "string",
+          "default": ""
+        },
+        "phoneNumber": {
+          "description": "Phone number of the caller",
+          "type": "string",
+          "default": ""
+        },
+        "driverLocation": {
+          "description": "Location of the caller",
+          "type": "string",
+          "default": ""
+        },
+        "preferredCallbackTime": {
+          "description": "Date and time that the caller requested a callback in ISO format, such as 2025-10-30T14:00:00",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "name",
+        "driverLocation",
+        "phoneNumber",
+        "experience",
+        "readiness",
+        "preferredCallbackTime"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "type": "request-start",
+      "content": "Let me check that for you. Please hold on a moment.",
+      "blocking": false
+    }
+  ],
+  "orgId": "8f1dedb1-3be1-4b18-845f-0111097325cd",
+  "server": {
+    "url": "https://accelentai.app.n8n.cloud/webhook/264b4bd9-1983-4307-b761-eff4ba2fec82",
+    "timeoutSeconds": 20
+  },
+  "latestVersion": "v1"
+}

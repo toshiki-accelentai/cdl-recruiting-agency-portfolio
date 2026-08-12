@@ -1,0 +1,126 @@
+{
+  "id": "k6b44U00Y1AhXJuP",
+  "name": "Zoho Integration",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "2a868047-47dc-437d-a1b5-c555ce390981",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1dbdb914-dad5-4b73-b3ae-f597657e40ae",
+      "name": "Webhook",
+      "webhookId": "2a868047-47dc-437d-a1b5-c555ce390981"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://accounts.zoho.com/oauth/v2/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            },
+            {
+              "name": "client_id",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            },
+            {
+              "name": "client_secret",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            },
+            {
+              "name": "refresh_token",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "59f4e6e8-0f93-4c20-893f-e7f13d07d6bd",
+      "name": "GET Token"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://recruit.zoho.com/recruit/v2/Candidates",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"First_Name\": \"{{ $('Webhook').item.json.name.split(' ')[0] }}\",\n      \"Last_Name\": \"{{ $('Webhook').item.json.name.split(' ').slice(1).join(' ') }}\",\n      \"Phone\": \"{{ $('Webhook').item.json.phoneNumber }}\",\n      \"Experience_in_Years\": \"{{ $('Webhook').item.json.experience.replace(/[^0-9]/g, '') }}\",\n      \"Source\": \"Phone Call\",\n      \"Note_Content\": \"Readiness: {{ $('Webhook').item.json.readiness }}\\nLocation: {{ $('Webhook').item.json.driverLocation }}\\nPreferred Callback: {{ $('Webhook').item.json.preferredCallbackTime }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "ee9d7ed6-b73b-44f6-9881-8aaa29bb80c5",
+      "name": "Create Candidate"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "GET Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Token": {
+      "main": [
+        [
+          {
+            "node": "Create Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "activeVersion": null
+}

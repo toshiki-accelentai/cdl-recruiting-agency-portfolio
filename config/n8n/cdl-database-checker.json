@@ -1,0 +1,467 @@
+{
+  "id": "UAtyhlBIztuIrTQ9",
+  "name": "CDL - Database Checker",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e73a08e0-8ee0-4a24-9f11-45bd5ef23e5e",
+              "name": "firstAssistantID",
+              "value": "6901a714-a6c5-45a2-9395-455e09e0051b",
+              "type": "string"
+            },
+            {
+              "id": "ae426422-5df8-4ed7-aeab-b1db40e96cc2",
+              "name": "secondAssistantID",
+              "value": "542bae1c-51b5-4d83-a3fe-446836b4801d",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -192,
+        -96
+      ],
+      "id": "302dc150-d51b-460f-8d88-07474b7dea41",
+      "name": "Set"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "15d7d605-5475-4ea4-8d24-f7fcb7df825e",
+              "leftValue": "={{ $json['Caller Number '] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        -96
+      ],
+      "id": "99e5937b-c9ad-40e0-8714-ac354ee1e11d",
+      "name": "Lead Exists?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"assistantId\": \"{{ $('Set').item.json.secondAssistantID }}\",\n  \"assistantOverrides\": {\n    \"variableValues\": {\n       \"phoneNumber\": \"{{ $json['Caller Number '] }}\",\n       \"name\": \"{{ $json.Name }}\"\n    } \n  }\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "97f46ee9-2197-48d2-a45d-ead3e99ce582",
+      "name": "Lead exists"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"assistantId\": \"{{$('Set').item.json.firstAssistantID}}\",\n  \"assistantOverrides\": {\n    \"variableValues\": {\n       \"phoneNumber\": \"\",\n       \"name\": \"\"\n    } \n  }\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        -16
+      ],
+      "id": "137b5e14-15e1-428c-aa6f-a40e6624458d",
+      "name": "Lead not exists"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "filterByFormula": "={Callback Number} = '{{ $('Webhook').item.json.body.message.call.customer.number }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        -96
+      ],
+      "id": "e8ab06de-397c-41f2-b571-cd1207307506",
+      "name": "Search records",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Webhook2').item.json.headers['x-call-id'] }}",
+            "Name": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.name }}",
+            "Callback Number": "={{ $json.phoneNumber }}",
+            "Location": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.driverLocation }}",
+            "Experience": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.experience }}",
+            "Readiness": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.readiness }}",
+            "Phone Number": "={{ $json.phoneNumber }}",
+            "Appointment time": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Temprature",
+              "displayName": "Temprature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Callback Number",
+              "displayName": "Callback Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Readiness",
+              "displayName": "Readiness",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "success",
+                  "value": "success"
+                },
+                {
+                  "name": "fail",
+                  "value": "fail"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Appointment time",
+              "displayName": "Appointment time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar URL",
+              "displayName": "Calendar URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        64
+      ],
+      "id": "50d37bcf-ad40-4360-aa22-a69cd6f15b63",
+      "name": "Create or update a record"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b7554693-043e-49af-89ca-4012a37107b9",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "a5d9d01c-8689-4dc0-9fdb-3ecc095a8d6f",
+      "name": "Webhook",
+      "webhookId": "b7554693-043e-49af-89ca-4012a37107b9"
+    }
+  ],
+  "connections": {
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Exists?": {
+      "main": [
+        [
+          {
+            "node": "Lead exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lead not exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Lead Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "activeVersionId": null,
+  "versionCounter": 2,
+  "sourceWorkflowId": null,
+  "tags": [
+    {
+      "updatedAt": "2026-08-12T16:42:19.195Z",
+      "createdAt": "2026-08-12T16:42:19.195Z",
+      "id": "hw65dYNcHVvSk03H",
+      "name": "Portfolio"
+    },
+    {
+      "updatedAt": "2026-08-12T16:42:24.127Z",
+      "createdAt": "2026-08-12T16:42:24.127Z",
+      "id": "b66OVipUGkzUjGtp",
+      "name": "Voice AI"
+    }
+  ],
+  "activeVersion": null
+}

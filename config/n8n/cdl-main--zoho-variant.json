@@ -1,0 +1,672 @@
+{
+  "id": "cES82YLOhxJ3EKkK",
+  "name": "CDL - Main",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"title\": \"BookingOutcome\",\n  \"additionalProperties\": false,\n  \"required\": [\"output\"],\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"required\": [\"temperature\", \"calendarUrl\", \"status\"],\n      \"properties\": {\n        \"temperature\": {\n          \"type\": \"string\",\n          \"enum\": [\"HOT\", \"MEDIUM\", \"WARM\", \"COLD\"],\n          \"description\": \"Lead temperature per rules.\"\n        },\n        \"calendarUrl\": {\n          \"type\": \"string\",\n          \"format\": \"uri\",\n          \"description\": \"Event URL returned by bookAppointment.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\"success\", \"failed\"],\n          \"description\": \"Whether booking succeeded.\"\n        }\n      }\n    }\n  }\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1840,
+        96
+      ],
+      "id": "7018be2c-bfe9-4645-988b-7028d33183d2",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Use the information below to classify and perform a correct action.\n\nLead Temperature Categorization: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.readiness }}\n\nBook Appointment: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a lead classification and appointment management specialist for a recruiting company.\n\n\n## Tasks\n1) Decide lead temperature strictly as one of: HOT, MEDIUM, WARM, COLD.\n2) Schedule a callback appointment using the `bookAppointment` tool.\n\n## Booking rules\n- Start time is {{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.preferredCallbackTime }}\n- Always use 15 min time window\n- Determine start/end in ISO 8601 with offset:\n  - Use -04:00 if the appointment date is in US Daylight Saving Time.\n  - Use -05:00 otherwise.\n- Duration: 15 minutes.\n- Do NOT book on US weekends or US federal holidays; if invalid, skip booking and set status to FAILED.\n\n## Lead Categorization Rule\nBased on the prospect's availability, categorize the lead as follows:\n- If available within 3 days → categorize as \"HOT\"\n- If available within 7 days → categorize as \"MEDIUM\"\n- If available within 14 days → categorize as \"WARM\"\n- If available later → categorize as \"COLD\"\n\n## Tool use\nWhen you book, call bookAppointment with:\n- start: \"YYYY-MM-DDThh:mm:ss-04:00\" or \"-05:00\"\n- end: \"YYYY-MM-DDThh:mm:ss-04:00\" or \"-05:00\"\nReturn only the event URL from the tool as calendarUrl.\n\n## Event Title Rule\n- Title must be \"Lead Temprature\" + Candidate Call\nExample:\nHOT Candidate Call\nWARM Candidate Call\n\n## CRITICAL OUTPUT FORMAT\nRespond with ONLY valid JSON. No other text, explanations, or markdown.\n\nRequired structure:\n{\n  \"temperature\": \"HOT\",\n  \"calendarUrl\": \"https://calendar.example.com/event/12345\",\n  \"status\": \"SUCCESS\"\n}\n\nValid values:\n- temperature: Must be exactly \"HOT\", \"MEDIUM\", or \"LOW\"\n- calendarUrl: The URL string returned from bookAppointment tool, or empty string \"\" if booking fails\n- status: Must be exactly \"SUCCESS\" or \"FAILED\"\n\nExample SUCCESS response:\n{\n  \"temperature\": \"MEDIUM\",\n  \"calendarUrl\": \"https://calendar.google.com/event/abc123\",\n  \"status\": \"SUCCESS\"\n}\n\nExample FAILED response:\n{\n  \"temperature\": \"WARM\",\n  \"calendarUrl\": \"http://example.com/event\",\n  \"status\": \"FAILED\"\n}",
+          "maxIterations": 3
+        }
+      },
+      "id": "5cd352fa-63fd-43f2-80b4-1fa608654881",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        -96
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b671dd9-ae45-4065-a48b-1372e4616340",
+              "leftValue": "={{ $json.output.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        -96
+      ],
+      "id": "fc1bc3f2-db3f-47b9-8611-9967310bebee",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b671dd9-ae45-4065-a48b-1372e4616340",
+              "leftValue": "={{ $json.isBusinessHour }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        -80
+      ],
+      "id": "d5af6ac1-34aa-41fe-a95c-916db94d4078",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items[0].json['Appointment time'] (ISO string with timezone offset)\n// Output: { isBusinessHour, reason, window, timezone }\n\nconst TZ = 'America/Chicago';\nconst windowLabel = 'Mon–Fri 07:00–17:00';\n\nconst reqIso = $('Webhook2').first().json.body.message.toolCalls[0].function.arguments.preferredCallbackTime;\nif (!reqIso || typeof reqIso !== 'string') {\n  return [{ json: { isBusinessHour: false, reason: 'missing_preferredCallbackTime', window: windowLabel, timezone: TZ } }];\n}\n\n// If no timezone offset is present, assume Chicago time\nconst reqIsoWithTz = reqIso.includes('Z') || reqIso.includes('+') || /\\-\\d{2}:\\d{2}$/.test(reqIso) \n  ? reqIso \n  : reqIso + '-06:00';\n\nconst req = new Date(reqIsoWithTz);\nif (isNaN(req.getTime())) {\n  return [{ json: { isBusinessHour: false, reason: 'invalid_datetime_format', window: windowLabel, timezone: TZ } }];\n}\n\nfunction zonedParts(date, timeZone) {\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric', month: 'numeric', day: 'numeric',\n    hour: 'numeric', minute: 'numeric',\n    weekday: 'short', hour12: false\n  });\n  const parts = fmt.formatToParts(date).reduce((acc, p) => (acc[p.type] = p.value, acc), {});\n  return {\n    year: Number(parts.year),\n    month: Number(parts.month),\n    day: Number(parts.day),\n    hour: Number(parts.hour),\n    minute: Number(parts.minute),\n    weekday: parts.weekday\n  };\n}\n\nfunction usFederalHolidaysForYear(year, timeZone) {\n  const DOW = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };\n  const dayMs = 24*3600*1000;\n\n  const makeDate = (y, m, d) =>\n    new Date(Date.UTC(y, m-1, d, 12, 0, 0));\n\n  const weekdayOf = (date, tz) =>\n    new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(date);\n\n  const nthDowOfMonth = (y, m, dow, n) => {\n    let d = makeDate(y, m, 1);\n    while (['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(weekdayOf(d, timeZone)) !== dow)\n      d = new Date(d.getTime() + dayMs);\n    d = new Date(d.getTime() + (n-1)*7*dayMs);\n    return d;\n  };\n\n  const lastDowOfMonth = (y, m, dow) => {\n    let d = makeDate(y, m+1, 1);\n    d = new Date(d.getTime() - dayMs);\n    while (['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(weekdayOf(d, timeZone)) !== dow)\n      d = new Date(d.getTime() - dayMs);\n    return d;\n  };\n\n  const DOW_IDX = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };\n  const observed = (d) => {\n    const wd = DOW_IDX[weekdayOf(d, timeZone)];\n    if (wd === DOW.Sat) return new Date(d.getTime() - dayMs);\n    if (wd === DOW.Sun) return new Date(d.getTime() + dayMs);\n    return d;\n  };\n\n  const newYearsDay      = observed(makeDate(year, 1, 1));\n  const mlkDay           = nthDowOfMonth(year, 1,  1, 3);\n  const presidentsDay    = nthDowOfMonth(year, 2,  1, 3);\n  const memorialDay      = lastDowOfMonth(year, 5, 1);\n  const juneteenth       = observed(makeDate(year, 6, 19));\n  const independenceDay  = observed(makeDate(year, 7, 4));\n  const laborDay         = nthDowOfMonth(year, 9,  1, 1);\n  const columbusDay      = nthDowOfMonth(year, 10, 1, 2);\n  const veteransDay      = observed(makeDate(year, 11, 11));\n  const thanksgiving     = nthDowOfMonth(year, 11, 4, 4);\n  const christmasDay     = observed(makeDate(year, 12, 25));\n\n  return [\n    newYearsDay, mlkDay, presidentsDay, memorialDay, juneteenth,\n    independenceDay, laborDay, columbusDay, veteransDay, thanksgiving, christmasDay\n  ];\n}\n\nfunction sameYMD(a, b, tz) {\n  const pa = zonedParts(a, tz);\n  const pb = zonedParts(b, tz);\n  return pa.year===pb.year && pa.month===pb.month && pa.day===pb.day;\n}\n\n// Check business hours\nconst p = zonedParts(req, TZ);\nconst isWeekday = ['Mon','Tue','Wed','Thu','Fri'].includes(p.weekday);\n\n// Check time: Monday-Friday 7 AM - 5 PM (07:00 - 17:00)\nlet withinTime = false;\nlet timeReason = 'within_hours';\n\nif (isWeekday) {\n  withinTime = (p.hour >= 7 && p.hour < 17);\n  if (p.hour < 7) timeReason = 'before_open';\n  if (p.hour >= 17) timeReason = 'after_close';\n}\n\nconst holidays = usFederalHolidaysForYear(p.year, TZ);\nconst isHoliday = holidays.some(h => sameYMD(h, req, TZ));\n\nlet isBusinessHour = isWeekday && withinTime && !isHoliday;\nlet reason = 'within_hours';\nif (!isWeekday) reason = 'weekend';\nelse if (!withinTime) reason = timeReason;\nelse if (isHoliday) reason = 'holiday';\n\nreturn [{\n  json: {\n    isBusinessHour,\n    reason,\n    window: windowLabel,\n    timezone: TZ\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -80
+      ],
+      "id": "e2891bdb-2a4f-4025-b33c-9ffa233b12ce",
+      "name": "Business hour check"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"results\": [\n    {\n      \"toolCallId\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].id }}\",\n      \"result\": \"CRITICAL! Say this verbatim 'It's unavailable because it is outside of our business hours.'\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1440,
+        64
+      ],
+      "id": "5b8d20c7-08f7-4478-8551-9acfb82b5287",
+      "name": "Ask alternative date and time"
+    },
+    {
+      "parameters": {
+        "sendTo": "=toshiki@accelentai.com",
+        "subject": "=✅ Callback Appointment Scheduled with Lead {{ $('Webhook2').item.json.message.toolCalls[0].function.arguments.name }} {{ $('AI Agent').item.json.output.temperature }}",
+        "message": "=A new driver lead has been received:<br><br>\n\n<b>Name:</b> {{ $json.fields.Name }} <br>\n<b>Location:</b> {{ $json.fields.Location }}<br>\n<b>Phone:</b> {{ $json.fields['Callback Number'] }}<br>\n<b>Experience:</b> {{ $json.fields.Experience }}<br>\n<b>Readiness:</b> {{ $json.fields.Readiness }}<br>\n<b>Lead Temperature:</b> {{ $('AI Agent').item.json.output.temperature }} <br>\n<b>Scheduled Callback Time:</b> {{ $json.fields['Appointment time'] }}<br><br>\nDetails:<br>\n<a https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d/viwwPL9D1uoEFm221</a><br><br>\nThank you,<br>\nRecruiting Automation System\n",
+        "options": {}
+      },
+      "id": "ba907dd6-3480-4e2b-bbf4-0ef3103eed7d",
+      "name": "Send Email to Recruiters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2352,
+        -192
+      ],
+      "webhookId": "63ee2d64-7370-4e26-8b31-bcd12fe8478e"
+    },
+    {
+      "parameters": {
+        "sendTo": "=toshiki@accelentai.com",
+        "subject": "=⚠️ Appointment Booking Failed – Manual Action Required",
+        "message": "=<p>Hi Team,</p>\n\n<p>\nThe system was unable to automatically create a callback appointment for the following lead.<br>\nPlease review the details in the sheet and manually schedule a callback in your calendar at your earliest convenience.\n</p>\n\n<p>Thank you for your attention to this.</p>\n\n<hr>\n\n<p><b>The lead details:</b></p>\n\n<p>\n<b>Name:</b> {{ $('Log to Google Sheets').item.json.Name }}<br>\n<b>Location:</b> {{ $('Log to Google Sheets').item.json.Location }}<br>\n<b>Experience:</b> {{ $('Log to Google Sheets').item.json.Experience }}<br>\n<b>Orientation Availability:</b> {{ $('Log to Google Sheets').item.json['Orientation Availability'] }}<br>\n<b>Callback Time:</b> {{ $('Log to Google Sheets').item.json['Appointment time'] }}<br>\n<b>Phone:</b> {{ $('Log to Google Sheets').item.json['Phone number'] }}\n</p>\n\nDetails:<br>\n<a href=\"https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit?gid=209751908#gid=209751908\">\nClick here to open the sheet</a><br><br>\n\n<p>Thank you,<br>\nRecruiting Automation System</p>\n",
+        "options": {}
+      },
+      "id": "bdbe36a7-d3cd-46eb-8431-44ae0e6a2f91",
+      "name": "Fallback message to Recruiters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2352,
+        -16
+      ],
+      "webhookId": "18c9f188-1722-4e32-a5fe-d69363137985"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n    \"results\": [\n        {\n            \"toolCallId\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].id }}\",\n            \"result\": \"Our recruiter will get in touch with you at the requested time.\"\n        }\n    ]\n} \n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2576,
+        -112
+      ],
+      "id": "07de92dd-9763-4f96-8a0f-8b4663cb6d0a",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3562d087-1d9d-4d14-9731-c56a27507591",
+              "name": "phoneNumber",
+              "value": "=+1{{ $json.body.message.toolCallList[0].function.arguments.phoneNumber }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        -80
+      ],
+      "id": "b3f70d0b-c542-4745-8efe-11bc5da8e167",
+      "name": "Phone number format"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "toshiki@accelentai.com",
+          "mode": "list",
+          "cachedResultName": "toshiki@accelentai.com"
+        },
+        "start": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}",
+        "end": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime.toDateTime().plus(30, 'minutes') }}",
+        "useDefaultReminders": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Use_Default_Reminders', ``, 'boolean') }}",
+        "additionalFields": {
+          "attendees": [],
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        1728,
+        96
+      ],
+      "id": "8810a251-5ec8-41a4-9399-e8b068add85f",
+      "name": "bookAppointment"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        96
+      ],
+      "id": "359b2959-5143-47ec-b349-23808d1e85cd",
+      "name": "Azure OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        224
+      ],
+      "id": "f19d9dea-8bca-44bb-bf8e-31418c961361",
+      "name": "Azure OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0e3af326-ccac-4f74-a603-1fb7a752e80e",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        -80
+      ],
+      "id": "b59b534c-ee35-47fd-b253-fbdafcbcd1ac",
+      "name": "Webhook2",
+      "webhookId": "0e3af326-ccac-4f74-a603-1fb7a752e80e"
+    },
+    {
+      "parameters": {
+        "content": "## Lead Qualification and Appointment Setter",
+        "height": 672,
+        "width": 2502,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "96093ad0-231f-498f-a3ec-e4b9cca5a70f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://accounts.zoho.com/oauth/v2/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            },
+            {
+              "name": "client_id",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            },
+            {
+              "name": "client_secret",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            },
+            {
+              "name": "refresh_token",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        768,
+        -80
+      ],
+      "id": "baa75e40-52de-4709-8fd8-97a9d09436c0",
+      "name": "GET Token"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://recruit.zoho.com/recruit/v2/Candidates/upsert",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"First_Name\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.name.split(' ')[0] }}\",\n      \"Last_Name\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.name.split(' ').slice(1).join(' ') }}\",\n      \"Phone\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.phoneNumber }}\",\n      \"Experience_in_Years\": {{ (() => { const exp = $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.experience; const years = (exp.match(/(\\d+)\\s*year/) || [0,0])[1]; const months = (exp.match(/(\\d+)\\s*month/) || [0,0])[1]; return Number(years) + Math.round((Number(months) / 12) * 10) / 10; })() }},\n      \"City\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.driverLocation }}\",\n      \"Source\": \"Phone Call\",\n      \"Note_Content\": \"Readiness: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.readiness }} | Preferred Callback: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        944,
+        -80
+      ],
+      "id": "ac74172b-1373-4db6-b25f-ef2168304249",
+      "name": "Create Candidate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://recruit.zoho.com/recruit/v2/Notes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "<<REDACTED:set-via-n8n-credential>>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"Note_Title\": \"Call Notes\",\n      \"Note_Content\": \"Readiness: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.readiness }} | Preferred Callback: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}\",\n      \"Parent_Id\": \"{{ $('Create Candidate').item.json.data[0].details.id }}\",\n      \"se_module\": \"Candidates\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1104,
+        -80
+      ],
+      "id": "7cd460f0-2510-4ef0-a7d6-c630e5cd7a22",
+      "name": "Add Note"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://recruit.zoho.com/recruit/v2/Candidates",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization ",
+              "value": "=Zoho-oauthtoken {{ $('GET Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"id\": \"{{ $('Create Candidate').item.json.data[0].details.id }}\",\n      \"Temperature\": \"{{ $json.output.temperature }}\",\n      \"Status\": \"success\",\n      \"Calendar_URL\": \"{{ $json.output.calendarUrl }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2160,
+        -192
+      ],
+      "id": "5471f583-7d3e-4b3b-a39c-c718fda475c1",
+      "name": "Update record3"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://recruit.zoho.com/recruit/v2/Candidates",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization ",
+              "value": "=Zoho-oauthtoken {{ $('GET Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"data\": [\n    {\n      \"id\": \"{{ $('Create Candidate').item.json.data[0].details.id }}\",\n      \"Temperature\": \"{{ $json.output.temperature }}\",\n      \"Status\": \"fail\",\n      \"Calendar_URL\": \"{{ $json.output.calendarUrl }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2160,
+        -16
+      ],
+      "id": "b894b242-803d-4bb1-bdfd-3e2139aeb8f5",
+      "name": "Update record"
+    }
+  ],
+  "connections": {
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update record3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask alternative date and time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Business hour check": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Recruiters": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback message to Recruiters": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone number format": {
+      "main": [
+        [
+          {
+            "node": "GET Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bookAppointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Phone number format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Token": {
+      "main": [
+        [
+          {
+            "node": "Create Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Candidate": {
+      "main": [
+        [
+          {
+            "node": "Add Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Note": {
+      "main": [
+        [
+          {
+            "node": "Business hour check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record3": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Recruiters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Fallback message to Recruiters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "sourceWorkflowId": null,
+  "tags": [
+    {
+      "updatedAt": "2026-08-12T16:42:19.195Z",
+      "createdAt": "2026-08-12T16:42:19.195Z",
+      "id": "hw65dYNcHVvSk03H",
+      "name": "Portfolio"
+    },
+    {
+      "updatedAt": "2026-08-12T16:42:24.127Z",
+      "createdAt": "2026-08-12T16:42:24.127Z",
+      "id": "b66OVipUGkzUjGtp",
+      "name": "Voice AI"
+    }
+  ],
+  "activeVersion": null
+}

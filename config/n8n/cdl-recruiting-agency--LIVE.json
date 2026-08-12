@@ -1,0 +1,2046 @@
+{
+  "id": "uT4iroyZm4hr2zay",
+  "name": "CDL Recruting Agency",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"title\": \"BookingOutcome\",\n  \"additionalProperties\": false,\n  \"required\": [\"output\"],\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"required\": [\"temperature\", \"calendarUrl\", \"status\"],\n      \"properties\": {\n        \"temperature\": {\n          \"type\": \"string\",\n          \"enum\": [\"HOT\", \"MEDIUM\", \"WARM\", \"COLD\"],\n          \"description\": \"Lead temperature per rules.\"\n        },\n        \"calendarUrl\": {\n          \"type\": \"string\",\n          \"format\": \"uri\",\n          \"description\": \"Event URL returned by bookAppointment.\"\n        },\n        \"status\": {\n          \"type\": \"string\",\n          \"enum\": [\"success\", \"failed\"],\n          \"description\": \"Whether booking succeeded.\"\n        }\n      }\n    }\n  }\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        256
+      ],
+      "id": "094482fa-81d1-4ea1-8449-d376080f137d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Use the information below to classify and perform a correct action.\n\nLead Temperature Categorization: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.readiness }}\n\nBook Appointment: {{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a lead classification and appointment management specialist for a recruiting company.\n\n\n## Tasks\n1) Decide lead temperature strictly as one of: HOT, MEDIUM, WARM, COLD.\n2) Schedule a callback appointment using the `bookAppointment` tool.\n\n## Booking rules\n- Start time is {{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.preferredCallbackTime }}\n- Always use 15 min time window\n- Determine start/end in ISO 8601 with offset:\n  - Use -04:00 if the appointment date is in US Daylight Saving Time.\n  - Use -05:00 otherwise.\n- Duration: 15 minutes.\n- Do NOT book on US weekends or US federal holidays; if invalid, skip booking and set status to FAILED.\n\n## Lead Categorization Rule\nBased on the prospect's availability, categorize the lead as follows:\n- If available within 3 days → categorize as \"HOT\"\n- If available within 7 days → categorize as \"MEDIUM\"\n- If available within 14 days → categorize as \"WARM\"\n- If available later → categorize as \"COLD\"\n\n## Tool use\nWhen you book, call bookAppointment with:\n- start: \"YYYY-MM-DDThh:mm:ss-04:00\" or \"-05:00\"\n- end: \"YYYY-MM-DDThh:mm:ss-04:00\" or \"-05:00\"\nReturn only the event URL from the tool as calendarUrl.\n\n## Event Title Rule\n- Title must be \"Lead Temprature\" + Candidate Call\nExample:\nHOT Candidate Call\nWARM Candidate Call\n\n## CRITICAL OUTPUT FORMAT\nRespond with ONLY valid JSON. No other text, explanations, or markdown.\n\nRequired structure:\n{\n  \"temperature\": \"HOT\",\n  \"calendarUrl\": \"https://calendar.example.com/event/12345\",\n  \"status\": \"SUCCESS\"\n}\n\nValid values:\n- temperature: Must be exactly \"HOT\", \"MEDIUM\", or \"LOW\"\n- calendarUrl: The URL string returned from bookAppointment tool, or empty string \"\" if booking fails\n- status: Must be exactly \"SUCCESS\" or \"FAILED\"\n\nExample SUCCESS response:\n{\n  \"temperature\": \"MEDIUM\",\n  \"calendarUrl\": \"https://calendar.google.com/event/abc123\",\n  \"status\": \"SUCCESS\"\n}\n\nExample FAILED response:\n{\n  \"temperature\": \"WARM\",\n  \"calendarUrl\": \"http://example.com/event\",\n  \"status\": \"FAILED\"\n}",
+          "maxIterations": 3
+        }
+      },
+      "id": "c59cf621-e544-49bd-93b4-77ec8dd0c2c3",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        64
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b671dd9-ae45-4065-a48b-1372e4616340",
+              "leftValue": "={{ $json.output.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        64
+      ],
+      "id": "0b2dce2b-6049-4517-b139-b3a41685cbfc",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7b671dd9-ae45-4065-a48b-1372e4616340",
+              "leftValue": "={{ $json.isBusinessHour }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -752,
+        80
+      ],
+      "id": "db0185fb-1ce1-46df-a2c4-47795498c604",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items[0].json['Appointment time'] (ISO string with timezone offset)\n// Output: { isBusinessHour, reason, window, timezone }\n\nconst TZ = 'America/Chicago';\nconst windowLabel = 'Mon–Fri 07:00–17:00';\n\nconst reqIso = $input.first().json.fields['Appointment time'];\nif (!reqIso || typeof reqIso !== 'string') {\n  return [{ json: { isBusinessHour: false, reason: 'missing_preferredCallbackTime', window: windowLabel, timezone: TZ } }];\n}\n\n// If no timezone offset is present, assume Chicago time\nconst reqIsoWithTz = reqIso.includes('Z') || reqIso.includes('+') || /\\-\\d{2}:\\d{2}$/.test(reqIso) \n  ? reqIso \n  : reqIso + '-06:00';\n\nconst req = new Date(reqIsoWithTz);\nif (isNaN(req.getTime())) {\n  return [{ json: { isBusinessHour: false, reason: 'invalid_datetime_format', window: windowLabel, timezone: TZ } }];\n}\n\nfunction zonedParts(date, timeZone) {\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric', month: 'numeric', day: 'numeric',\n    hour: 'numeric', minute: 'numeric',\n    weekday: 'short', hour12: false\n  });\n  const parts = fmt.formatToParts(date).reduce((acc, p) => (acc[p.type] = p.value, acc), {});\n  return {\n    year: Number(parts.year),\n    month: Number(parts.month),\n    day: Number(parts.day),\n    hour: Number(parts.hour),\n    minute: Number(parts.minute),\n    weekday: parts.weekday\n  };\n}\n\nfunction usFederalHolidaysForYear(year, timeZone) {\n  const DOW = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };\n  const dayMs = 24*3600*1000;\n\n  const makeDate = (y, m, d) =>\n    new Date(Date.UTC(y, m-1, d, 12, 0, 0));\n\n  const weekdayOf = (date, tz) =>\n    new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(date);\n\n  const nthDowOfMonth = (y, m, dow, n) => {\n    let d = makeDate(y, m, 1);\n    while (['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(weekdayOf(d, timeZone)) !== dow)\n      d = new Date(d.getTime() + dayMs);\n    d = new Date(d.getTime() + (n-1)*7*dayMs);\n    return d;\n  };\n\n  const lastDowOfMonth = (y, m, dow) => {\n    let d = makeDate(y, m+1, 1);\n    d = new Date(d.getTime() - dayMs);\n    while (['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(weekdayOf(d, timeZone)) !== dow)\n      d = new Date(d.getTime() - dayMs);\n    return d;\n  };\n\n  const DOW_IDX = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };\n  const observed = (d) => {\n    const wd = DOW_IDX[weekdayOf(d, timeZone)];\n    if (wd === DOW.Sat) return new Date(d.getTime() - dayMs);\n    if (wd === DOW.Sun) return new Date(d.getTime() + dayMs);\n    return d;\n  };\n\n  const newYearsDay      = observed(makeDate(year, 1, 1));\n  const mlkDay           = nthDowOfMonth(year, 1,  1, 3);\n  const presidentsDay    = nthDowOfMonth(year, 2,  1, 3);\n  const memorialDay      = lastDowOfMonth(year, 5, 1);\n  const juneteenth       = observed(makeDate(year, 6, 19));\n  const independenceDay  = observed(makeDate(year, 7, 4));\n  const laborDay         = nthDowOfMonth(year, 9,  1, 1);\n  const columbusDay      = nthDowOfMonth(year, 10, 1, 2);\n  const veteransDay      = observed(makeDate(year, 11, 11));\n  const thanksgiving     = nthDowOfMonth(year, 11, 4, 4);\n  const christmasDay     = observed(makeDate(year, 12, 25));\n\n  return [\n    newYearsDay, mlkDay, presidentsDay, memorialDay, juneteenth,\n    independenceDay, laborDay, columbusDay, veteransDay, thanksgiving, christmasDay\n  ];\n}\n\nfunction sameYMD(a, b, tz) {\n  const pa = zonedParts(a, tz);\n  const pb = zonedParts(b, tz);\n  return pa.year===pb.year && pa.month===pb.month && pa.day===pb.day;\n}\n\n// Check business hours\nconst p = zonedParts(req, TZ);\nconst isWeekday = ['Mon','Tue','Wed','Thu','Fri'].includes(p.weekday);\n\n// Check time: Monday-Friday 7 AM - 5 PM (07:00 - 17:00)\nlet withinTime = false;\nlet timeReason = 'within_hours';\n\nif (isWeekday) {\n  withinTime = (p.hour >= 7 && p.hour < 17);\n  if (p.hour < 7) timeReason = 'before_open';\n  if (p.hour >= 17) timeReason = 'after_close';\n}\n\nconst holidays = usFederalHolidaysForYear(p.year, TZ);\nconst isHoliday = holidays.some(h => sameYMD(h, req, TZ));\n\nlet isBusinessHour = isWeekday && withinTime && !isHoliday;\nlet reason = 'within_hours';\nif (!isWeekday) reason = 'weekend';\nelse if (!withinTime) reason = timeReason;\nelse if (isHoliday) reason = 'holiday';\n\nreturn [{\n  json: {\n    isBusinessHour,\n    reason,\n    window: windowLabel,\n    timezone: TZ\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        80
+      ],
+      "id": "591531e7-ea43-4197-b692-9bbfc651b733",
+      "name": "Business hour check"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"results\": [\n    {\n      \"toolCallId\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].id }}\",\n      \"result\": \"CRITICAL! Say this verbatim 'It's unavailable because it is outside of our business hours.'\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -864,
+        224
+      ],
+      "id": "a8cf36cb-489d-45a8-9a4f-de20c55eb3e6",
+      "name": "Ask alternative date and time"
+    },
+    {
+      "parameters": {
+        "sendTo": "=toshiki@accelentai.com",
+        "subject": "=✅ Callback Appointment Scheduled with Lead {{ $('Create or update a record').item.json.fields.Name }} {{ $json.Temprature }}",
+        "message": "=A new driver lead has been received:<br><br>\n\n<b>Name:</b> {{ $json.fields.Name }} <br>\n<b>Location:</b> {{ $json.fields.Location }}<br>\n<b>Phone:</b> {{ $json.fields['Callback Number'] }}<br>\n<b>Experience:</b> {{ $json.fields.Experience }}<br>\n<b>Readiness:</b> {{ $json.fields.Readiness }}<br>\n<b>Lead Temperature:</b> {{ $('AI Agent').item.json.output.temperature }} <br>\n<b>Scheduled Callback Time:</b> {{ $json.fields['Appointment time'] }}<br><br>\nDetails:<br>\n<a https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d/viwwPL9D1uoEFm221</a><br><br>\nThank you,<br>\nRecruiting Automation System\n",
+        "options": {}
+      },
+      "id": "18eb7bf0-5873-459d-88c4-0d12257698b4",
+      "name": "Send Email to Recruiters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        160,
+        -32
+      ],
+      "webhookId": "a5bd6770-e874-4609-8ba7-ffced2e7942b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yGxElJkT2ajNHX5z",
+          "name": "Gmail Accelent AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=toshiki@accelentai.com",
+        "subject": "=⚠️ Appointment Booking Failed – Manual Action Required",
+        "message": "=<p>Hi Team,</p>\n\n<p>\nThe system was unable to automatically create a callback appointment for the following lead.<br>\nPlease review the details in the sheet and manually schedule a callback in your calendar at your earliest convenience.\n</p>\n\n<p>Thank you for your attention to this.</p>\n\n<hr>\n\n<p><b>The lead details:</b></p>\n\n<p>\n<b>Name:</b> {{ $('Log to Google Sheets').item.json.Name }}<br>\n<b>Location:</b> {{ $('Log to Google Sheets').item.json.Location }}<br>\n<b>Experience:</b> {{ $('Log to Google Sheets').item.json.Experience }}<br>\n<b>Orientation Availability:</b> {{ $('Log to Google Sheets').item.json['Orientation Availability'] }}<br>\n<b>Callback Time:</b> {{ $('Log to Google Sheets').item.json['Appointment time'] }}<br>\n<b>Phone:</b> {{ $('Log to Google Sheets').item.json['Phone number'] }}\n</p>\n\nDetails:<br>\n<a href=\"https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit?gid=209751908#gid=209751908\">\nClick here to open the sheet</a><br><br>\n\n<p>Thank you,<br>\nRecruiting Automation System</p>\n",
+        "options": {}
+      },
+      "id": "477f178d-0f45-4d71-bdb5-92ec854ce141",
+      "name": "Fallback message to Recruiters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        160,
+        144
+      ],
+      "webhookId": "a5bd6770-e874-4609-8ba7-ffced2e7942b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2AyIzgN3P6Y4F0A3",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n    \"results\": [\n        {\n            \"toolCallId\": \"{{ $('Webhook2').item.json.body.message.toolCalls[0].id }}\",\n            \"result\": \"Our recruiter will get in touch with you at the requested time.\"\n        }\n    ]\n} \n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        384,
+        48
+      ],
+      "id": "0065fd47-6dd0-442a-ad3e-9242a1410239",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3562d087-1d9d-4d14-9731-c56a27507591",
+              "name": "phoneNumber",
+              "value": "=+1{{ $json.body.message.toolCallList[0].function.arguments.phoneNumber }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        80
+      ],
+      "id": "b915ce45-f1c0-4404-9537-5aed345a45b8",
+      "name": "Phone number format"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "toshiki@accelentai.com",
+          "mode": "list",
+          "cachedResultName": "toshiki@accelentai.com"
+        },
+        "start": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}",
+        "end": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime.toDateTime().plus(30, 'minutes') }}",
+        "useDefaultReminders": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Use_Default_Reminders', ``, 'boolean') }}",
+        "additionalFields": {
+          "attendees": [],
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        256
+      ],
+      "id": "7a59932d-953f-4655-b8f3-6c5387adeb46",
+      "name": "bookAppointment",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1dIX8usZgX3ubw1F",
+          "name": "Google Calendar Accelent AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit?gid=209751908#gid=209751908",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 209751908,
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit#gid=209751908"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Call ID",
+              "lookupValue": "={{ $('Webhook3').item.json.body.message.call.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -672,
+        784
+      ],
+      "id": "c07ab535-4e73-4a66-a092-4274a41f60ca",
+      "name": "Get row(s) in sheet1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4ZLurWLLGrCHFMot",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=toshiki@accelentai.com",
+        "subject": "=⚠️ Appointment Booking Failed – Manual Action Required",
+        "message": "=<p>Hi Team,</p>\n\n<p>\nThe system was unable to automatically create a callback appointment for the following lead.<br>\nPlease review the details in the sheet and manually schedule a callback in your calendar at your earliest convenience.\n</p>\n\n<p>Thank you for your attention to this.</p>\n\n<hr>\n\n<p><b>The lead details:</b></p>\n\n<p>\n<b>Name:</b> {{ $('Get row(s) in sheet1').item.json.Name }}<br>\n<b>Location:</b> {{ $('Get row(s) in sheet1').item.json.Location }}<br>\n<b>Experience:</b> {{ $('Get row(s) in sheet1').item.json.Experience }}<br>\n<b>Readiness':</b> {{ $json.Readiness }}<br>\n<b>Callback Time:</b> {{ $('Get row(s) in sheet1').item.json['Appointment time'] }}<br>\n<b>Phone:</b> {{ $('Get row(s) in sheet1').item.json['Caller Number '] }}\n</p>\n\nDetails:<br>\n<a href=\"https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit?gid=209751908#gid=209751908\">\nClick here to open the sheet</a>\n<br><br>\n\n<p>\n<b>Next Step — Review the Conversation Log:</b><br>\nTo ensure proper follow-up, please review the candidate’s conversation transcript.<br>\nYou can access it by searching the caller’s phone number in the <i>End of Call Report</i> or by opening the link below:\n</p>\n\n<p>\n<a href=\"https://docs.google.com/spreadsheets/d/1iM8Tj7VtgE5ZHFo2yQWmcbFsOEd6tJOHZrmctNZTwxw/edit?gid=834852152#gid=834852152\">\nOpen Conversation Log</a>\n</p>\n\n<p>Thank you,<br>\nRecruiting Automation System</p>\n",
+        "options": {}
+      },
+      "id": "bbc9c439-5c6e-4719-9365-c710952081f3",
+      "name": "Fallback message to Recruiters1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -288,
+        800
+      ],
+      "webhookId": "a5bd6770-e874-4609-8ba7-ffced2e7942b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yGxElJkT2ajNHX5z",
+          "name": "Gmail Accelent AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3ed80435-b276-43a3-96f0-8c6634039f26",
+              "leftValue": "={{ Object.keys($json).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        768
+      ],
+      "id": "53390a21-4164-4a44-be56-63daafd6b816",
+      "name": "Data not Exists?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3036ea24-1740-4b7d-8b78-0d16ec850b00",
+              "name": "callerNumber",
+              "value": "={{ $json.body.message.artifact.variables.customer.number }}",
+              "type": "string"
+            },
+            {
+              "id": "60b4a710-e96a-48c1-8acd-fc0c227041b7",
+              "name": "timestamp",
+              "value": "={{ $json.body.message.startedAt }}",
+              "type": "string"
+            },
+            {
+              "id": "44ef11f0-7ea3-46ae-8b35-6b64d6b81fd1",
+              "name": "callID",
+              "value": "={{ $json.headers['x-call-id'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        768
+      ],
+      "id": "33275c3c-51cd-489c-b5f3-5ec1455009e5",
+      "name": "Format"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3ed80435-b276-43a3-96f0-8c6634039f26",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -496,
+        784
+      ],
+      "id": "5f195600-3169-457f-8892-7a5b6962e989",
+      "name": "Status Success?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e73a08e0-8ee0-4a24-9f11-45bd5ef23e5e",
+              "name": "firstAssistantID",
+              "value": "6901a714-a6c5-45a2-9395-455e09e0051b",
+              "type": "string"
+            },
+            {
+              "id": "ae426422-5df8-4ed7-aeab-b1db40e96cc2",
+              "name": "secondAssistantID",
+              "value": "542bae1c-51b5-4d83-a3fe-446836b4801d",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        -400
+      ],
+      "id": "8f77dfac-4011-44b0-84d4-bf985cf1a802",
+      "name": "Set"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "15d7d605-5475-4ea4-8d24-f7fcb7df825e",
+              "leftValue": "={{ $json['Caller Number '] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        -400
+      ],
+      "id": "7b5670b1-9b6f-4ec7-966e-164fef92548e",
+      "name": "Lead Exists?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"assistantId\": \"{{ $('Set').item.json.secondAssistantID }}\",\n  \"assistantOverrides\": {\n    \"variableValues\": {\n       \"phoneNumber\": \"{{ $json['Caller Number '] }}\",\n       \"name\": \"{{ $json.Name }}\"\n    } \n  }\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        -496
+      ],
+      "id": "27b20b3b-4ce9-4a72-845e-50b9683f3adc",
+      "name": "Lead exists"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"assistantId\": \"{{$('Set').item.json.firstAssistantID}}\",\n  \"assistantOverrides\": {\n    \"variableValues\": {\n       \"phoneNumber\": \"\",\n       \"name\": \"\"\n    } \n  }\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        -304
+      ],
+      "id": "b70988b2-d80f-4206-a0e8-a85073a63528",
+      "name": "Lead not exists"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "filterByFormula": "={Callback Number} = '{{ $('Webhook').item.json.body.message.call.customer.number }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1104,
+        -400
+      ],
+      "id": "2a17e05d-670d-407f-b07e-3eb62090aaf5",
+      "name": "Search records",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Webhook2').item.json.headers['x-call-id'] }}",
+            "Name": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.name }}",
+            "Callback Number": "={{ $json.phoneNumber }}",
+            "Location": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.driverLocation }}",
+            "Experience": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.experience }}",
+            "Readiness": "={{ $('Webhook2').item.json.body.message.toolCallList[0].function.arguments.readiness }}",
+            "Phone Number": "={{ $json.phoneNumber }}",
+            "Appointment time": "={{ $('Webhook2').item.json.body.message.toolCalls[0].function.arguments.preferredCallbackTime }}"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Temprature",
+              "displayName": "Temprature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Callback Number",
+              "displayName": "Callback Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Readiness",
+              "displayName": "Readiness",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "success",
+                  "value": "success"
+                },
+                {
+                  "name": "fail",
+                  "value": "fail"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Appointment time",
+              "displayName": "Appointment time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar URL",
+              "displayName": "Calendar URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1104,
+        80
+      ],
+      "id": "d41e8628-959b-49f0-8a07-7760fb25bb37",
+      "name": "Create or update a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        256
+      ],
+      "id": "6676e880-af4e-4afe-82ef-14f51978e0a9",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "mUE6NsDdXhJOprNV",
+          "name": "n8n-azure-openai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        384
+      ],
+      "id": "3e3c7608-c9f1-46ae-8492-ca8f2687a567",
+      "name": "Azure OpenAI Chat Model1",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "mUE6NsDdXhJOprNV",
+          "name": "n8n-azure-openai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Webhook2').item.json.headers['x-call-id'] }}",
+            "Temprature": "={{ $json.output.temperature }}",
+            "Calendar URL": "={{ $json.output.calendarUrl }}",
+            "Status": "success"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Temprature",
+              "displayName": "Temprature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Callback Number",
+              "displayName": "Callback Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Readiness",
+              "displayName": "Readiness",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "success",
+                  "value": "success"
+                },
+                {
+                  "name": "fail",
+                  "value": "fail"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Appointment time",
+              "displayName": "Appointment time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar URL",
+              "displayName": "Calendar URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "716365e5-2051-48de-9e6f-fbdb2cbe668c",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Webhook Trigger1').item.json.body.message.call.id }}",
+            "Temprature": "={{ $json.output.temperature }}",
+            "Calendar URL": "={{ $json.output.calendarUrl }}",
+            "Status": "fail"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Temprature",
+              "displayName": "Temprature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Callback Number",
+              "displayName": "Callback Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Caller Number [Fallback]",
+              "displayName": "Caller Number [Fallback]",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Readiness",
+              "displayName": "Readiness",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "success",
+                  "value": "success"
+                },
+                {
+                  "name": "fail",
+                  "value": "fail"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Appointment time",
+              "displayName": "Appointment time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar URL",
+              "displayName": "Calendar URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        144
+      ],
+      "id": "83aa9792-09b1-425e-ad7f-39739aa664cd",
+      "name": "Update record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNhoJ4P7lVNp84d",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblNhoJ4P7lVNp84d"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Format').item.json.callID }}",
+            "Phone Number": "={{ $json.callerNumber }}"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Temprature",
+              "displayName": "Temprature",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "HOT",
+                  "value": "HOT"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "WARM",
+                  "value": "WARM"
+                },
+                {
+                  "name": "COLD",
+                  "value": "COLD"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Callback Number",
+              "displayName": "Callback Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Readiness",
+              "displayName": "Readiness",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "success",
+                  "value": "success"
+                },
+                {
+                  "name": "fail",
+                  "value": "fail"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Appointment time",
+              "displayName": "Appointment time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar URL",
+              "displayName": "Calendar URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1072,
+        768
+      ],
+      "id": "ba38a47f-c40e-49be-8914-3c64e0df99d5",
+      "name": "Update record2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appFUcIpdu3EwEIHn",
+          "mode": "list",
+          "cachedResultName": "Truck Driver Leads",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblAJThmoqFOr9CTF",
+          "mode": "list",
+          "cachedResultName": "End of Call Report",
+          "cachedResultUrl": "https://airtable.com/appFUcIpdu3EwEIHn/tblAJThmoqFOr9CTF"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Call ID": "={{ $('Webhook3').item.json.body.message.call.id }}",
+            "Cost": "={{ $('Webhook3').item.json.body.message.cost }}",
+            "Transcript": "={{ $('Webhook3').item.json.body.message.artifact.transcript }}",
+            "Ended Reason": "={{ $('Webhook3').item.json.body.message.endedReason }}",
+            "Duration (Sec)": "={{ $('Webhook3').item.json.body.message.durationSeconds }}",
+            "Caller Number ": "={{ $('Webhook3').item.json.body.message.customer.number }}"
+          },
+          "matchingColumns": [
+            "Call ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Transcript",
+              "displayName": "Transcript",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Ended Reason",
+              "displayName": "Ended Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Cost",
+              "displayName": "Cost",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Duration (Sec)",
+              "displayName": "Duration (Sec)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Caller Number ",
+              "displayName": "Caller Number ",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -1072,
+        928
+      ],
+      "id": "9fbd391c-b759-4529-b3fc-e03a11cdd66c",
+      "name": "Log End Call Report1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KjP5fICG9EL5VjxI",
+          "name": "Truck Driver Leads"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3c1c3227-6eb9-44ba-8c9c-3a567be40f76",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        -400
+      ],
+      "id": "3bb56f04-68c4-42d1-a16e-9c68ad318405",
+      "name": "Webhook",
+      "webhookId": "3c1c3227-6eb9-44ba-8c9c-3a567be40f76"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "264b4bd9-1983-4307-b761-eff4ba2fec82",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        80
+      ],
+      "id": "4e455c21-ecfd-4cca-b78c-0865f6b4527a",
+      "name": "Webhook2",
+      "webhookId": "264b4bd9-1983-4307-b761-eff4ba2fec82"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "12574ace-fcda-49a1-b34a-d43806e7f2ac",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        768
+      ],
+      "id": "2dc90b77-8cd9-4488-ac95-1080649dd7a9",
+      "name": "Webhook3",
+      "webhookId": "12574ace-fcda-49a1-b34a-d43806e7f2ac"
+    },
+    {
+      "parameters": {
+        "content": "## Database Checker",
+        "height": 416,
+        "width": 1072
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        -544
+      ],
+      "typeVersion": 1,
+      "id": "62004dd4-28d0-448b-b96f-f23f6dde6243",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Lead Qualification and Appointment Setter",
+        "height": 672,
+        "width": 2166,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        -64
+      ],
+      "typeVersion": 1,
+      "id": "19739b17-6da4-4fc4-bb18-4e34016411cc",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Post Call Analysis",
+        "height": 480,
+        "width": 1520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "de754f19-c405-4b5b-af9c-8287ce604d04",
+      "name": "Sticky Note2"
+    }
+  ],
+  "connections": {
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask alternative date and time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Business hour check": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Recruiters": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback message to Recruiters": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone number format": {
+      "main": [
+        [
+          {
+            "node": "Create or update a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bookAppointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Status Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data not Exists?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Update record2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log End Call Report1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Success?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fallback message to Recruiters1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Exists?": {
+      "main": [
+        [
+          {
+            "node": "Lead exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lead not exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Lead Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a record": {
+      "main": [
+        [
+          {
+            "node": "Business hour check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Recruiters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record1": {
+      "main": [
+        [
+          {
+            "node": "Fallback message to Recruiters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record2": {
+      "main": [
+        [
+          {
+            "node": "Data not Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Phone number format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "activeVersion": null
+}
