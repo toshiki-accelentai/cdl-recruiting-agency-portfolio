@@ -23,17 +23,34 @@ There is **no "Zoho Recruit API key"** — it is OAuth 2.0 only. The access toke
 is short-lived (1 hour) and is derived from the refresh token at runtime; you
 never store it.
 
-## 2. Pick the right datacenter
+## 2. Datacenter — confirmed US
 
-Your workflows hardcode the US domains. Get this wrong and OAuth fails with a
-bare `invalid_client`. The domain is the one you see when logged into Recruit:
+The org is at `https://recruit.zoho.com/recruit`, so this is the **US**
+datacenter and the domains hardcoded in the existing workflows are correct:
 
-| DC | Accounts | API |
-|---|---|---|
-| US | `https://accounts.zoho.com` | `https://recruit.zoho.com` |
-| EU | `https://accounts.zoho.eu` | `https://recruit.zoho.eu` |
-| IN | `https://accounts.zoho.in` | `https://recruit.zoho.in` |
-| AU | `https://accounts.zoho.com.au` | `https://recruit.zoho.com.au` |
+```
+ZOHO_ACCOUNTS_DOMAIN=https://accounts.zoho.com
+ZOHO_RECRUIT_API_DOMAIN=https://recruit.zoho.com
+```
+
+The API Console is correspondingly `https://api-console.zoho.com` (it is
+per-datacenter too — an app created in the wrong console cannot authorise
+against this org).
+
+Other datacenters, for reference only. A mismatch fails with a bare
+`invalid_client` and no useful detail:
+
+| DC | Accounts | API | Console |
+|---|---|---|---|
+| **US** | **`accounts.zoho.com`** | **`recruit.zoho.com`** | **`api-console.zoho.com`** |
+| EU | `accounts.zoho.eu` | `recruit.zoho.eu` | `api-console.zoho.eu` |
+| IN | `accounts.zoho.in` | `recruit.zoho.in` | `api-console.zoho.in` |
+| AU | `accounts.zoho.com.au` | `recruit.zoho.com.au` | `api-console.zoho.com.au` |
+
+Note this is **Zoho Recruit** (the ATS), not Zoho CRM. Its API lives under the
+`/recruit/v2/` path with `ZohoRecruit.*` scopes — CRM's `ZohoCRM.*` scopes and
+`/crm/v2/` endpoints will not work against this org, and Recruit's Candidates
+module is not CRM's Contacts.
 
 ## 3. Create the connected app (Self Client)
 
