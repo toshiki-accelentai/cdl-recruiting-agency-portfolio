@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+__pycache__/
+*.log
+
+# local audit dumps (contain live secrets)
+.audit/
