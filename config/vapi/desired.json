@@ -1,0 +1,97 @@
+{
+  "_comment": [
+    "Desired state for the CDL VAPI assistants. Source of truth — edit here, then",
+    "run `python scripts/deploy_vapi.py` to diff and `--apply` to push.",
+    "Only the keys listed here are managed; anything else on the assistant is left",
+    "untouched. server.url is deliberately NOT managed yet: it still points at the",
+    "n8n Cloud host, and gets repointed once the merged workflow exists on the",
+    "self-hosted instance (tasks/todo.md Phase 3)."
+  ],
+
+  "shared": {
+    "model": {
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "temperature": 0.3,
+      "toolIds": [
+        "41a0ca37-e396-4aac-bd6c-472a33a45ef1",
+        "04805c23-9331-4a39-b35a-fa831fda7216"
+      ]
+    },
+
+    "silenceTimeoutSeconds": 30,
+    "maxDurationSeconds": 900,
+
+    "startSpeakingPlan": {
+      "waitSeconds": 0.4,
+      "transcriptionEndpointingPlan": {
+        "onPunctuationSeconds": 0.2,
+        "onNoPunctuationSeconds": 1.2,
+        "onNumberSeconds": 0.7
+      }
+    },
+
+    "stopSpeakingPlan": {
+      "numWords": 2,
+      "voiceSeconds": 0.3,
+      "backoffSeconds": 1.0
+    },
+
+    "server": {
+      "timeoutSeconds": 30
+    },
+
+    "analysisPlan": {
+      "summaryPlan": {
+        "enabled": true
+      },
+      "structuredDataPlan": {
+        "enabled": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "fullName": { "type": "string", "description": "Caller's full name, empty string if not given" },
+            "phoneNumber": { "type": "string", "description": "Callback number in E.164 if determinable, else as spoken" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "zipCode": { "type": "string", "description": "US 5-digit ZIP, empty string if not given" },
+            "experience": {
+              "type": "string",
+              "enum": ["none", "under_6_months", "6_to_12_months", "1_to_2_years", "2_plus_years", "unknown"]
+            },
+            "readiness": {
+              "type": "string",
+              "enum": ["within_3_days", "within_7_days", "within_14_days", "later", "unknown"]
+            },
+            "preferredCallbackTime": { "type": "string", "description": "ISO 8601 local time if given, else empty string" },
+            "callIntent": {
+              "type": "string",
+              "enum": ["new_application", "reschedule", "status_check", "other"]
+            },
+            "bookingConfirmed": { "type": "boolean", "description": "True only if the tool confirmed a booking" }
+          },
+          "required": ["fullName", "phoneNumber", "callIntent", "bookingConfirmed"]
+        }
+      },
+      "successEvaluationPlan": {
+        "enabled": true,
+        "rubric": "PassFail"
+      }
+    }
+  },
+
+  "assistants": {
+    "new-lead": {
+      "id": "6901a714-a6c5-45a2-9395-455e09e0051b",
+      "name": "CDL Recruiting Agency - New Lead",
+      "promptFile": "prompts/new-lead.md",
+      "firstMessage": "Hey, thanks for calling Frontline CDL Staffing! Are you calling about a driving job today?"
+    },
+    "existing-lead": {
+      "id": "542bae1c-51b5-4d83-a3fe-446836b4801d",
+      "name": "CDL Recruiting Agency - Existing Lead",
+      "promptFile": "prompts/existing-lead.md",
+      "firstMessage": "Hey {{ name | default: \"there\" }}, thanks for calling Frontline CDL Staffing! How can I help you today?"
+    }
+  }
+}

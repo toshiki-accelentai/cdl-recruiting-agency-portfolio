@@ -3,39 +3,62 @@
 Findings and numbering come from `docs/AUDIT.md`.
 Nothing below has been deployed — the audit was read-only.
 
-## Phase 0 — decide and unblock (needs you, not me)
+## Decisions (settled 2026-08-12)
 
-- [ ] **Rotate the Zoho client secret + refresh token.** They were hardcoded in
-      the n8n workflows and printed during the audit. `docs/ZOHO-SETUP.md` §3–4.
-      *Blocks every Zoho task below.* (AUDIT #1)
-- [ ] **Confirm which n8n host is production** and get an API key for it.
-      Right now API edits land on the inactive copy. (AUDIT #4)
-- [ ] **Confirm the business timezone.** Chicago, Los Angeles and New York are
-      all implied by the current config. Everything gets normalised to one.
-      (AUDIT #5)
-- [ ] **Confirm the company name** — Frontline CDL Staffing vs Class A
-      Solutions. (AUDIT #14)
-- [ ] Decide: should the agent collect an **email address**? Without one, Zoho
-      cannot deduplicate candidates. (AUDIT #13)
+- Company name: **Frontline CDL Staffing** (CDL, not CDI).
+- Business timezone: **America/Vancouver**, Mon–Fri 9 AM–5 PM Pacific.
+- Build/deploy target: **self-hosted `n8n.accelentai.com`** (the host the API
+  key works against).
+- The agent does **not** collect email. Candidate dedupe in Zoho Recruit must
+  therefore key on phone number + `VAPI_Call_ID`, not Email.
+- Nothing is in production — all of this is draft, so changes can go live.
 
-## Phase 1 — stop the bleeding (small, safe, high value)
+## Phase 0 — needs you, not me
 
-- [ ] Fix `.env`: duplicate `VAPI_ASSISTANT_ID` → two named vars.
+- [ ] **Rotate the Zoho Recruit client secret + refresh token.** They were
+      hardcoded in the n8n workflows and printed during the audit.
+      `docs/ZOHO-SETUP.md` §3–4. *Blocks Phase 3.* (AUDIT #1)
+
+## Phase 1 — VAPI assistants ✅ DONE, deployed and verified
+
+- [x] Company name unified to Frontline CDL Staffing; "Class A Solutions"
+      removed. (AUDIT #14)
+- [x] Timezone unified to `America/Vancouver`; hours stated once as Mon–Fri
+      9 AM–5 PM. Deleted the stray 7 AM–2 PM scenario. (AUDIT #5, partial —
+      n8n side still Chicago)
+- [x] All `kbTool` references removed; replaced with an explicit "you have no
+      knowledge base, never invent an opening" rule. Deleted the worked
+      hallucination example. (AUDIT #8)
+- [x] `endCall` tool attached to both assistants. (AUDIT #9)
+- [x] `onNumberSeconds` 0.3 → 0.7, `waitSeconds` 0 → 0.4, `stopSpeakingPlan`
+      added, so the agent stops cutting callers off mid-digit. (AUDIT #17)
+- [x] `server.timeoutSeconds` 20 → 30. (AUDIT #15)
+- [x] `summaryPlan` + `structuredDataPlan` + `successEvaluationPlan` enabled, so
+      a mid-call hangup still yields a structured record. (AUDIT #21)
+- [x] `model.temperature` pinned to 0.3; assistant name typo "Exisiting" fixed.
+- [x] Prompt now insists on an explicit ZIP code and reads phone numbers back
+      digit by digit (both feed Phase 3 dedupe and postcode analysis).
+
+Not yet done, deliberately deferred so the tool contract and its consumer
+change together in Phase 3:
+
+- [ ] Split `driverLocation` into `city` / `state` / `zipCode` on the
+      `logApplicantInfo` tool schema.
+- [ ] Fix `.env`: duplicate `VAPI_ASSISTANT_ID` → two named vars (yours to do;
+      I don't edit `.env`).
+
+## Phase 2 — n8n rebuild on the self-hosted instance
+
 - [ ] Fix the trailing space in `"Authorization "` on the two Zoho update nodes.
       One character; currently voids every candidate status update. (AUDIT #6)
 - [ ] Resolve the temperature enum contradiction — HOT/MEDIUM/WARM/COLD
       everywhere, delete `LOW`. (AUDIT #10)
 - [ ] Make appointment length consistent (15 min) and let the node, not the LLM,
       own start/end. (AUDIT #11)
-- [ ] Remove all `kbTool` references from both prompts, or build the tool.
-      Delete the Scenario 3 example that demonstrates inventing job openings.
-      (AUDIT #8)
-- [ ] Attach an `endCall` tool to both assistants. (AUDIT #9)
-- [ ] Delete Scenario 5's wrong business hours (7 AM–2 PM leftover). (AUDIT #5)
-- [ ] Raise `transcriptionEndpointingPlan.onNumberSeconds` to ~0.7 s so the
-      agent stops interrupting callers reading phone numbers and ZIPs.
-      (AUDIT #17)
-- [ ] Raise tool + server `timeoutSeconds` from 20 s. (AUDIT #15)
+- [ ] Business-hours code: `America/Chicago` 07:00–17:00 → `America/Vancouver`
+      09:00–17:00. (AUDIT #5)
+- [ ] Repoint the VAPI tool + assistant `server.url` at the self-hosted host
+      once the merged workflow is live there.
 
 ## Phase 2 — make it reachable
 
