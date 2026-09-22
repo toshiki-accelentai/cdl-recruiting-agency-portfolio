@@ -13,11 +13,13 @@ Nothing below has been deployed — the audit was read-only.
   therefore key on phone number + `VAPI_Call_ID`, not Email.
 - Nothing is in production — all of this is draft, so changes can go live.
 
-## Phase 0 — needs you, not me
+## Phase 0 — credentials
 
-- [ ] **Rotate the Zoho Recruit client secret + refresh token.** They were
-      hardcoded in the n8n workflows and printed during the audit.
-      `docs/ZOHO-SETUP.md` §3–4. *Blocks Phase 3.* (AUDIT #1)
+- [x] Create and connect the server-based Zoho Recruit OAuth credential in the
+      self-hosted n8n credential store. Verified with read-only module and
+      Candidate-field API requests on 2026-08-12. (AUDIT #1)
+- [ ] Confirm the previously exposed Zoho client secret was rotated. The new
+      workflow never embeds a client secret or refresh token.
 
 ## Phase 1 — VAPI assistants ✅ DONE, deployed and verified
 
@@ -42,65 +44,73 @@ Nothing below has been deployed — the audit was read-only.
 Not yet done, deliberately deferred so the tool contract and its consumer
 change together in Phase 3:
 
-- [ ] Split `driverLocation` into `city` / `state` / `zipCode` on the
-      `logApplicantInfo` tool schema.
+- [x] Prepare the versioned `logApplicantInfo` tool contract with `city` /
+      `state` / `zipCode`. Applied to the shared live VAPI tool on 2026-08-13.
 - [ ] Fix `.env`: duplicate `VAPI_ASSISTANT_ID` → two named vars (yours to do;
       I don't edit `.env`).
 
 ## Phase 2 — n8n rebuild on the self-hosted instance
 
-- [ ] Fix the trailing space in `"Authorization "` on the two Zoho update nodes.
-      One character; currently voids every candidate status update. (AUDIT #6)
-- [ ] Resolve the temperature enum contradiction — HOT/MEDIUM/WARM/COLD
-      everywhere, delete `LOW`. (AUDIT #10)
-- [ ] Make appointment length consistent (15 min) and let the node, not the LLM,
-      own start/end. (AUDIT #11)
-- [ ] Business-hours code: `America/Chicago` 07:00–17:00 → `America/Vancouver`
-      09:00–17:00. (AUDIT #5)
-- [ ] Repoint the VAPI tool + assistant `server.url` at the self-hosted host
-      once the merged workflow is live there.
+- [x] Replace manual Authorization headers with the saved Zoho OAuth
+      credential. (AUDIT #6)
+- [x] Resolve temperature deterministically as HOT/MEDIUM/WARM/COLD; remove
+      the LLM classifier and contradictory LOW value. (AUDIT #10)
+- [x] Make the workflow own a consistent 15-minute appointment. (AUDIT #11)
+- [x] Enforce `America/Vancouver`, weekdays 09:00–17:00, and US federal
+      holidays in deterministic code. (AUDIT #5)
+- [x] Replace the 36-node monolith with four inactive single-responsibility
+      workflows: Routing (5), Intake (17), Calendar Booking (15), and Post-Call
+      Report (8). The obsolete remote monolith was removed after verification.
+- [x] Repoint the VAPI tool + both assistant `server.url` values at the
+      self-hosted Intake and Post-Call webhooks.
 
 ## Phase 2 — make it reachable
 
-- [ ] Provision a VAPI phone number for CDL and point its `server.url` at the
-      `assistant-request` webhook (`3c1c3227…`) so New/Existing routing runs at
-      all. (AUDIT #2)
-- [ ] Normalise phone numbers to E.164 properly; key the caller lookup off
+- [x] Provision VAPI number `+1 206-944-1294` and point its `server.url` at the
+      self-hosted `assistant-request` webhook with no fixed assistant, enabling
+      dynamic New/Existing routing. (AUDIT #2)
+- [x] Normalise phone numbers to E.164 properly; key the caller lookup off
       `call.customer.number` on both write and read. (AUDIT #7)
 - [ ] Place a real test call and inspect the resulting record.
 
 ## Phase 3 — Zoho Recruit becomes the system of record
 
-- [ ] Run the schema discovery in `docs/ZOHO-SETUP.md` §6 — confirm which
-      modules and Candidate fields actually exist in this org.
-- [ ] Create the custom fields in §7, especially `VAPI_Call_ID` and `Zip_Code`.
-- [ ] Move the Zoho credentials into the n8n credential store. (AUDIT #1)
-- [ ] Merge the four half-finished CDL workflows into one, wired to the webhook
-      paths VAPI actually calls. (AUDIT #3)
+- [x] Run the schema discovery in `docs/ZOHO-SETUP.md` §7. Candidates has 52
+      fields, including `Phone`, `City`, `State`, `Zip_Code`, and
+      `Experience_in_Years`; `VAPI_Call_ID`, `Temperature`, callback, and
+      calendar-event fields do not yet exist. Verified 2026-08-12 through the
+      self-hosted n8n OAuth credential.
+- [ ] Create the optional custom fields in §7, especially `VAPI_Call_ID`,
+      `Temperature`, callback time, and calendar event URL. `Zip_Code` already
+      exists as a standard Candidate field.
+- [x] Move the Zoho credentials into the n8n credential store. (AUDIT #1)
+- [x] Replace the four unfinished workflows with one generated modular suite:
+      three stable public webhook workflows plus an internal Calendar Booking
+      subworkflow. (AUDIT #3)
 - [ ] Candidate upsert: send `Email`, set `duplicate_check_fields`, handle
       single-word names, drop `Note_Content` from the Candidates payload.
       (AUDIT #13)
-- [ ] Split `driverLocation` into city / state / `Zip_Code` at intake so
-      postcode analysis reads a real field. Ask for the ZIP explicitly.
-- [ ] Write the transcript and call metadata to Zoho `Notes` on the candidate,
+- [x] Replace legacy `driverLocation` with required `city`, `state`, and
+      `zipCode` tool parameters so postcode analysis reads real Zoho fields.
+- [x] Write the transcript and call metadata to Zoho `Notes` on the candidate,
       replacing the Airtable "End of Call Report" table.
 - [ ] Cache the Zoho access token for its full hour. (AUDIT #22)
 
 ## Phase 4 — booking correctness
 
-- [ ] Add a `getAvailability` tool backed by Google Calendar FreeBusy so slots
-      are checked before they are offered. Today double-booking is possible.
+- [x] Check Google Calendar FreeBusy before event insertion and use a
+      deterministic event ID to make duplicate VAPI delivery idempotent.
       (AUDIT #12)
-- [ ] Single timezone end to end: prompt, business-hours code, calendar,
+- [x] Single timezone end to end: prompt, business-hours code, calendar,
       Zoho. (AUDIT #5)
-- [ ] Return the confirmed time in the tool response so the agent can read it
+- [x] Return the confirmed time in the tool response so the agent can read it
       back instead of reciting one it merely remembers.
 - [ ] Mirror the booking onto the Zoho candidate (`Callback_Time`,
       `Calendar_Event_URL`).
 
 ## Phase 5 — robustness
 
-- [ ] `onError` + retry on every external call; always respond to VAPI even on
+- [x] `onError` + retry on every external call; always respond to VAPI even on
       failure, so the caller hears a graceful message rather than dead air.
       (AUDIT #16)
 - [ ] Enable `structuredDataPlan` so a caller who hangs up mid-intake still
@@ -114,4 +124,22 @@ change together in Phase 3:
 
 ## Review
 
-_(to be filled in as work lands)_
+- Local helper assertions pass.
+- Twenty-two helper, architecture, deployment, security, and concurrency tests
+  pass.
+- Invalid-intake and routing smoke tests passed without creating Zoho or
+  Google records.
+- Four inactive self-hosted drafts are installed with 5/16/15/8 nodes.
+- Modular smoke tests pass for routing, invalid intake, post-call acknowledgement,
+  native booking execution, same-slot cancellation restoration, and cleanup.
+- A labelled fictional Zoho Recruit Candidate (`Loom Demo Candidate`, ID
+  `870474000000581004`) was created through the real modular intake path. Its
+  fields plus one intake Note and one outside-hours callback Note were read
+  back successfully; the Saturday request created no Calendar event.
+- Twenty-five Python workflow/deployment regression tests and the JavaScript
+  helper assertions pass. The inactive remote node counts are 5/17/15/8 and no
+  temporary workflows remain.
+- Google Calendar OAuth is connected on self-hosted n8n. FreeBusy, event
+  create, event get, and event cleanup passed through the same credential and
+  HTTP-request pattern used by production.
+- Production safeguard: enforce unique phone/dedupe in Zoho before activation.

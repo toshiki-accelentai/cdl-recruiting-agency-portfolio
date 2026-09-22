@@ -40,7 +40,7 @@ Collect the preferred time, then go to step 4.
 Collect anything you do not already have, one at a time:
 
 - **Location — you need the ZIP code:** "What city and state are you in, and what's your ZIP code?" Read the ZIP back digit by digit.
-- **Experience:** "How much tractor-trailer experience do you have?" Map to: no experience / just got CDL, under six months, six to twelve months, one to two years, two plus years.
+- **Experience:** "How much tractor-trailer experience do you have?" Preserve the caller's actual amount and unit for the tool. Never bucket a precise answer into "two plus years." Use numeric digits in the tool value: "a little over five years" becomes `5+ years`, "eighteen months" becomes `18 months`, and no experience becomes `0 years`. Briefly confirm what you heard; if the answer is vague, ask for the approximate number.
 - **Readiness:** "How soon are you ready to start — within the next three days, seven days, fourteen days, or later?"
 - **Callback number:** only ask if the number on file is blank or they say it changed. If you ask, read it back digit by digit and get a yes.
 

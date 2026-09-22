@@ -2,28 +2,55 @@
 
 Answers "what keys do I need for Zoho Recruit, and how do I get them".
 
-You already have `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET` and `ZOHO_REFRESH_TOKEN`
-in `.env`. **All three must be rotated** — the same values were hardcoded in the
-n8n workflow JSON and are readable by anyone holding the n8n API key
-(see `docs/AUDIT.md` #1). The steps below regenerate them.
+**Two routes.** Route A (§4A) lets n8n own the OAuth flow and is what we are
+doing. Route B (§4B) is the manual Self Client flow, kept as a fallback for
+scripts outside n8n.
 
 ---
 
-## 1. What Zoho Recruit needs
+## 1. What is actually wrong today — and what is not
 
-| Credential | What it is | Where it lives |
+The current workflows do **transport** correctly:
+
+- `Create Candidate` / `Add Note` send `Authorization: Zoho-oauthtoken <token>`
+  as a **header**. Correct. Tokens in query strings leak into access logs,
+  browser history and `Referer` headers; headers do not.
+- `GET Token` sends the client credentials in a **form-urlencoded body** to the
+  token endpoint. Also correct — that is what the OAuth 2.0 spec requires.
+
+The problem is **storage at rest**, not transport. `client_id`, `client_secret`
+and `refresh_token` are literal strings inside the workflow definition:
+
+```
+GET Token → bodyParameters:
+   {name: "client_secret", value: "<plaintext>"}
+   {name: "refresh_token", value: "<plaintext>"}
+```
+
+Which means they are readable with nothing but the n8n API key, present in every
+workflow export and backup, visible to anyone with n8n editor access, and
+duplicated across three workflows.
+
+Severity comes from the refresh token specifically: the **access token expires
+in 1 hour, the refresh token never expires**. Whoever holds it has indefinite
+read/write access to the candidate database — real names, phone numbers, work
+history — until it is explicitly revoked. Rotating *is* the revocation.
+
+## 2. What Zoho Recruit needs
+
+| Credential | What it is | Where it belongs |
 |---|---|---|
-| `ZOHO_CLIENT_ID` | Consumer key of the connected app | n8n credential store |
-| `ZOHO_CLIENT_SECRET` | Consumer secret | n8n credential store |
-| `ZOHO_REFRESH_TOKEN` | Long-lived token, exchanged for access tokens | n8n credential store |
-| `ZOHO_ACCOUNTS_DOMAIN` | OAuth host for your datacenter | `.env` / workflow config |
-| `ZOHO_RECRUIT_API_DOMAIN` | API host for your datacenter | `.env` / workflow config |
+| Client ID | Consumer key of the connected app | n8n credential store |
+| Client Secret | Consumer secret | n8n credential store |
+| Refresh token | Long-lived, exchanged for access tokens | n8n credential store — **or not stored by you at all, see §4A** |
+| `ZOHO_ACCOUNTS_DOMAIN` | OAuth host for your datacenter | `.env` |
+| `ZOHO_RECRUIT_API_DOMAIN` | API host for your datacenter | `.env` |
 
 There is **no "Zoho Recruit API key"** — it is OAuth 2.0 only. The access token
-is short-lived (1 hour) and is derived from the refresh token at runtime; you
-never store it.
+is short-lived (1 hour) and derived from the refresh token at runtime; it is
+never stored.
 
-## 2. Datacenter — confirmed US
+## 3. Datacenter — confirmed US
 
 The org is at `https://recruit.zoho.com/recruit`, so this is the **US**
 datacenter and the domains hardcoded in the existing workflows are correct:
@@ -52,26 +79,81 @@ Note this is **Zoho Recruit** (the ATS), not Zoho CRM. Its API lives under the
 `/crm/v2/` endpoints will not work against this org, and Recruit's Candidates
 module is not CRM's Contacts.
 
-## 3. Create the connected app (Self Client)
+## 4A. Recommended — let n8n own the OAuth flow
 
-Server-to-server with no user login → **Self Client**, not Web-based.
+This is the best-practice route and the one we are taking. **You never handle a
+refresh token at all**: n8n performs the authorisation-code exchange in the
+browser, stores the resulting token encrypted in its credential store, and
+refreshes it automatically.
 
-1. Go to <https://api-console.zoho.com> — signed in as the Recruit admin.
-2. **Add Client → Self Client → Create**.
+Confirmed available on `n8n.accelentai.com`: the generic `oAuth2Api` credential
+type exposes `authUrl`, `accessTokenUrl`, `scope` and `authQueryParameters`.
+(Do **not** use n8n's built-in `zohoOAuth2Api` — it exposes no `scope` field
+because its scopes are hardcoded for Zoho **CRM**, which will not authorise
+Recruit.)
+
+**In Zoho API Console** — <https://api-console.zoho.com>, signed in as the
+Recruit admin:
+
+1. **Add Client → Server-based Applications** (not Self Client — that type has
+   no redirect URI, so n8n cannot complete the flow).
+2. **Authorized Redirect URI:** `https://n8n.accelentai.com/rest/oauth2-credential/callback`
+   — n8n shows the exact URL on the credential screen; copy it from there rather
+   than trusting this line.
 3. Copy the **Client ID** and **Client Secret**.
-4. Open the **Generate Code** tab and enter:
+
+**In n8n** — Credentials → New → **OAuth2 API**:
+
+| Field | Value |
+|---|---|
+| Grant Type | Authorization Code |
+| Authorization URL | `https://accounts.zoho.com/oauth/v2/auth` |
+| Access Token URL | `https://accounts.zoho.com/oauth/v2/token` |
+| Client ID / Secret | from step 3 |
+| Scope | `ZohoRecruit.modules.ALL,ZohoRecruit.settings.ALL` |
+| Auth URI Query Parameters | `access_type=offline&prompt=consent` |
+| Authentication | Body |
+
+`access_type=offline` is **required** — without it Zoho returns only an access
+token and no refresh token, and the credential silently stops working after an
+hour. `prompt=consent` forces Zoho to re-issue a refresh token on
+re-authorisation instead of returning none.
+
+Then click **Connect my account** and approve.
+
+**What this fixes, beyond the storage problem:**
+
+- Removes the `GET Token` node entirely — no hand-built token exchange.
+- Removes the hand-built `Authorization` header, which is where the trailing-space
+  bug lives (AUDIT #6). n8n injects the header itself.
+- n8n caches and refreshes the access token, fixing the mint-on-every-call
+  throttling risk (AUDIT #22).
+
+HTTP Request nodes then set **Authentication → Generic Credential Type → OAuth2
+API** and pick this credential. No secret appears anywhere in the workflow JSON.
+
+> Scopes are baked in at authorisation time. Adding a module later means editing
+> the scope and clicking **Connect my account** again.
+> `ZohoRecruit.settings.ALL` is needed to read module/field metadata (§7);
+> `modules.ALL` covers Candidates, Notes and Interviews.
+
+## 4B. Fallback — Self Client (manual)
+
+Only needed for scripts running outside n8n, e.g. the schema discovery in §7
+before the n8n credential exists.
+
+1. <https://api-console.zoho.com> → **Add Client → Self Client → Create**.
+2. Copy the **Client ID** and **Client Secret**.
+3. **Generate Code** tab:
    - **Scope:** `ZohoRecruit.modules.ALL,ZohoRecruit.settings.ALL`
    - **Time Duration:** 10 minutes
-   - **Scope Description:** anything
-5. **Create → pick the correct portal/org → Download/copy the code.**
-   This `grant_token` is valid for 10 minutes and is single-use.
+4. **Create → pick the correct portal/org → copy the code.** This `grant_token`
+   is valid for 10 minutes and is single-use.
 
-`ZohoRecruit.settings.ALL` is needed so we can read module and field metadata to
-verify the schema before writing. `modules.ALL` covers Candidates, Notes and
-Interviews. Scopes are baked into the refresh token at generation time — adding
-a module later means redoing steps 4–6.
+If you use this route, the refresh token goes in `.env` only — never in a
+workflow node.
 
-## 4. Exchange the code for a refresh token
+## 5. Exchange the code for a refresh token (Route B only)
 
 Within 10 minutes of generating the code. Run from this repo:
 
@@ -80,7 +162,7 @@ curl -s -X POST "$ZOHO_ACCOUNTS_DOMAIN/oauth/v2/token" \
   -d grant_type=authorization_code \
   -d client_id="$ZOHO_CLIENT_ID" \
   -d client_secret="$ZOHO_CLIENT_SECRET" \
-  -d code="<GRANT_TOKEN_FROM_STEP_5>"
+  -d code="<GRANT_TOKEN_FROM_STEP_4>"
 ```
 
 The response contains `refresh_token` — that is `ZOHO_REFRESH_TOKEN`. It does
@@ -89,26 +171,25 @@ not expire, so it only appears in this one response. Save it immediately.
 If you get `invalid_code`, the 10 minutes lapsed or the code was already used —
 regenerate. If `invalid_client`, the datacenter domain is wrong.
 
-## 5. Store them in n8n, not in the workflow
+## 6. The rule: no secret in a workflow node
 
-This is the part that was done wrong. In n8n:
+Whichever route you take, the invariant is the same: **no credential value ever
+appears in a workflow node's parameters.** Nodes reference a credential by name;
+n8n stores the value encrypted and keeps it out of exports.
 
-**Credentials → New → Header Auth** is *not* sufficient here because the access
-token has to be refreshed. Use one of:
+Concretely, workflow JSON committed to this repo must show
+`<<REDACTED:set-via-n8n-credential>>` where a secret used to be — exactly as
+`config/n8n/*.json` does now. `scripts/export_config.py` enforces this on every
+export, and the check below must return nothing:
 
-- **Preferred:** n8n **Generic OAuth2 API** credential, with
-  `Access Token URL = {ZOHO_ACCOUNTS_DOMAIN}/oauth/v2/token`, grant type
-  *Client Credentials*-style refresh, and the client id/secret in the credential
-  fields. n8n then handles refresh and caching.
-- **Or:** keep the explicit `GET Token` node but move the three values into an
-  n8n credential and reference them, so they never appear in the workflow JSON
-  or in an export.
+```bash
+grep -rnE '1000\.[A-Za-z0-9]{10,}|[0-9a-f]{32,}' config/
+```
 
-Either way the workflow JSON committed to this repo must contain
-`<<REDACTED:set-via-n8n-credential>>`, exactly as `config/n8n/*.json` does now.
-`scripts/export_config.py` enforces that on every export.
+Route A satisfies this by construction, because there is no `GET Token` node
+left to put a secret into.
 
-## 6. Verify the token and discover the real schema
+## 7. Verify the token and discover the real schema
 
 Before mapping any fields, confirm what your Recruit edition actually exposes —
 module availability differs by edition, and the current workflows assume custom
@@ -140,7 +221,7 @@ Check specifically for:
   the fix for AUDIT #13: the agent currently never collects an email, which is
   why the Zoho upsert cannot deduplicate.
 
-## 7. Custom fields to create in Zoho Recruit
+## 8. Custom fields to create in Zoho Recruit
 
 Based on what the workflows try to write, create these on the Candidates module
 (Setup → Modules and Fields → Candidates) if they do not already exist:
@@ -157,7 +238,7 @@ Based on what the workflows try to write, create these on the Candidates module
 stable `duplicate_check_fields` target so a retried webhook updates rather than
 duplicates.
 
-## 8. Rate limits worth knowing
+## 9. Rate limits worth knowing
 
 - Access tokens: minting is throttled per refresh token. Cache the token for its
   full hour instead of minting per call (AUDIT #22).

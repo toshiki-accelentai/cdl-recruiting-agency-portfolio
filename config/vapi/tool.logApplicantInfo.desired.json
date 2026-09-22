@@ -1,0 +1,63 @@
+{
+  "id": "41a0ca37-e396-4aac-bd6c-472a33a45ef1",
+  "type": "function",
+  "function": {
+    "name": "logApplicantInfo",
+    "strict": true,
+    "description": "Save a CDL applicant in Zoho Recruit and request a 15-minute recruiter callback.",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Caller full name."
+        },
+        "readiness": {
+          "type": "string",
+          "enum": ["within 3 days", "within 7 days", "within 14 days", "later"],
+          "description": "When the caller can start work."
+        },
+        "experience": {
+          "type": "string",
+          "description": "Exact commercial truck driving experience stated by the caller, using a numeric amount and unit. Preserve the magnitude and never collapse it into a broad bucket. Examples: 'a little over five years' becomes '5+ years'; 'eighteen months' becomes '18 months'; no experience becomes '0 years'."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "US or Canadian callback phone number."
+        },
+        "city": {
+          "type": "string",
+          "description": "Current city."
+        },
+        "state": {
+          "type": "string",
+          "description": "Two-letter US state code."
+        },
+        "zipCode": {
+          "type": "string",
+          "pattern": "^\\d{5}(?:-\\d{4})?$",
+          "description": "US ZIP code."
+        },
+        "preferredCallbackTime": {
+          "type": "string",
+          "description": "Requested callback date and time in ISO 8601 format, interpreted in Pacific time when no offset is supplied."
+        }
+      },
+      "required": [
+        "name",
+        "readiness",
+        "experience",
+        "phoneNumber",
+        "city",
+        "state",
+        "zipCode",
+        "preferredCallbackTime"
+      ]
+    }
+  },
+  "server": {
+    "url": "https://n8n.accelentai.com/webhook/cdl/log-applicant",
+    "timeoutSeconds": 30
+  }
+}

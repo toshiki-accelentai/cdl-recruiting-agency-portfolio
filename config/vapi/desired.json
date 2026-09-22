@@ -57,7 +57,7 @@
             "zipCode": { "type": "string", "description": "US 5-digit ZIP, empty string if not given" },
             "experience": {
               "type": "string",
-              "enum": ["none", "under_6_months", "6_to_12_months", "1_to_2_years", "2_plus_years", "unknown"]
+              "description": "Exact tractor-trailer experience stated by the caller, preserving the numeric amount and unit, for example 5+ years or 18 months. Use unknown only when no amount was provided."
             },
             "readiness": {
               "type": "string",

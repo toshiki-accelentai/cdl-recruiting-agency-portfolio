@@ -1,0 +1,26 @@
+{
+  "routing": {
+    "id": "fqfDmPbJQzhHE7Bf",
+    "name": "CDL 01 - Assistant Routing",
+    "active": false,
+    "nodes": 5
+  },
+  "intake": {
+    "id": "CrGEvZ5vuX37rshi",
+    "name": "CDL 02 - Applicant Intake",
+    "active": false,
+    "nodes": 17
+  },
+  "booking": {
+    "id": "nIqItEX8Vbn78sWo",
+    "name": "CDL 03 - Calendar Booking",
+    "active": false,
+    "nodes": 15
+  },
+  "post_call": {
+    "id": "XGMOFG1hROutdkCF",
+    "name": "CDL 04 - Post-Call Report",
+    "active": false,
+    "nodes": 8
+  }
+}

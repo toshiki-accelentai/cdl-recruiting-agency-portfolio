@@ -1,0 +1,177 @@
+{
+  "name": "CDL 01 - Assistant Routing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cdl/assistant-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5829f378-3f0a-5399-9ffb-24aab803fee7",
+      "name": "Route Caller Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7e173b85-ad2f-580b-b5b6-45460c519e7e"
+    },
+    {
+      "parameters": {
+        "jsCode": "'use strict';\n\nconst BUSINESS_TIMEZONE = 'America/Vancouver';\nconst BUSINESS_START_HOUR = 9;\nconst BUSINESS_END_HOUR = 17;\nconst CALLBACK_MINUTES = 15;\n\nfunction clean(value) {\n  return typeof value === 'string' ? value.trim() : '';\n}\n\nfunction normalizePhone(value) {\n  let digits = clean(value).replace(/\\D/g, '');\n  if (digits.length === 10) digits = `1${digits}`;\n  if (digits.length !== 11 || !digits.startsWith('1')) return null;\n  return `+${digits}`;\n}\n\nfunction splitName(value) {\n  const parts = clean(value).split(/\\s+/).filter(Boolean);\n  if (parts.length === 0) return { firstName: '', lastName: 'Unknown' };\n  if (parts.length === 1) return { firstName: '', lastName: parts[0] };\n  return { firstName: parts.slice(0, -1).join(' '), lastName: parts.at(-1) };\n}\n\nfunction parseExperienceYears(value) {\n  const text = clean(value).toLowerCase().replace(/[–—]/g, '-');\n  if (!text || /no experience|just got|new cdl/.test(text)) return 0;\n  if (/under\\s*6\\s*months?/.test(text)) return 0.25;\n\n  const monthRange = text.match(/(\\d+(?:\\.\\d+)?)\\s*-\\s*(\\d+(?:\\.\\d+)?)\\s*months?/);\n  if (monthRange) return Number(((Number(monthRange[1]) + Number(monthRange[2])) / 24).toFixed(2));\n  const months = text.match(/(\\d+(?:\\.\\d+)?)\\s*months?/);\n  if (months) return Number((Number(months[1]) / 12).toFixed(2));\n\n  const yearRange = text.match(/(\\d+(?:\\.\\d+)?)\\s*-\\s*(\\d+(?:\\.\\d+)?)\\s*years?/);\n  if (yearRange) return Number(((Number(yearRange[1]) + Number(yearRange[2])) / 2).toFixed(2));\n  const years = text.match(/(\\d+(?:\\.\\d+)?)\\s*\\+?\\s*years?/);\n  return years ? Number(years[1]) : 0;\n}\n\nfunction classifyTemperature(value) {\n  const text = clean(value).toLowerCase();\n  if (/3\\s*days?|immediately|right away/.test(text)) return 'HOT';\n  if (/7\\s*days?|one\\s*week/.test(text)) return 'MEDIUM';\n  if (/14\\s*days?|two\\s*weeks?/.test(text)) return 'WARM';\n  return 'COLD';\n}\n\nfunction parseLocation(args = {}) {\n  let city = clean(args.city);\n  let state = clean(args.state).toUpperCase();\n  let zipCode = clean(args.zipCode || args.zip || args.postalCode);\n  const legacy = clean(args.driverLocation);\n\n  if (legacy && (!city || !state || !zipCode)) {\n    const match = legacy.match(/^(.+?)(?:,\\s*|\\s+)([A-Za-z]{2})(?:\\s+(\\d{5}(?:-\\d{4})?))?$/);\n    if (match) {\n      city ||= match[1].trim();\n      state ||= match[2].toUpperCase();\n      zipCode ||= match[3] || '';\n    } else if (!city) {\n      city = legacy;\n    }\n  }\n  return { city, state, zipCode };\n}\n\nfunction zonedParts(date, timeZone = BUSINESS_TIMEZONE) {\n  const parts = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric', month: '2-digit', day: '2-digit',\n    hour: '2-digit', minute: '2-digit', second: '2-digit',\n    weekday: 'short', hourCycle: 'h23',\n  }).formatToParts(date).reduce((result, part) => {\n    if (part.type !== 'literal') result[part.type] = part.value;\n    return result;\n  }, {});\n  return {\n    year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),\n    hour: Number(parts.hour), minute: Number(parts.minute), second: Number(parts.second),\n    weekday: parts.weekday,\n  };\n}\n\nfunction offsetAt(date, timeZone = BUSINESS_TIMEZONE) {\n  const p = zonedParts(date, timeZone);\n  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - date.getTime();\n}\n\nfunction localPartsToUtc(parts, timeZone = BUSINESS_TIMEZONE) {\n  const wallClock = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second || 0);\n  let candidate = new Date(wallClock);\n  for (let attempt = 0; attempt < 3; attempt += 1) {\n    candidate = new Date(wallClock - offsetAt(candidate, timeZone));\n  }\n  const roundTrip = zonedParts(candidate, timeZone);\n  const matches = ['year', 'month', 'day', 'hour', 'minute'].every((key) => roundTrip[key] === parts[key]);\n  return matches ? candidate : null;\n}\n\nfunction nthWeekday(year, month, weekday, occurrence) {\n  const first = new Date(Date.UTC(year, month - 1, 1));\n  const day = 1 + ((7 + weekday - first.getUTCDay()) % 7) + ((occurrence - 1) * 7);\n  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n}\n\nfunction lastWeekday(year, month, weekday) {\n  const last = new Date(Date.UTC(year, month, 0));\n  const day = last.getUTCDate() - ((7 + last.getUTCDay() - weekday) % 7);\n  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n}\n\nfunction observedDate(year, month, day) {\n  const date = new Date(Date.UTC(year, month - 1, day));\n  if (date.getUTCDay() === 6) date.setUTCDate(date.getUTCDate() - 1);\n  if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);\n  return date.toISOString().slice(0, 10);\n}\n\nfunction federalHolidays(year) {\n  return new Set([\n    observedDate(year, 1, 1),\n    nthWeekday(year, 1, 1, 3),\n    nthWeekday(year, 2, 1, 3),\n    lastWeekday(year, 5, 1),\n    observedDate(year, 6, 19),\n    observedDate(year, 7, 4),\n    nthWeekday(year, 9, 1, 1),\n    nthWeekday(year, 10, 1, 2),\n    observedDate(year, 11, 11),\n    nthWeekday(year, 11, 4, 4),\n    observedDate(year, 12, 25),\n  ]);\n}\n\nfunction validateCallback(value, now = new Date(), timeZone = BUSINESS_TIMEZONE) {\n  const raw = clean(value);\n  if (!raw) return { valid: false, reason: 'missing_callback_time', timeZone };\n\n  let start;\n  if (/(?:Z|[+-]\\d{2}:?\\d{2})$/.test(raw)) {\n    start = new Date(raw);\n  } else {\n    const match = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})(?::(\\d{2}))?$/);\n    if (!match) return { valid: false, reason: 'invalid_datetime', timeZone };\n    start = localPartsToUtc({\n      year: Number(match[1]), month: Number(match[2]), day: Number(match[3]),\n      hour: Number(match[4]), minute: Number(match[5]), second: Number(match[6] || 0),\n    }, timeZone);\n  }\n  if (!start || Number.isNaN(start.getTime())) return { valid: false, reason: 'invalid_datetime', timeZone };\n  if (start.getTime() <= now.getTime()) return { valid: false, reason: 'past_time', timeZone };\n\n  const p = zonedParts(start, timeZone);\n  const localDate = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;\n  if (!['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(p.weekday)) {\n    return { valid: false, reason: 'weekend', timeZone };\n  }\n  if (federalHolidays(p.year).has(localDate)) return { valid: false, reason: 'holiday', timeZone };\n  if (p.hour < BUSINESS_START_HOUR) return { valid: false, reason: 'before_open', timeZone };\n  if (p.hour >= BUSINESS_END_HOUR) return { valid: false, reason: 'after_close', timeZone };\n  if (p.hour === BUSINESS_END_HOUR - 1 && p.minute > 45) {\n    return { valid: false, reason: 'ends_after_close', timeZone };\n  }\n\n  return {\n    valid: true,\n    reason: 'within_hours',\n    timeZone,\n    startUtc: start.toISOString(),\n    endUtc: new Date(start.getTime() + CALLBACK_MINUTES * 60_000).toISOString(),\n    localDate,\n  };\n}\n\nconst exported = {\n  BUSINESS_TIMEZONE,\n  normalizePhone,\n  splitName,\n  parseExperienceYears,\n  classifyTemperature,\n  parseLocation,\n  validateCallback,\n};\n\nif (typeof module !== 'undefined') module.exports = exported;\n\n\n\nconst message = $json.body?.message ?? $json.message ?? {};\nconst phone = normalizePhone(message.call?.customer?.number ?? message.customer?.number ?? '');\nreturn [{ json: { phone, valid: Boolean(phone) } }];\n"
+      },
+      "id": "02642df6-7e54-5f40-b015-bf7c2dfab8a1",
+      "name": "Normalize Route Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://recruit.zoho.com/recruit/v2/Candidates/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Normalize Route Request').first().json.phone || '+10000000000' }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "7330463a-37d6-5961-8359-337bcfd2c7c1",
+      "name": "Find Candidate for Routing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        500,
+        0
+      ],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "ur8ddSQIeUDGrce8",
+          "name": "Zoho Recruit OAuth"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst route = $('Normalize Route Request').first().json;\nconst candidate = Array.isArray($json.data) ? $json.data[0] : null;\nconst existing = Boolean(route.valid && candidate?.id);\nreturn [{ json: {\n  assistantId: existing ? '542bae1c-51b5-4d83-a3fe-446836b4801d' : '6901a714-a6c5-45a2-9395-455e09e0051b',\n  assistantOverrides: { variableValues: {\n    phoneNumber: route.phone ?? '',\n    name: existing ? [candidate.First_Name, candidate.Last_Name].filter(Boolean).join(' ') : '',\n  } },\n  routing: existing ? 'existing_candidate' : 'new_candidate',\n} }];\n"
+      },
+      "id": "2e822399-32bc-5afc-8bc6-37d5f70877ed",
+      "name": "Build Assistant Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "1e070b3b-70a7-50e6-8b00-ade261793923",
+      "name": "Respond Route",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1020,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Route Caller Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Route Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Route Request": {
+      "main": [
+        [
+          {
+            "node": "Find Candidate for Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Candidate for Routing": {
+      "main": [
+        [
+          {
+            "node": "Build Assistant Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Assistant Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Vancouver",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false
+  },
+  "active": false,
+  "tags": [],
+  "meta": {
+    "managedBy": "scripts/build_modular_workflows.py",
+    "component": "routing",
+    "version": 1
+  }
+}

@@ -1,54 +1,66 @@
 {
   "id": "41a0ca37-e396-4aac-bd6c-472a33a45ef1",
   "createdAt": "2026-01-12T23:47:30.564Z",
-  "updatedAt": "2026-01-12T23:48:39.052Z",
+  "updatedAt": "2026-08-14T23:34:26.102Z",
   "type": "function",
   "function": {
     "name": "logApplicantInfo",
     "strict": true,
-    "description": "Use this tool to log applicant information and book a call with a recruiter.",
+    "description": "Save a CDL applicant in Zoho Recruit and request a 15-minute recruiter callback.",
     "parameters": {
       "type": "object",
       "properties": {
+        "city": {
+          "description": "Current city.",
+          "type": "string"
+        },
         "name": {
-          "description": "Name of the caller",
+          "description": "Caller full name.",
+          "type": "string"
+        },
+        "state": {
+          "description": "Two-letter US state code.",
+          "type": "string"
+        },
+        "zipCode": {
+          "description": "US ZIP code.",
           "type": "string",
-          "default": ""
+          "pattern": "^\\d{5}(?:-\\d{4})?$"
         },
         "readiness": {
-          "description": "The candidate’s availability to start: within 3 days, within 7 days, within 14 days, or later.",
+          "description": "When the caller can start work.",
           "type": "string",
-          "default": ""
+          "enum": [
+            "within 3 days",
+            "within 7 days",
+            "within 14 days",
+            "later"
+          ]
         },
         "experience": {
-          "description": "Experience of the caller as a commercial truck driver (No experience / just got CDL/Under 6 months/6–12 months/1–2 years/2+ years\r\n)",
-          "type": "string",
-          "default": ""
+          "description": "Exact commercial truck driving experience stated by the caller, using a numeric amount and unit. Preserve the magnitude and never collapse it into a broad bucket. Examples: 'a little over five years' becomes '5+ years'; 'eighteen months' becomes '18 months'; no experience becomes '0 years'.",
+          "type": "string"
         },
         "phoneNumber": {
-          "description": "Phone number of the caller",
-          "type": "string",
-          "default": ""
-        },
-        "driverLocation": {
-          "description": "Location of the caller",
-          "type": "string",
-          "default": ""
+          "description": "US or Canadian callback phone number.",
+          "type": "string"
         },
         "preferredCallbackTime": {
-          "description": "Date and time that the caller requested a callback in ISO format, such as 2025-10-30T14:00:00",
-          "type": "string",
-          "default": ""
+          "description": "Requested callback date and time in ISO 8601 format, interpreted in Pacific time when no offset is supplied.",
+          "type": "string"
         }
       },
       "required": [
         "name",
-        "driverLocation",
-        "phoneNumber",
-        "experience",
         "readiness",
+        "experience",
+        "phoneNumber",
+        "city",
+        "state",
+        "zipCode",
         "preferredCallbackTime"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   "messages": [
@@ -60,8 +72,16 @@
   ],
   "orgId": "8f1dedb1-3be1-4b18-845f-0111097325cd",
   "server": {
-    "url": "https://accelentai.app.n8n.cloud/webhook/264b4bd9-1983-4307-b761-eff4ba2fec82",
-    "timeoutSeconds": 20
+    "url": "https://n8n.accelentai.com/webhook/cdl/log-applicant",
+    "timeoutSeconds": 30,
+    "staticIpAddressesEnabled": false
   },
-  "latestVersion": "v1"
+  "variableExtractionPlan": {
+    "schema": {
+      "type": "object",
+      "required": [],
+      "properties": {}
+    }
+  },
+  "latestVersion": "v4"
 }
