@@ -37,6 +37,7 @@ config/n8n/      workflow JSON, exported from live (secrets redacted)
 scripts/         export_config.py — re-export live config
 docs/AUDIT.md    findings from the 2026-08-12 read-only audit
 docs/ZOHO-SETUP.md  how to obtain and store the Zoho credentials
+docs/learning/    learning track: one doc per step + glossary (owner is learning Python/SQL)
 tasks/todo.md    prioritised work
 ```
 
@@ -45,6 +46,10 @@ hand-edit and assume it matches live. Re-run `python scripts/export_config.py`
 to resync and diff.
 
 ## Platform quirks — read before touching anything
+
+- **Bare `python` is the wrong interpreter** on this machine (resolves to a
+  hermes-agent venv without pytest). Use `py -3.11`. Existing tests use
+  `unittest`, not pytest.
 
 - **Two n8n instances.** `N8N_BASE_URL` (`n8n.accelentai.com`) is a copy where
   every workflow is inactive. Production webhooks are served from
@@ -65,6 +70,8 @@ to resync and diff.
 ## Verify
 
 ```bash
+py -3.11 -m unittest discover -s tests   # 32 tests, no network
+node tests/js/test_cdl_helpers.js
 python scripts/export_config.py     # re-export live config; diff must be clean
 grep -rnE '1000\.[A-Za-z0-9]{10,}|[0-9a-f]{32,}' config/   # must return nothing
 ```

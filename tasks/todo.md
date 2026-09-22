@@ -1,5 +1,21 @@
 # Work plan
 
+## Production-grade + learning track (started 2026-09-21)
+
+Coach's brief: Python API → SQL database → CRM, with duplicate / missing-info /
+failed-API handling and a "CRM is down, no lead lost" demo; then a recruiter
+dashboard. Every step ships a learning doc. Index and progress checklist:
+`docs/learning/README.md`. Full plan: Phase 0 → U (understand existing) → A
+(receive + store, Postgres on Supabase) → B (outbox worker, resilience) → C
+(dashboard). All data fictional; own VAPI + Zoho accounts only.
+
+- [x] Phase 0: removed accidental nested `docs/.git` (backed up to the session
+      scratchpad), committed baseline on branch `feat/python-api`.
+      Baseline: 32 unittest tests pass, JS helper assertions pass (no network).
+- [x] U1 and U2 docs drafted. Waiting on the learner's review and exercises.
+- [ ] U3–U9
+- [ ] Phase A / B / C
+
 Findings and numbering come from `docs/AUDIT.md`.
 Nothing below has been deployed — the audit was read-only.
 
