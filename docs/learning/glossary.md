@@ -15,5 +15,12 @@ One line each. Say it out loud in your own words before moving on.
 | **Item** | One JSON object flowing between n8n nodes. | U2 |
 | **Expression** | `{{ … }}` JavaScript inside an n8n node setting. | U2 |
 | **`onError: continueRegularOutput`** | An n8n setting that passes an error along as data instead of stopping the run. | U2 |
+| **IF node** | An n8n fork: reads one true/false value and sends the item down the true or false output. | U3 |
+| **retryOnFail** | An n8n setting: if the call fails, try again automatically up to `maxTries` times. | U3 |
+| **Timeout** | How long a call may take before it counts as failed. | U3 |
+| **Upsert** | "Update or insert": update the record if it exists, otherwise create it. | U3 |
+| **Guard node** | A node whose only job is to check something and stop (throw) if it is wrong. | U3 |
+| **Tool-call ID** | The ID VAPI gives each tool call. The reply must echo it so VAPI knows which call the answer belongs to. | U3 |
+| **Graceful fallback** | When something fails, give a safe, honest answer instead of an error. | U3 |
 | **Idempotent** | Doing the same thing twice has the same effect as doing it once. | U4 |
 | **Outbox pattern** | Save the work item to your DB in the same transaction as the data, and let a worker send it to the external system later. | Plan |

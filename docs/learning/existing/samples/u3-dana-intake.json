@@ -1,0 +1,28 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": {
+      "id": "call-u3-dana-0001",
+      "customer": { "number": "+19185550142" }
+    },
+    "toolCalls": [
+      {
+        "id": "toolcall-u3-0001",
+        "type": "function",
+        "function": {
+          "name": "logApplicantInfo",
+          "arguments": {
+            "name": "Dana Reyes",
+            "phoneNumber": "+19185550142",
+            "city": "Tulsa",
+            "state": "OK",
+            "zipCode": "74103",
+            "experience": "3 years",
+            "readiness": "I can start this week",
+            "preferredCallbackTime": "2026-09-29T10:00:00-07:00"
+          }
+        }
+      }
+    ]
+  }
+}

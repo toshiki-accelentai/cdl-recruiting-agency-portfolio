@@ -20,7 +20,7 @@ Try it yourself · Break it & fix it · Interview Q&A · Glossary terms.
 ### Phase U: Understand what exists
 - [ ] U1 [One call, end to end](existing/01-end-to-end-call-trace.md)
 - [ ] U2 [n8n basics: Routing and Post-Call](existing/02-n8n-basics-routing-and-post-call.md)
-- [ ] U3 Applicant Intake (17 nodes): error paths, sub-workflow
+- [ ] U3 [Applicant Intake (17 nodes)](existing/03-applicant-intake.md): error paths, sub-workflow
 - [ ] U4 Calendar Booking: idempotency, race conditions
 - [ ] U5 `cdl_helpers.js`: the business logic, read side by side with Python
 - [ ] U6 How the Python scripts call APIs (`export_config.py`, `deploy_vapi_tool.py`)
