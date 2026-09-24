@@ -23,4 +23,8 @@ One line each. Say it out loud in your own words before moving on.
 | **Tool-call ID** | The ID VAPI gives each tool call. The reply must echo it so VAPI knows which call the answer belongs to. | U3 |
 | **Graceful fallback** | When something fails, give a safe, honest answer instead of an error. | U3 |
 | **Idempotent** | Doing the same thing twice has the same effect as doing it once. | U4 |
+| **Deterministic ID** | An ID computed from the input itself (e.g. the requested time), not generated randomly, so the same input always produces the same ID. | U4 |
+| **Tombstone** | A deleted record whose ID still exists for a while in a "cancelled" state, instead of disappearing completely. | U4 |
+| **ETag / `If-Match` (optimistic concurrency)** | A fingerprint of a record's current state. Attach it to a write with `If-Match`, and the server rejects the write if the record changed since you read it — a lock without needing a lock. | U4 |
+| **`extendedProperties.private`** | Hidden metadata attached to a Google Calendar event, invisible in the UI but readable via the API. | U4 |
 | **Outbox pattern** | Save the work item to your DB in the same transaction as the data, and let a worker send it to the external system later. | Plan |

@@ -16,6 +16,17 @@ dashboard. Every step ships a learning doc. Index and progress checklist:
 - [ ] U3–U9
 - [ ] Phase A / B / C
 
+**Open decision, revisit when planning Phase A/B:** how much of n8n survives?
+Not a full replace — this is a portfolio piece aimed at companies that run n8n
+as their main automation tool, so n8n stays visible in the finished system.
+The real question is scope: keep n8n only for the pieces where it's a genuine
+fit (glue/orchestration, non-engineer-editable steps, correctness doesn't
+depend on it), and move to the Python backend only what needs real
+correctness guarantees (Applicant Intake, per W1/W6/W9/W10/W11 — this is
+already the plan). Whatever the final split is, it should be something we can
+explain and defend as a deliberate call, not an accident of how the build
+happened — that explanation is itself part of the portfolio story.
+
 Findings and numbering come from `docs/AUDIT.md`.
 Nothing below has been deployed — the audit was read-only.
 
@@ -28,6 +39,22 @@ Nothing below has been deployed — the audit was read-only.
 - The agent does **not** collect email. Candidate dedupe in Zoho Recruit must
   therefore key on phone number + `VAPI_Call_ID`, not Email.
 - Nothing is in production — all of this is draft, so changes can go live.
+  **Superseded 2026-09-23, then reverted same day**: the user briefly
+  activated all four modular workflows on the self-hosted instance and ran a
+  real fictional test call through them (see Phase 2 below), then
+  deactivated all four again the same day. Re-verify active/inactive state
+  directly before assuming either way — don't trust this note either, it
+  will go stale.
+- **Operating rule (settled 2026-09-23): default to inactive.** Activate a
+  workflow only for a deliberate test/demo window, then deactivate again
+  immediately after. Reasons: (1) the live VAPI number `+1 206-944-1294` can
+  receive real calls from strangers, not just intentional tests, which would
+  write real (non-fictional) callers' data into this portfolio's Zoho/Calendar
+  accounts; (2) idle active time still accrues VAPI/telephony cost; (3) the
+  system still carries known unresolved correctness bugs (W1, W6, W9, W10,
+  W11 in `docs/learning/existing/improvements.md`) and no durable storage yet
+  (Phase A), so a real call hitting one of those bugs right now has no
+  recovery path. Revisit this rule once Phase A/B land.
 
 ## Phase 0 — credentials
 
@@ -87,7 +114,15 @@ change together in Phase 3:
       dynamic New/Existing routing. (AUDIT #2)
 - [x] Normalise phone numbers to E.164 properly; key the caller lookup off
       `call.customer.number` on both write and read. (AUDIT #7)
-- [ ] Place a real test call and inspect the resulting record.
+- [x] Place a real test call and inspect the resulting record. Done
+      2026-09-23 by the user directly (not through this session): a VAPI
+      web-widget call ("John Smith," fictional, Tampa FL) hit the live
+      `webhook/cdl/log-applicant` URL in `executionMode: "production"`,
+      confirming CDL 02 is active and reachable. Sample payload saved at
+      `docs/learning/existing/samples/u3-john-real-shape.json` (trimmed of
+      call-session secrets like `listenUrl`/`controlUrl`). Resulting Zoho
+      record not yet inspected here — do that before checking this off as
+      fully verified end-to-end.
 
 ## Phase 3 — Zoho Recruit becomes the system of record
 

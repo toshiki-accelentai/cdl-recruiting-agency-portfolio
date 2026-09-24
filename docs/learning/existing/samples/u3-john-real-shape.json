@@ -1,0 +1,27 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "toolCalls": [
+      {
+        "id": "call_tJg2A9cg40h9OZokHRnbd5Nd",
+        "type": "function",
+        "function": {
+          "name": "logApplicantInfo",
+          "arguments": {
+            "name": "John Smith",
+            "phoneNumber": "6727274656",
+            "city": "Tampa",
+            "state": "FL",
+            "zipCode": "33605",
+            "experience": "3 years 8 months",
+            "readiness": "within 7 days",
+            "preferredCallbackTime": "2026-09-25T10:00:00"
+          }
+        }
+      }
+    ],
+    "call": {
+      "id": "01a0cfa8-a48b-7dda-9ccb-545929aaaf59"
+    }
+  }
+}

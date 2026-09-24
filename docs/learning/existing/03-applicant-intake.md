@@ -100,7 +100,7 @@ Predict the answer **before** reading the right-hand column.
 | Candidate saved, calendar booked, then the *booking note* fails | 12 already answered. Node 17 marks the run failed. Caller is unaffected. |
 | Candidate saved, but the *intake note* (node 11) fails | **None.** See W6. |
 
-## W6 — confirmed in part
+## W6 — confirmed, with one prediction corrected
 
 **The claim (from the U2 reading):** if the intake note fails, *Prepare Booking
 Input* throws, and no Respond node ever runs.
@@ -112,17 +112,25 @@ What I checked, and what is still open:
 | Does *Prepare Booking Input* have a safety setting (`onError`)? | **No.** Its `onError` is unset. | Read in the JSON. |
 | Does its code throw when the note failed? | **Yes**, for both a failed call and a "Zoho said not SUCCESS" reply. | I ran the exact code in Node with fake inputs (no network). Result: `intake_note_write_failed: …` |
 | Is any Respond node reachable after the throw? | **No.** In the connections list, the only Respond nodes come from the IF forks (4, 10) and from node 16. | Read the connections. |
-| What does n8n send back to VAPI when a run dies this way? | **Not yet proven.** Expected: an HTTP 500 with no `results`, which VAPI treats as a tool error. | This is your exercise below. |
-| What does the caller then hear? | **Not proven**, depends on VAPI and the prompt. | Can only be seen in a real call. |
+| What does n8n send back to VAPI when a run dies this way? | **Reproduced, prediction was wrong.** Against `webhook-test`: **`200 OK`**, body = the raw trigger request echoed back (`headers`/`body`/`webhookUrl`/`executionMode`), not the predicted 500-with-no-`results`. Either way there's still no `results` array, so VAPI still can't parse a valid tool-call answer — the danger holds, the exact wire shape doesn't. | Duplicated the workflow, pinned the three mock outputs below, sent the real "John Smith" sample payload via `curl.exe` to the test webhook. |
+| Does this generalize to the *production* webhook (not `webhook-test`)? | **Not proven yet.** n8n has open GitHub issues about response inconsistency between test and production webhook modes, so this needs a separate check, not an assumption. | Open question. |
+| What does the caller then hear? | **Not proven**, depends on how VAPI's model interprets a 200 with no `results`. | Can only be seen in a real call. |
 
-**Impact if it holds:** the driver *was* saved to Zoho (node 7 succeeded), but
-the caller hears an error, and the calendar is never booked. The recruiter sees
-a candidate with no callback.
+**Impact:** the driver *was* saved to Zoho (node 7 succeeded), but VAPI gets a
+response it can't use as a tool-call answer either way, and the calendar is
+never booked. The recruiter sees a candidate with no callback.
 
 **Why it is a nasty one:** the workflow already has the right safety net for
 booking (node 16). Only this one guard was left without one.
 
-## Two more weaknesses found while reading (added to improvements.md)
+**Lesson from doing the exercise, not just reading the code:** the doc's
+original prediction ("expected: 500") was a reasonable guess but wrong in the
+specifics. Reading the code tells you a guard *will* throw; it doesn't reliably
+tell you what the platform does with an unhandled throw in test vs. production
+mode. That gap is exactly why this exercise existed instead of just trusting
+the read-through.
+
+## Three more weaknesses found while reading (added to improvements.md)
 
 - **W9 — timing.** Each Zoho call can take up to 3 tries × 10 s + 2 s of waiting
   = **32 s**. Intake makes three Zoho calls *before* it replies. VAPI waits
@@ -132,6 +140,14 @@ booking (node 16). Only this one guard was left without one.
 - **W10 — a failed search looks like "not found".** If the search in node 5
   errors, node 6 sees no `data`, picks `POST`, and creates a **new** candidate.
   A temporary search failure can create a duplicate for a returning driver.
+- **W11 — the two guard nodes disagree.** *Prepare Booking Input* (14) treats
+  a missing `record` as failure; *Verify Booking Note* (17) treats a missing
+  `record` as success. Checked the Obsidian session log for *why* — node 14's
+  strictness traces to a real bug found on 2026-08-12 (Note response leaking
+  into Calendar Booking's input), but nothing explains node 17's looser check.
+  Both nodes were committed together in one untracked-work snapshot, so git
+  has no finer-grained history either. Harmless today only because node 17's
+  throw happens *after* the caller already got an answer.
 
 ## Break it & fix it — confirm W6 yourself (on a copy)
 
