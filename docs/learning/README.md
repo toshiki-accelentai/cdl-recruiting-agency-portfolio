@@ -22,7 +22,7 @@ Try it yourself · Break it & fix it · Interview Q&A · Glossary terms.
 - [ ] U2 [n8n basics: Routing and Post-Call](existing/02-n8n-basics-routing-and-post-call.md)
 - [x] U3 [Applicant Intake (17 nodes)](existing/03-applicant-intake.md): error paths, sub-workflow
 - [x] U4 [Calendar Booking](existing/04-calendar-booking.md): idempotency, race conditions
-- [ ] U5 [`cdl_helpers.js`](existing/05-cdl-helpers.md): the business logic, read side by side with Python
+- [x] U5 [`cdl_helpers.js`](existing/05-cdl-helpers.md): the business logic, read side by side with Python
 - [ ] U6 How the Python scripts call APIs (`export_config.py`, `deploy_vapi_tool.py`)
 - [ ] U7 Workflows-as-code and the test suite
 - [ ] U8 Smoke tests and live-side-effect scripts

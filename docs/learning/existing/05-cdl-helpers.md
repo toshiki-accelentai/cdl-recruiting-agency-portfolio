@@ -2,8 +2,10 @@
 
 > **Goal:** read every function in the one file that decides "is this phone
 > number real," "how many years of experience is that," and "is this callback
-> time actually bookable" — then write each one's Python equivalent yourself.
-> Source: `workflow-src/cdl_helpers.js` (187 lines, no dependencies).
+> time actually bookable" — trace through each one by hand and be able to
+> explain what it does and why, including to Claude Code when reviewing its
+> Python port later. Source: `workflow-src/cdl_helpers.js` (187 lines, no
+> dependencies).
 
 ## Why it matters most
 
@@ -17,9 +19,11 @@ get "the calendar said 9am was bookable but the phone workflow said it
 wasn't."
 
 Unlike U1–U4, there's no n8n canvas here — just plain JavaScript functions.
-The exercise is different too: for each one, write what you think the Python
-version looks like *before* you compare notes with me. That's the "read side
-by side with Python" part.
+The exercise is different too: for each one, predict what it does and trace
+it by hand *before* checking against the walkthrough below. When Phase A
+actually ports this to Python, Claude Code will write that version — your job
+is to read it side by side with this file and confirm it does the same
+thing, not to write the Python yourself.
 
 ## Five new ideas
 
@@ -92,20 +96,25 @@ natively understands IANA timezones. This is the clearest example in the
 whole file of "same problem, very different amount of code, purely because of
 what the standard library gives you for free."
 
-## Try it yourself — write the Python before you check
+## Try it yourself — predict, then trace
 
-For each function below, write what you think the Python version looks like.
-Don't peek at hints until you've tried.
+For each one, predict the answer first, then trace the actual code line by
+line to check yourself. The goal is reading fluency, not writing the Python —
+if you want to see the Python side, ask me to show it and we'll read it
+together the same way.
 
-1. `normalizePhone("(672) 727-4656")` — what should it return? Write the
-   Python function.
+1. `normalizePhone("(672) 727-4656")` — walk through `clean` → the digit
+   strip → the length check. What does it return, and why does a 9-digit
+   input come back `null` instead of getting padded?
 2. `parseExperienceYears("3 years 8 months")` — trace through the regex
    cascade by hand. Which branch matches? What's the returned number?
 3. `validateCallback` for a Saturday at 10am — which specific rejection
    reason fires, and in what order are the checks evaluated? (Order matters:
    what if a date is *both* a weekend *and* a holiday?)
-4. Sketch the Python signature for `localPartsToUtc` using `zoneinfo`. How
-   many lines does your version need compared to the 10 here?
+4. Explain out loud what `localPartsToUtc` would look like if it were using
+   Python's `zoneinfo` instead — not the code itself, just: which of the 10
+   lines here would disappear entirely, and why does `zoneinfo` make the
+   guess-and-check loop unnecessary?
 
 ## Break it & fix it
 
