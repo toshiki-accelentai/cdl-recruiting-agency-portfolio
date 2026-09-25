@@ -125,22 +125,23 @@ settings are `saveDataErrorExecution: all`, `saveDataSuccessExecution: none`
 ## Interview questions
 
 **Q: How do you handle errors in n8n?**
-A: Per node: `retryOnFail` for transient HTTP failures, and
-`onError: continueRegularOutput` so an API error becomes data I can branch on
-instead of killing the run — that's how routing fails open. Then explicit
-"verify" Code nodes throw when the API didn't return SUCCESS, so real failures
-are recorded as failed executions.
+A: Two layers. Each node retries on transient failures, and instead of
+killing the run on an error, I let it continue with the error as data I can
+branch on — that's how routing fails open. Then I have separate "verify"
+nodes that explicitly throw if the API didn't come back with success, so real
+failures still show up as failed executions.
 
 **Q: Why respond to the webhook before doing the work in the post-call flow?**
-A: VAPI doesn't need a result there, and a fast 200 avoids timeouts and
-retries. The trade-off is that after the 200 nothing retries the work, so a
-CRM outage loses the note — which is why I moved that path to a Python service
-that commits to Postgres before acknowledging.
+A: VAPI doesn't need the result of that work, so replying fast avoids
+timeouts and retries on their end. The trade-off is nothing retries the work
+after that — if the CRM's down, the note gets lost. That's why I moved that
+path to a Python service that writes to Postgres first, then acknowledges.
 
 **Q: What's the difference between `$json` and `$('Node').first().json`?**
-A: `$json` is the item coming into the current node; `$('Node')` reaches back
-to the output of a named earlier node — useful after an HTTP node replaced the
-data, but it couples nodes by name.
+A: `$json` is just the data coming into the current node. `$('Node')` lets me
+reach back and grab the output of a specific earlier node by name — handy
+after something's replaced the data, but it ties nodes together by name,
+which is fragile if you rename one.
 
 ---
 *Break-it answer:* **Find Candidate for Routing** and **Build Assistant

@@ -146,26 +146,25 @@ check actually behaves the way node 14's code claims.
 
 **Q: How does this workflow avoid double-booking the same slot when VAPI
 retries a tool call?**
-A: The event's ID isn't random — it's computed from the requested time itself,
-so a retry always targets the exact same ID instead of creating a new one.
-Combined with always re-reading the event's true state after attempting to
-create it, a duplicate delivery converges on the same answer both times
-instead of creating a second event.
+A: I don't let Google assign a random ID — I calculate the event ID from the
+time slot itself. So a retry always targets the same ID instead of creating a
+new one, and I always re-read the event afterward instead of trusting that my
+own request succeeded.
 
 **Q: Two candidates want the same 15-minute slot at the same moment. What
 actually decides who gets it?**
-A: Whoever's `Create Calendar Event` call reaches Google first wins the ID.
-The loser's later read finds an event that exists but carries someone else's
-`vapiCallId` in its private metadata — existence isn't ownership, so the
-workflow correctly tells them the slot is taken instead of assuming success.
+A: Whoever's request reaches Google first wins the ID — that's just normal
+server behavior. The loser then sees an event that exists but isn't theirs,
+because I stamp ownership metadata on every event. So they get told the slot's
+taken instead of a false "you're booked."
 
 **Q: What does `If-Match` with an ETag actually protect against, and why not
 just use a database lock?**
-A: It protects the "restore a cancelled slot" step from two processes
-resurrecting the same tombstone at once and one silently overwriting the
-other's write. A real lock would need a place to hold it and a way to release
-it if the workflow crashes; an ETag needs neither — the server itself rejects
-a write if the record changed since you last read it.
+A: It only matters for one case — restoring a cancelled slot. If two requests
+try to restore it at once, the ETag is a fingerprint of the event's
+last-known state; if it's stale, Google rejects the write. A real lock would
+mean I own where it lives and how it gets released if something crashes —
+this way the server just handles it for me.
 
 ## Glossary added
 Deterministic ID · Tombstone · ETag / `If-Match` (optimistic concurrency) ·

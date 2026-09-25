@@ -191,28 +191,29 @@ Bring me the three values from step 5 and we will mark W6 **confirmed** or
 ## Interview questions
 
 **Q: What happens if Zoho fails while a driver is on the phone?**
-A: Intake never leaves the caller in silence. Each Zoho call retries, and if it
-still fails the error is turned into data, so a check node routes to a
-"recruiter will follow up manually" reply. VAPI always gets a valid answer.
-The honest gap is that those details are not stored anywhere durable, which is
-why I added a database.
+A: The caller never just hears silence. Each Zoho call retries a few times,
+and if it still fails, I turn that error into data and route to a "recruiter
+will follow up manually" reply — so VAPI always gets something valid to say.
+The honest gap is those details aren't stored anywhere durable yet, which is
+why I'm adding a database.
 
 **Q: Why does an IF node come after a Code node instead of doing the check
 itself?**
-A: The Code node can do real logic (clean the phone, list all the problems).
-The IF node then only reads one true/false flag. It keeps the branching easy to
-see on the canvas.
+A: The Code node does the real work — cleaning the phone number, checking for
+problems. The IF node just reads one true/false flag off that. Keeps the
+branching visible on the canvas instead of buried in code.
 
 **Q: Where does this workflow have a weak spot?**
-A: A guard node after the intake note throws without a fallback, so a failed
-note ends the run before any reply. The driver is saved but the caller may hear
-an error. I found it by reading the connections, proved the throw locally, and
-would fix it by making a failed note non-fatal.
+A: There's a guard node right after the intake note that throws with no
+fallback, so if the note fails, the run just stops before ever replying. The
+driver's data is saved, but the caller might hear an error. I found it by
+tracing the connections and reproducing the throw locally — the fix is making
+a failed note non-fatal instead of killing the run.
 
 **Q: What does "retry" buy you, and what does it cost?**
-A: It hides short glitches. The cost is time: three tries of ten seconds can
-outlast VAPI's 30-second wait, so retries need to fit inside the caller's
-time budget.
+A: It papers over short glitches. The cost is time — three retries at ten
+seconds each can outlast VAPI's 30-second wait, so retries have to fit inside
+the caller's patience, not just the API's.
 
 ## Glossary added
 IF node · retryOnFail · timeout · upsert · guard node · tool-call ID ·

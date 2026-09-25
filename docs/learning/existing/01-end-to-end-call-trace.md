@@ -125,23 +125,23 @@ your interview answer to *"why did you add a database?"*. More detail in
 ## Interview questions
 
 **Q: Walk me through what happens when a driver calls.**
-A: The number has no fixed assistant, so VAPI first asks my routing webhook
-which agent to use; I look the caller up in Zoho by phone and pick "new" or
-"existing". During the call the agent collects the fields and calls one tool,
-`logApplicantInfo`, which hits an n8n workflow that upserts the Zoho candidate
-and books a 15-minute callback in Google Calendar, then returns the confirmed
-time so the agent can read it back. After hang-up VAPI posts an end-of-call
-report and I attach the transcript and summary to the candidate as a note.
+A: The number isn't tied to one fixed assistant, so VAPI first asks my
+routing webhook which agent to use — I look the caller up in Zoho and pick
+"new" or "existing." During the call, the agent collects info through one
+tool, `logApplicantInfo`, which hits n8n, updates the Zoho candidate, and
+books a 15-minute callback on the calendar. After the call ends, VAPI sends
+me the transcript and summary, and I attach that to the candidate as a note.
 
 **Q: Why split it into four workflows instead of one?**
-A: Each has one job and one failure mode, so they're easier to test and
-debug. Booking is an internal sub-workflow with no public URL, which also
-shrinks the attack surface. The original was a 36-node monolith.
+A: Each one does a single job, so if something breaks I know exactly where to
+look. The booking piece is internal with no public URL, so it's not even
+exposed to the outside. It used to be one 36-node workflow, which was rough
+to debug.
 
 **Q: What happens if the CRM is down?**
-A: Honest answer today: routing survives (fail-open), but intake falls back
-to "a recruiter will follow up" and the details aren't durably stored anywhere
-except VAPI's logs. That's the gap I'm closing with a Python API + Postgres
+A: Honestly, routing still works — it fails open. But intake falls back to
+"a recruiter will follow up," and the lead details only live in VAPI's logs,
+nowhere durable. That's the gap I'm closing with a Python API and a Postgres
 outbox. *(Saying this confidently is a strength, not a weakness.)*
 
 ## Glossary added
