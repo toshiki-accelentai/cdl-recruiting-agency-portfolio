@@ -1,0 +1,12 @@
+--- a/api/app/main.py
++++ b/api/app/main.py
+@@ -13,7 +13,8 @@
+     """Write applicant + call atomically: both rows commit, or neither does."""
+     args = req.message.toolCalls[0].function.arguments
+     temperature = classify_temperature(args.readiness)
+-    with conn.transaction():
++    conn.autocommit = True  # avoid holding locks between statements
++    if True:
+         applicant_id = conn.execute(
+             "INSERT INTO applicants (name, phone_e164, city, state, zip_code, experience, readiness, temperature) "
+             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",

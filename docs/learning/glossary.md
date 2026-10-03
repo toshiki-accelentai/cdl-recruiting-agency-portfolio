@@ -28,3 +28,23 @@ One line each. Say it out loud in your own words before moving on.
 | **ETag / `If-Match` (optimistic concurrency)** | A fingerprint of a record's current state. Attach it to a write with `If-Match`, and the server rejects the write if the record changed since you read it — a lock without needing a lock. | U4 |
 | **`extendedProperties.private`** | Hidden metadata attached to a Google Calendar event, invisible in the UI but readable via the API. | U4 |
 | **Outbox pattern** | Save the work item to your DB in the same transaction as the data, and let a worker send it to the external system later. | Plan |
+| **`urllib.request`** | Python's built-in HTTP client — no install needed, unlike the `requests` library. | U6 |
+| **WAF (web application firewall)** | A layer in front of an API that can reject requests before they reach the app, e.g. by `User-Agent` string. | U6 |
+| **Dry run** | Show what a script would do without doing it — the default here, opt-in required to actually write. | U6 |
+| **BOM (byte-order mark)** | An invisible marker some editors save at the start of a UTF-8 file; ignored by reading with `utf-8-sig`. | U6 |
+| **`HTTPError`** | Python's exception for a 4xx/5xx response — distinct from a connection failure like DNS or timeout. | U6 |
+| **Workflow-as-code** | Generating a system (here, n8n workflow JSON) from a reviewable script instead of building it by hand in a UI. | U7 |
+| **Build artifact vs. source** | The generated file (workflow JSON) is a build artifact; the Python that produced it is the source. Edit the source, regenerate the artifact — never the reverse. | U7 |
+| **Dependency-ordered deploy** | Deploying pieces in a specific order because a later piece needs an ID or value only the earlier piece's deploy produces. | U7 |
+| **Dangling reference** | Code left pointing at something (here, an n8n node) that no longer exists after a refactor — fails silently until it runs. | U7 |
+| **Syntax-check via subprocess** | Validating code written in language A from a test in language B by shelling out to language A's own interpreter, since B can't parse A itself. | U7 |
+| **Smoke test (real call)** | A test that only proves anything by actually performing the real action (hitting a live, temporary webhook) — unlike a dry run, there's no "would do" version of it. | U8 |
+| **OAuth proxy (via n8n)** | Routing an API call through an existing authenticated system (n8n's saved credential) instead of implementing OAuth token refresh yourself. | U8 |
+| **Pinned fixture vs. disposable test data** | A reusable, permanently-labelled test record you clean only the byproducts of, versus throwaway data deleted along with everything that touched it. | U8 |
+| **Naive vs. timezone-aware datetime** | A naive `datetime` has no UTC-offset information attached; an aware one does — sending a naive local timestamp over a webhook silently assumes the receiver guesses the right timezone. | U8 |
+| **Transaction (atomic write)** | A group of database writes that either all commit or all roll back — no half-saved state. | A1 |
+| **Rollback** | Undoing every write in the current transaction after an error. | A1 |
+| **Migration** | A versioned `.sql` file that changes the schema; a runner applies each file once, in order. | A1 |
+| **UNIQUE constraint / foreign key** | UNIQUE: the database refuses duplicate values in a column. Foreign key: a column must point at a row that exists in another table. | A1 |
+| **jsonb** | Postgres column type storing JSON in a queryable binary form; used to keep the raw VAPI payload. | A1 |
+| **Autocommit** | Each statement commits immediately on its own, so there is no multi-statement transaction to roll back. | A1 |

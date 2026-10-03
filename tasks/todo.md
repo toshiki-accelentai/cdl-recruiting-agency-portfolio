@@ -12,9 +12,36 @@ dashboard. Every step ships a learning doc. Index and progress checklist:
 - [x] Phase 0: removed accidental nested `docs/.git` (backed up to the session
       scratchpad), committed baseline on branch `feat/python-api`.
       Baseline: 32 unittest tests pass, JS helper assertions pass (no network).
-- [x] U1 and U2 docs drafted. Waiting on the learner's review and exercises.
-- [ ] U3–U9
-- [ ] Phase A / B / C
+- [x] Phase U (U1–U8) done 2026-10-03. U9 checkpoint skipped.
+
+**Ship-first plan (2026-10-03, mentor guidance):** ~60% code understanding is
+enough. Build fast, start applying, and save deep study for while waiting on
+interviews. Each chunk: Claude implements test-first → short doc (what it
+does, data flow, key design decision, 2–3 interview talking points) → **one
+debug drill** the learner solves alone (a planted bug or a real failure to
+diagnose). Order is strict: A → B → C → apply.
+
+- [x] **A1** (built + 16 tests green 2026-10-03; debug drill done) Python API skeleton: `POST /calls` receives a VAPI-shaped intake
+      payload and saves it to Postgres in one transaction (schema + migration).
+      Stack agreed 2026-10-03: FastAPI; local Postgres in Docker for dev/tests
+      (moves to Supabase at B3); plain `.sql` migration files + a tiny runner
+      (no Alembic); pytest in its own project venv (existing `unittest` suite
+      untouched). Fixture payload shape:
+      `docs/learning/existing/samples/u3-john-real-shape.json`. No live
+      VAPI/n8n/Zoho changes until A3. Deliverables: endpoint + tests against
+      real Postgres + short doc + one planted-bug debug drill.
+- [ ] **A2** Duplicate calls (same call ID / phone) and missing info handled.
+- [ ] **A3** Point Applicant Intake at the API (n8n keeps routing, booking and
+      post-call); one real fictional test call, verified in the DB.
+- [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
+- [ ] **B2** "CRM is down" drill: break Zoho, take calls, restore, show no
+      lead lost. **Record it — this is the headline interview demo.**
+- [ ] **B3** Logging/observability + deploy.
+- [ ] **C** Recruiter dashboard (review summaries, correct info, track
+      follow-ups). Planned once B2 is recorded.
+- [ ] **Apply.**
+- Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
+  checks.
 
 **Open decision, revisit when planning Phase A/B:** how much of n8n survives?
 Not a full replace — this is a portfolio piece aimed at companies that run n8n

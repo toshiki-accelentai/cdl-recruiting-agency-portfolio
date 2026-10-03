@@ -1,0 +1,14 @@
+# Local dev/test Postgres only (moves to Supabase at B3). Dev-only credentials.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cdl
+      POSTGRES_PASSWORD: cdl
+      POSTGRES_DB: cdl
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
