@@ -30,7 +30,7 @@ diagnose). Order is strict: A → B → C → apply.
       `docs/learning/existing/samples/u3-john-real-shape.json`. No live
       VAPI/n8n/Zoho changes until A3. Deliverables: endpoint + tests against
       real Postgres + short doc + one planted-bug debug drill.
-- [x] **A2** (built + 25 tests green 2026-10-05; debug drill pending) Duplicate calls (same call ID / phone) and missing info handled: replay returns 200 `duplicate:true`; one applicant per phone, merge only provided fields; invalid phone / missing name saves the call with `needs_review`. Migrations 002-003.
+- [x] **A2** (built + 25 tests green; debug drill done 2026-10-05) Duplicate calls (same call ID / phone) and missing info handled: replay returns 200 `duplicate:true`; one applicant per phone, merge only provided fields; invalid phone / missing name saves the call with `needs_review`. Migrations 002-003.
 - [ ] **A3** Point Applicant Intake at the API (n8n keeps routing, booking and
       post-call); one real fictional test call, verified in the DB.
 - [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
