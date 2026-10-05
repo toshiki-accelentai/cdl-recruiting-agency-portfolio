@@ -13,7 +13,7 @@ class BaseModel(_Base):
 
 
 class IntakeArguments(BaseModel):
-    name: str
+    name: str = ""
     phoneNumber: str
     city: str = ""
     state: str = ""
@@ -24,9 +24,7 @@ class IntakeArguments(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def name_not_blank(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("name must not be blank")
+    def strip_name(cls, v: str) -> str:
         return v.strip()
 
     @field_validator("preferredCallbackTime")

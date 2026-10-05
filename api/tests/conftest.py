@@ -19,8 +19,9 @@ FIXTURE = (Path(__file__).resolve().parents[2]
 @pytest.fixture(scope="session")
 def test_database():
     with psycopg.connect(ADMIN_URL, autocommit=True, connect_timeout=5) as admin:
-        if not admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB,)).fetchone():
-            admin.execute(f'CREATE DATABASE "{TEST_DB}"')
+        # Fresh database every session so leftover rows can never block a migration.
+        admin.execute(f'DROP DATABASE IF EXISTS "{TEST_DB}" WITH (FORCE)')
+        admin.execute(f'CREATE DATABASE "{TEST_DB}"')
     os.environ["DATABASE_URL"] = TEST_URL
     migrate(TEST_URL)
 

@@ -50,7 +50,7 @@ it alone first). SQL is explained inside the chunk that uses it.
 
 ### Phase A: Receive and store
 - [x] A1 [Python API + Postgres](A1-api-and-postgres.md): receive an intake payload, save it in one transaction
-- [ ] A2 Duplicates and missing info
+- [x] A2 Duplicates and missing info: replay-safe, one applicant per phone, bad/missing info flagged not rejected (drill: `drills/a2-planted-bug.patch`, pending)
 - [ ] A3 Applicant Intake points at the API; real test call verified in the DB
 
 ### Phase B: CRM sync and resilience

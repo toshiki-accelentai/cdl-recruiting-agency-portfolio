@@ -48,3 +48,8 @@ One line each. Say it out loud in your own words before moving on.
 | **UNIQUE constraint / foreign key** | UNIQUE: the database refuses duplicate values in a column. Foreign key: a column must point at a row that exists in another table. | A1 |
 | **jsonb** | Postgres column type storing JSON in a queryable binary form; used to keep the raw VAPI payload. | A1 |
 | **Autocommit** | Each statement commits immediately on its own, so there is no multi-statement transaction to roll back. | A1 |
+| **Idempotent** | Doing the same request twice has the same effect as doing it once; lets a sender safely retry. | A2 |
+| **Replay / redelivery** | The same request arriving again, usually because the sender never got our reply. | A2 |
+| **Upsert (`ON CONFLICT`)** | One statement that inserts a row, or updates the existing one if the key already exists; the database is the single judge, so no race between "check" and "insert". | A2 |
+| **`COALESCE(NULLIF(new,''), old)`** | "Use the new value if it was provided, otherwise keep the old one." | A2 |
+| **Flag for review (`needs_review`)** | Saving imperfect data with a marker for a human to fix, instead of rejecting it and losing the lead. | A2 |

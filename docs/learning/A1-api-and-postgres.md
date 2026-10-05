@@ -58,20 +58,9 @@ docker compose up -d db
 - "I used AI to port the helper rules from JavaScript, then verified the port with
   the same cases, rather than trusting it."
 
-## Debug drill (solve alone first)
+## Debug drill
 
-Someone "optimized" `save_intake`. Apply the patch, run the tests, and find out
-what broke and why:
-
-```bash
-git apply docs/learning/drills/a1-planted-bug.patch
-cd api && .venv/Scripts/python.exe -m pytest -q
-```
-
-Questions: Which test fails? What does the failing number tell you about the
-database? Which line caused it, and why does the comment on that line mislead?
-Fix it by hand (or `git apply -R` to undo), and confirm 16 pass. Then explain in
-one spoken sentence why this bug would never show up in a happy-path test.
+Done 2026-10-05 in a guided session (the `autocommit` bug breaks the rollback test). The patch was retired when A2 rewrote `save_intake`; the idea survives in the A2 rollback experiment.
 
 ## Glossary added
 transaction (atomic write) · rollback · migration · UNIQUE constraint · foreign key ·

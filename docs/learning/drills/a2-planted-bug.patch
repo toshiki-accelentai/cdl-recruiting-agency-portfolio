@@ -1,0 +1,11 @@
+--- a/api/app/main.py
++++ b/api/app/main.py
+@@ -19,7 +19,7 @@
+     zip_code    = COALESCE(NULLIF(EXCLUDED.zip_code, ''),    applicants.zip_code),
+     experience  = COALESCE(NULLIF(EXCLUDED.experience, ''),  applicants.experience),
+     readiness   = COALESCE(NULLIF(EXCLUDED.readiness, ''),   applicants.readiness),
+-    temperature = CASE WHEN EXCLUDED.readiness <> '' THEN EXCLUDED.temperature
++    temperature = CASE WHEN applicants.readiness <> '' THEN EXCLUDED.temperature
+                        ELSE applicants.temperature END
+ RETURNING id, temperature
+ """
