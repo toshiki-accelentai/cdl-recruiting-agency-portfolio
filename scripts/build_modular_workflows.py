@@ -16,6 +16,8 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "config" / "n8n" / "production" / "modular"
 BOOKING_PLACEHOLDER = "BOOKING_WORKFLOW_ID_REQUIRED"
+# Python intake API on hermes-vps, reachable only over the private n8n_app Docker network.
+INTAKE_API_URL = "http://cdl-api:8000/calls"
 
 FILES = {
     "routing": "cdl-01-assistant-routing.json",
@@ -150,6 +152,43 @@ def execute_booking_node(booking_workflow_id: str) -> dict:
     )
 
 
+def add_save_to_api_branch(workflow: dict) -> dict:
+    """Return a copy of an Intake workflow with the raw-body -> Python API side branch.
+
+    Fan-out from the webhook: the new node is the first edge (executionOrder v1 runs branches one
+    after another) and has no outgoing edges, so it cannot alter what Normalize Intake receives.
+    onError=continue keeps an API failure away from the live call; retries are safe because the
+    API is idempotent. Idempotent itself, and touches nothing else (used on the hand-edited live
+    workflow as well as in the generated one).
+    """
+    patched = deepcopy(workflow)
+    if any(n["name"] == "Save to Database API" for n in patched["nodes"]):
+        return patched
+    anchor = next(n for n in patched["nodes"] if n["name"] == "Normalize Intake")
+    patched["nodes"].append(node(
+        "Save to Database API",
+        "n8n-nodes-base.httpRequest",
+        {
+            "method": "POST",
+            "url": INTAKE_API_URL,
+            "sendBody": True,
+            "specifyBody": "json",
+            "jsonBody": "={{ JSON.stringify($json.body) }}",
+            "options": {"timeout": 4000},
+        },
+        anchor["position"][0],
+        anchor["position"][1] - 260,
+        4.4,
+        retryOnFail=True,
+        maxTries=2,
+        waitBetweenTries=1000,
+        onError="continueRegularOutput",
+    ))
+    patched["connections"]["Applicant Intake Webhook"]["main"][0].insert(
+        0, {"node": "Save to Database API", "type": "main", "index": 0})
+    return patched
+
+
 def build_intake(source: dict, booking_workflow_id: str) -> dict:
     workflow = subset(source, INTAKE, "CDL 02 - Applicant Intake", "intake")
     execute = execute_booking_node(booking_workflow_id)
@@ -187,7 +226,7 @@ return $input.all();
     connect(workflow["connections"], "Execute Calendar Booking", "Normalize Booking Outcome")
     connect(workflow["connections"], "Normalize Booking Outcome", "Respond Booking Result")
     connect(workflow["connections"], "Add Booking Note", "Verify Booking Note")
-    return workflow
+    return add_save_to_api_branch(workflow)
 
 
 def build_post_call(source: dict) -> dict:

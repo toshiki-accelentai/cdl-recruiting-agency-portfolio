@@ -63,6 +63,59 @@ class ModularWorkflowTests(unittest.TestCase):
             "Execute Calendar Booking",
         )
 
+    def test_intake_saves_to_database_api_on_a_side_branch(self):
+        """A3: the raw VAPI body goes to the DB API without touching the Zoho/booking path."""
+        intake = self.workflows["intake"]
+        nodes = {n["name"]: n for n in intake["nodes"]}
+        save = nodes["Save to Database API"]
+        params = save["parameters"]
+        self.assertEqual(save["type"], "n8n-nodes-base.httpRequest")
+        self.assertEqual(params["method"], "POST")
+        self.assertEqual(params["url"], "http://cdl-api:8000/calls")
+        self.assertEqual(params["jsonBody"], "={{ JSON.stringify($json.body) }}")
+        self.assertNotIn("credentials", save)  # private Docker network, no auth yet (B3)
+        # A failing API must never break the live call, and retries are safe (API is idempotent).
+        self.assertEqual(save["onError"], "continueRegularOutput")
+        self.assertTrue(save["retryOnFail"])
+        self.assertLessEqual(save["maxTries"] * params["options"]["timeout"], 10000)
+        # Fan-out from the webhook; the new node has no outgoing edges, so it cannot
+        # change what Normalize Intake receives.
+        targets = [e["node"] for e in intake["connections"]["Applicant Intake Webhook"]["main"][0]]
+        self.assertEqual(targets, ["Save to Database API", "Normalize Intake"])
+        self.assertNotIn("Save to Database API", intake["connections"])
+        # Normalize Intake still reads the webhook body from its own input.
+        self.assertIn("$json.body?.message", nodes["Normalize Intake"]["parameters"]["jsCode"])
+
+    def test_add_api_branch_patches_a_live_workflow_without_touching_other_nodes(self):
+        """The live Intake was hand-edited, so A3 adds only the new node + edge to it."""
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import add_save_to_api_branch
+
+        live = copy.deepcopy(self.workflows["intake"])
+        live["nodes"] = [n for n in live["nodes"] if n["name"] != "Save to Database API"]
+        live["connections"]["Applicant Intake Webhook"]["main"][0] = [
+            e for e in live["connections"]["Applicant Intake Webhook"]["main"][0]
+            if e["node"] != "Save to Database API"]
+        for n in live["nodes"]:  # simulate a hand edit made in the n8n UI
+            if n["name"] == "Normalize Intake":
+                n["parameters"]["jsCode"] += "\n// hand edit"
+        before = copy.deepcopy(live)
+
+        patched = add_save_to_api_branch(live)
+        self.assertEqual(live, before)  # input not mutated
+        names = [n["name"] for n in patched["nodes"]]
+        self.assertEqual(names.count("Save to Database API"), 1)
+        old = {n["name"]: n for n in before["nodes"]}
+        for n in patched["nodes"]:
+            if n["name"] != "Save to Database API":
+                self.assertEqual(n, old[n["name"]], n["name"])
+        edges = [e["node"] for e in patched["connections"]["Applicant Intake Webhook"]["main"][0]]
+        self.assertEqual(edges, ["Save to Database API", "Normalize Intake"])
+        # idempotent: patching twice changes nothing more
+        self.assertEqual(add_save_to_api_branch(patched), patched)
+
     def test_calendar_nodes_exist_only_in_booking(self):
         for key, workflow in self.workflows.items():
             google_nodes = [

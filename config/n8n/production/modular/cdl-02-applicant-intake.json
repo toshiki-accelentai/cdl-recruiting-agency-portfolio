@@ -410,12 +410,41 @@
         3360,
         -80
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://cdl-api:8000/calls",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 4000
+        }
+      },
+      "id": "f5aa9b77-c43c-5332-9885-2f15e42030ad",
+      "name": "Save to Database API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
     "Applicant Intake Webhook": {
       "main": [
         [
+          {
+            "node": "Save to Database API",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Normalize Intake",
             "type": "main",
