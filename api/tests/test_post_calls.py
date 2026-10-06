@@ -162,3 +162,40 @@ def test_normalize_phone(raw, expected):
 ])
 def test_classify_temperature(raw, expected):
     assert classify_temperature(raw) == expected
+
+
+# ---- B1: outbox (DB row first, CRM sync after) ----
+
+def test_clean_call_adds_one_pending_outbox_row(client, payload, db):
+    r = client.post("/calls", json=payload)
+    rows = db.execute(
+        "SELECT call_id, applicant_id, status, attempts, last_error, sent_at FROM outbox").fetchall()
+    assert rows == [(r.json()["call_id"], r.json()["applicant_id"], "pending", 0, None, None)]
+
+
+def test_call_without_applicant_has_nothing_to_sync(client, payload, db):
+    args(payload)["phoneNumber"] = "672 727"
+    client.post("/calls", json=payload)
+    assert db.execute("SELECT count(*) FROM outbox").fetchone()[0] == 0
+
+
+def test_replay_does_not_add_a_second_outbox_row(client, payload, db):
+    client.post("/calls", json=payload)
+    client.post("/calls", json=payload)
+    assert db.execute("SELECT count(*) FROM outbox").fetchone()[0] == 1
+
+
+def test_repeat_caller_gets_one_outbox_row_per_call(client, payload, db):
+    client.post("/calls", json=payload)
+    payload["message"]["call"]["id"] = "second-call"
+    client.post("/calls", json=payload)
+    assert db.execute("SELECT count(*) FROM outbox").fetchone()[0] == 2
+
+
+def test_failed_outbox_insert_rolls_back_call_and_applicant(client, payload, db, monkeypatch):
+    """The outbox row is part of the same transaction: if it fails, nothing else survives."""
+    monkeypatch.setattr(main, "INSERT_OUTBOX", "INSERT INTO no_such_table VALUES (%s, %s)")
+    with pytest.raises(Exception):
+        client.post("/calls", json=payload)
+    for table in ("applicants", "calls", "outbox"):
+        assert db.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0, table

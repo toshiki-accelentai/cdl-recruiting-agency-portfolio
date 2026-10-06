@@ -25,6 +25,9 @@ RETURNING id, temperature
 """
 
 
+INSERT_OUTBOX = "INSERT INTO outbox (call_id, applicant_id) VALUES (%s, %s)"
+
+
 def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> dict:
     """Write applicant (if the phone is usable) + call atomically.
 
@@ -55,6 +58,8 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             duplicate = True
             raise psycopg.Rollback()
         call_id = row[0]
+        if applicant_id is not None:  # nothing to sync for a call with no usable phone
+            conn.execute(INSERT_OUTBOX, (call_id, applicant_id))
     if duplicate:
         call_id, applicant_id, temperature, needs_review = conn.execute(
             "SELECT c.id, c.applicant_id, a.temperature, c.needs_review FROM calls c "

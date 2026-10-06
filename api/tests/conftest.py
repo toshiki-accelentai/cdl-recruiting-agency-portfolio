@@ -29,7 +29,7 @@ def test_database():
 @pytest.fixture
 def clean_tables(test_database):
     with psycopg.connect(TEST_URL) as conn:
-        conn.execute("TRUNCATE calls, applicants RESTART IDENTITY CASCADE")
+        conn.execute("TRUNCATE outbox, calls, applicants RESTART IDENTITY CASCADE")
 
 
 @pytest.fixture
