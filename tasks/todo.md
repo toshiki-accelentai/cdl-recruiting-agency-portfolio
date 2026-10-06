@@ -31,8 +31,21 @@ diagnose). Order is strict: A → B → C → apply.
       VAPI/n8n/Zoho changes until A3. Deliverables: endpoint + tests against
       real Postgres + short doc + one planted-bug debug drill.
 - [x] **A2** (built + 25 tests green; debug drill done 2026-10-05) Duplicate calls (same call ID / phone) and missing info handled: replay returns 200 `duplicate:true`; one applicant per phone, merge only provided fields; invalid phone / missing name saves the call with `needs_review`. Migrations 002-003.
-- [ ] **A3** Point Applicant Intake at the API (n8n keeps routing, booking and
-      post-call); one real fictional test call, verified in the DB.
+- [x] **A3** (done 2026-10-06) Point Applicant Intake at the API (n8n keeps routing,
+      booking and post-call); one real fictional test call, verified in the DB.
+      API + its own Postgres run on hermes-vps (`/opt/cdl-api`, no published ports,
+      reachable only from n8n over `n8n_app`). Live Intake got a side branch
+      `Save to Database API` (17 -> 18 nodes, surgical patch via
+      `scripts/deploy_intake_api_branch.py`; the live Intake was hand-edited, so the
+      generated suite was NOT redeployed). Real-action counts: 1 synthetic webhook POST
+      (no Zoho/Calendar writes, rejected by n8n as past_time but saved in the DB),
+      1 real VAPI web call (execution 8444, all 16 nodes success; DB call_id 2).
+      Not inspected: the resulting Zoho candidate / Calendar event.
+      **Follow-ups:** (1) sync `build_modular_workflows.py` Normalize Intake with the
+      live hand-edited version (callback validation lives in that node); (2) add a
+      shared-secret header on the API (B3); (3) set Intake + Booking back to inactive
+      after testing (default-inactive rule); (4) VAPI routing (CDL 01) and post-call
+      (CDL 04) still inactive.
 - [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
 - [ ] **B2** "CRM is down" drill: break Zoho, take calls, restore, show no
       lead lost. **Record it — this is the headline interview demo.**
