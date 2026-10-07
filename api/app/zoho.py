@@ -120,7 +120,9 @@ class ZohoClient:
 
     # --- operations -------------------------------------------------------------------------
     def find_candidate_id(self, phone_e164: str) -> str | None:
-        data = self._request("GET", "/Candidates/search", params={"phone": phone_e164, "per_page": 1})
+        # NOT the phone= parameter: it never matched an existing candidate (verified against live Zoho).
+        data = self._request("GET", "/Candidates/search",
+                             params={"criteria": f"(Phone:equals:{phone_e164})", "per_page": 1})
         rows = (data or {}).get("data") or []
         return rows[0]["id"] if rows else None
 

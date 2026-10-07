@@ -46,6 +46,12 @@ diagnose). Order is strict: A → B → C → apply.
       shared-secret header on the API (B3); (3) set Intake + Booking back to inactive
       after testing (default-inactive rule); (4) VAPI routing (CDL 01) and post-call
       (CDL 04) still inactive.
+- [ ] **Zoho dedupe bug (found 2026-10-07 while smoke-testing B1):** Zoho Recruit's
+      `/Candidates/search?phone=...` never matches an existing candidate (verified live:
+      `phone=` in 3 formats -> 204; `criteria=(Phone:equals:+1...)` -> match). The n8n node
+      `Find Candidate for Intake` uses `phone=`, so repeat callers probably create duplicate
+      candidates there. The Python client now uses `criteria`. Fix the n8n node the same way
+      (live Intake is hand-edited: patch surgically, dry-run first) or retire that path.
 - [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
 - [ ] **B2** "CRM is down" drill: break Zoho, take calls, restore, show no
       lead lost. **Record it — this is the headline interview demo.**

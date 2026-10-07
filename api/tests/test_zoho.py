@@ -125,7 +125,9 @@ def test_find_candidate_id_returns_none_on_204_and_id_on_match():
     assert client.find_candidate_id("+12065550142") is None
     client, http = make(TOKEN_OK, (200, {"data": [{"id": "777"}]}))
     assert client.find_candidate_id("+12065550142") == "777"
-    assert "phone=%2B12065550142" in http.calls[-1]["url"]
+    # Zoho's plain phone= search never matched (verified live); only criteria=(Phone:equals:...) does.
+    assert "criteria=%28Phone%3Aequals%3A%2B12065550142%29" in http.calls[-1]["url"]
+    assert "phone=" not in http.calls[-1]["url"].replace("criteria=", "")
 
 
 def test_upsert_creates_when_no_match():
