@@ -65,6 +65,23 @@ diagnose). Order is strict: A → B → C → apply.
       the password in the user's password manager. Check anytime with
       `api\.venv\Scripts\python.exe scripts\check_supabase_connection.py` (prints no secrets).
       REMAINING: (4) deploy to hermes-vps, (5) end-to-end real call.
+      **Plan for (4), approved in principle, ask again before each live step:**
+      a) edit `api/deploy/compose.yaml`: remove the local `db` service and its network use; give
+         `cdl-api` `DATABASE_URL` from the server `.env`; add a `worker` service (same image,
+         `command: python -m app.worker`, `env_file: .env`, networks: internal not needed, no ports);
+         keep `n8n_app` for the API only. Stop (do NOT delete) the old `db` container/volume.
+      b) secrets reach the server by file copy, never printed: `DATABASE_URL` from
+         `api/deploy/.env.supabase`; `ZOHO_CLIENT_ID/SECRET/REFRESH_TOKEN` from the repo-root `.env`;
+         write to `/opt/cdl-api/.env` with `chmod 600`, owner hermesadmin.
+      c) copy `api/app`, `migrations`, `requirements.txt`, `Dockerfile` to `/opt/cdl-api/src`,
+         `sudo -n docker compose up -d --build`, then verify: both containers healthy, API log shows
+         migrations up to date against Supabase, worker log "outbox worker started", n8n container
+         can reach `http://cdl-api:8000/docs`, port 8000 not reachable from the internet.
+      d) do NOT move the 2 old test rows from the server DB to Supabase (practice data).
+      Real-action report: server file changes + container swap only; 0 Zoho writes, 0 calls.
+      Lessons from this session: never put secrets through error messages (use
+      `scripts/check_supabase_connection.py` style checks); the user's shell is PowerShell 5.1;
+      the user prefers Japanese explanations with analogies, one step at a time.
       (old plan text follows) **Next (in order):** (1) user creates a Supabase project (Session pooler string,
       port 5432, NOT 6543) and saves `DATABASE_URL=...` in `api/deploy/.env.supabase`;
       (2) read-only connection check; (3) apply migrations 001-006 to Supabase (confirm first),
