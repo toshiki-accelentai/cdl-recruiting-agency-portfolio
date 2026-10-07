@@ -64,7 +64,20 @@ diagnose). Order is strict: A → B → C → apply.
       0 policies, 0 rows. Connection string lives in `api/deploy/.env.supabase` (git-ignored) and
       the password in the user's password manager. Check anytime with
       `api\.venv\Scripts\python.exe scripts\check_supabase_connection.py` (prints no secrets).
-      REMAINING: (4) deploy to hermes-vps, (5) end-to-end real call.
+      **2026-10-07 even later: step (4) DONE and verified (read-only checks on the server).**
+      `/opt/cdl-api/compose.yaml` now = `cdl-api` (on `n8n_app`, DB = Supabase pooler) + `worker`
+      (default network, `.env` with DATABASE_URL + ZOHO_*). Migrations "up to date", worker log
+      "outbox worker started", n8n -> `http://cdl-api:8000/docs` OK, port 8000 not published.
+      Old local DB container `cdl-api-db-1` is STOPPED (not deleted); its data stays in
+      `/opt/cdl-api/pgdata` (47M). Backups on the server: `.env.old-local-db`,
+      `compose.yaml.old-local-db`. Real-action report: container swap + 2 server files only;
+      0 Zoho writes, 0 calls.
+      **Access quirk:** `hermes-vps` does not resolve from this PC; use
+      `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45`. Claude Code's auto-mode
+      classifier blocks remote *writes* even with allow rules in `.claude/settings.local.json`;
+      read-only ssh works, writes are handed to the user's PowerShell.
+      REMAINING: (5) end-to-end real call (n8n Intake + Booking must be activated for it, then
+      deactivated again).
       **Plan for (4), approved in principle, ask again before each live step:**
       a) edit `api/deploy/compose.yaml`: remove the local `db` service and its network use; give
          `cdl-api` `DATABASE_URL` from the server `.env`; add a `worker` service (same image,

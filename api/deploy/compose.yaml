@@ -1,37 +1,17 @@
 # Runs on hermes-vps in /opt/cdl-api, next to (not inside) the n8n project.
+# The database is Supabase (DATABASE_URL in the server .env), so there is no local db service.
 # No `ports:` anywhere: the API is reachable only from containers on n8n_app.
+# Secrets live only in the server .env (chmod 600); compose reads it for ${...} interpolation.
 name: cdl-api
 
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - ./pgdata:/var/lib/postgresql/data
-    networks: [internal]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    logging:
-      driver: json-file
-      options: {max-size: "10m", max-file: "3"}
-
   cdl-api:
     build: ./src
     restart: unless-stopped
-    depends_on:
-      db: {condition: service_healthy}
-    env_file: .env
+    # Only the DB URL: the API never needs the Zoho credentials.
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    networks: [internal, n8n_app]
+      DATABASE_URL: ${DATABASE_URL}
+    networks: [n8n_app]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
       interval: 30s
@@ -42,9 +22,21 @@ services:
       driver: json-file
       options: {max-size: "10m", max-file: "3"}
 
+  # Same image, different command: drains the outbox into Zoho Recruit. Migrations are
+  # run by cdl-api at startup, so the worker waits for it to be healthy.
+  worker:
+    build: ./src
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      cdl-api: {condition: service_healthy}
+    env_file: .env
+    # Default network (outbound allowed, nothing can reach it): needs Supabase + Zoho only.
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
 networks:
-  internal:
-    internal: true
   n8n_app:
     external: true
     name: n8n_app
