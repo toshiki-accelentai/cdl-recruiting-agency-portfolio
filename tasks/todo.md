@@ -59,7 +59,13 @@ diagnose). Order is strict: A → B → C → apply.
       RLS migration 006; 75 tests, no network. Verified against REAL Zoho twice via
       `scripts/smoke_test_outbox_worker.py --apply` (1 candidate `B1 Smoke Driver`
       870474000000665002, 2 notes, dedupe by phone confirmed).
-      **Next (in order):** (1) user creates a Supabase project (Session pooler string,
+      **2026-10-07 later: steps (1)-(3) DONE.** Supabase project exists (eu-central-1 Session
+      pooler, :5432), connection verified, migrations 001-006 applied, RLS on for all 4 tables,
+      0 policies, 0 rows. Connection string lives in `api/deploy/.env.supabase` (git-ignored) and
+      the password in the user's password manager. Check anytime with
+      `api\.venv\Scripts\python.exe scripts\check_supabase_connection.py` (prints no secrets).
+      REMAINING: (4) deploy to hermes-vps, (5) end-to-end real call.
+      (old plan text follows) **Next (in order):** (1) user creates a Supabase project (Session pooler string,
       port 5432, NOT 6543) and saves `DATABASE_URL=...` in `api/deploy/.env.supabase`;
       (2) read-only connection check; (3) apply migrations 001-006 to Supabase (confirm first),
       verify RLS on; (4) deploy API + worker to hermes-vps (`/opt/cdl-api`) pointing at Supabase,
