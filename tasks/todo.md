@@ -53,6 +53,21 @@ diagnose). Order is strict: A → B → C → apply.
       candidates there. The Python client now uses `criteria`. Fix the n8n node the same way
       (live Intake is hand-edited: patch surgically, dry-run first) or retire that path.
 - [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
+      **Status 2026-10-07: code done, deployment pending.** Done: outbox table written in the
+      same transaction as the call; `app/zoho.py` (retry/fail classification, token cache, 401
+      refresh, `criteria` search); `app/worker.py` (SKIP LOCKED, capped 15-min backoff forever);
+      RLS migration 006; 75 tests, no network. Verified against REAL Zoho twice via
+      `scripts/smoke_test_outbox_worker.py --apply` (1 candidate `B1 Smoke Driver`
+      870474000000665002, 2 notes, dedupe by phone confirmed).
+      **Next (in order):** (1) user creates a Supabase project (Session pooler string,
+      port 5432, NOT 6543) and saves `DATABASE_URL=...` in `api/deploy/.env.supabase`;
+      (2) read-only connection check; (3) apply migrations 001-006 to Supabase (confirm first),
+      verify RLS on; (4) deploy API + worker to hermes-vps (`/opt/cdl-api`) pointing at Supabase,
+      worker gets ZOHO_* in the server `.env` (chmod 600); add a `worker` service to
+      `api/deploy/compose.yaml` and drop the local `db` service there; (5) end-to-end: one real
+      call -> Supabase row -> Zoho. Then B2 (CRM-down demo, record it).
+      Server: `hermesadmin@hermes-vps`, docker needs `sudo -n`. n8n Intake + Booking must be
+      deactivated again after any test window (currently inactive).
 - [ ] **B2** "CRM is down" drill: break Zoho, take calls, restore, show no
       lead lost. **Record it — this is the headline interview demo.**
 - [ ] **B3** Logging/observability + deploy.
