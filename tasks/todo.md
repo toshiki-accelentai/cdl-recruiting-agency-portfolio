@@ -89,6 +89,25 @@ diagnose). Order is strict: A → B → C → apply.
       Test data left in place on purpose (both candidates, Supabase rows) as before/after evidence;
       the calendar event is deleted by hand in Google Calendar (the delete script only accepts
       `vapitest…` ids). Use a different fictional phone for B2.
+      **FIXED 2026-10-08 (database-first Intake):** the worker is now the ONLY Zoho writer.
+      `make_database_first` (scripts/build_modular_workflows.py, tested + mutation-checked)
+      applied to the LIVE Intake by `scripts/deploy_intake_database_first.py` (dry-run default;
+      18 -> 9 nodes; removed the 9 Zoho-writing nodes; live Intake rollback copy was kept only in
+      the session scratchpad). Re-test: 1 real VAPI web call (Test Driver Bravo) -> Supabase call 3,
+      outbox `sent` attempt 1, ONE Zoho candidate (`…679006`) + 1 Intake note, calendar event
+      created, n8n Intake exec 9257 ran only the 9 remaining nodes. n8n CDL 01-04 inactive again.
+      Side effects of the session: a manual "Execute workflow" in the n8n editor replays the
+      last webhook data and DOES run side-effect nodes (inactive != safe): it saved John Smith
+      (A3 payload) as Supabase call 2 and added 1 duplicate Intake note to the existing Zoho
+      candidate `…599016` (phone dedupe worked: no new candidate).
+      **Known gaps after the fix (do before B2):** (a) the Callback note (booking outcome) is no
+      longer written to Zoho: route it through the API/outbox if wanted; (b) the caller is told
+      "saved" without waiting for the `Save to Database API` result (side branch,
+      onError=continue): if the API save fails, the lead is lost silently, which breaks the
+      "no lead lost" promise; make the save part of the answer path; (c) the generated suite
+      `config/n8n/production/modular/` still has the old Zoho-writing Intake (live differs).
+      Test leftovers kept on purpose: Zoho candidates Alpha x2 / Bravo x1 / John Smith note,
+      Supabase 3 calls; delete the 2 calendar events by hand (Alpha 10/9 10:00, Bravo 10/9 11:00).
       **FINDING (B3):** the VPS resolver intermittently fails to resolve the Supabase host
       (worker logged ~12 `database unavailable: failed to resolve host` blips on 2026-10-08, all
       auto-recovered; one happened right before the test call). If it hits while the API handles

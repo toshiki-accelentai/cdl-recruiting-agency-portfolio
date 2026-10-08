@@ -189,6 +189,51 @@ def add_save_to_api_branch(workflow: dict) -> dict:
     return patched
 
 
+ZOHO_WRITER_NODES = frozenset({
+    "Find Candidate for Intake", "Build Candidate Write Request", "Write Candidate",
+    "Resolve Candidate Result", "Candidate Saved?", "Respond Candidate Failure",
+    "Add Intake Note", "Add Booking Note", "Verify Booking Note",
+})
+
+_PREPARE_BOOKING_INPUT_JS = """
+// Database-first: Zoho is written only by the outbox worker, never from this workflow.
+// Booking needs just the normalized intake; the candidate may not exist in Zoho yet.
+return [{json: {...$('Normalize Intake').first().json, candidateId: ''}}];
+"""
+
+
+def make_database_first(workflow: dict) -> dict:
+    """Return a copy of an Intake workflow in which the outbox worker is the only Zoho writer.
+
+    Before this, n8n and the worker both wrote Zoho for the same call and created two candidates.
+    Removes the candidate, intake-note and booking-note nodes, and points the booking path at the
+    normalized intake instead. The caller is answered from the booking result, so a Zoho outage no
+    longer turns into "manual follow-up" on the phone. Idempotent; used on the hand-edited live
+    workflow (only the two nodes that read the removed ones are changed, hand edits elsewhere stay).
+    The Callback note (booking outcome in Zoho) is not written any more: follow-up in tasks/todo.md.
+    """
+    patched = deepcopy(workflow)
+    patched["nodes"] = [n for n in patched["nodes"] if n["name"] not in ZOHO_WRITER_NODES]
+    connections = {}
+    for source, outputs in patched["connections"].items():
+        if source in ZOHO_WRITER_NODES:
+            continue
+        kept = [[e for e in output if e["node"] not in ZOHO_WRITER_NODES] for output in outputs["main"]]
+        if any(kept):
+            connections[source] = {**outputs, "main": kept}
+    patched["connections"] = connections
+    # The valid branch used to lead into Find Candidate for Intake; it now goes straight to booking.
+    connections["Intake Valid?"]["main"][0] = [
+        {"node": "Prepare Booking Input", "type": "main", "index": 0}]
+    for n in patched["nodes"]:
+        if n["name"] == "Prepare Booking Input":
+            n["parameters"]["jsCode"] = _PREPARE_BOOKING_INPUT_JS
+        elif n["name"] == "Normalize Booking Outcome":
+            n["parameters"]["jsCode"] = n["parameters"]["jsCode"].replace(
+                "$('Resolve Candidate Result')", "$('Prepare Booking Input')")
+    return patched
+
+
 def build_intake(source: dict, booking_workflow_id: str) -> dict:
     workflow = subset(source, INTAKE, "CDL 02 - Applicant Intake", "intake")
     execute = execute_booking_node(booking_workflow_id)

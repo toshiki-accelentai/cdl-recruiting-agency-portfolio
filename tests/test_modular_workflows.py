@@ -116,6 +116,63 @@ class ModularWorkflowTests(unittest.TestCase):
         # idempotent: patching twice changes nothing more
         self.assertEqual(add_save_to_api_branch(patched), patched)
 
+    def test_database_first_patch_leaves_the_worker_as_the_only_zoho_writer(self):
+        """B1 follow-up: n8n and the outbox worker both wrote Zoho and created 2 candidates."""
+        import copy
+        import re
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import ZOHO_WRITER_NODES, make_database_first
+
+        live = copy.deepcopy(self.workflows["intake"])
+        for n in live["nodes"]:  # simulate a hand edit made in the n8n UI
+            if n["name"] == "Normalize Intake":
+                n["parameters"]["jsCode"] += "\n// hand edit"
+        before = copy.deepcopy(live)
+
+        patched = make_database_first(live)
+        self.assertEqual(live, before)  # input not mutated
+        names = {n["name"] for n in patched["nodes"]}
+        self.assertEqual(names, {n["name"] for n in before["nodes"]} - ZOHO_WRITER_NODES)
+        for n in patched["nodes"]:  # no Zoho call left in n8n's intake
+            self.assertNotIn("recruit.zoho.com", str(n["parameters"]), n["name"])
+
+        # Only the two nodes that read the removed candidate nodes may change; hand edits survive.
+        old = {n["name"]: n for n in before["nodes"]}
+        changed = {n["name"] for n in patched["nodes"] if n != old[n["name"]]}
+        self.assertEqual(changed, {"Prepare Booking Input", "Normalize Booking Outcome"})
+
+        # No dangling edges, and the happy path is: valid -> book -> answer the caller.
+        conns = patched["connections"]
+        for src, c in conns.items():
+            self.assertIn(src, names)
+            for output in c["main"]:
+                for edge in output:
+                    self.assertIn(edge["node"], names, f"{src} -> {edge['node']}")
+        self.assertEqual([e["node"] for e in conns["Intake Valid?"]["main"][0]], ["Prepare Booking Input"])
+        self.assertEqual([e["node"] for e in conns["Intake Valid?"]["main"][1]], ["Respond Invalid Intake"])
+        chain = ["Prepare Booking Input", "Execute Calendar Booking",
+                 "Normalize Booking Outcome", "Respond Booking Result"]
+        for src, dst in zip(chain, chain[1:]):
+            self.assertEqual([e["node"] for e in conns[src]["main"][0]], [dst])
+        self.assertNotIn("Respond Booking Result", conns)  # nothing runs after the caller is answered
+        targets = [e["node"] for e in conns["Applicant Intake Webhook"]["main"][0]]
+        self.assertEqual(targets, ["Save to Database API", "Normalize Intake"])
+
+        # No code node may still read a node that was removed.
+        for n in patched["nodes"]:
+            code = n["parameters"].get("jsCode", "")
+            for ref in re.findall(r"\$\('([^']+)'\)", code):
+                self.assertIn(ref, names, f"{n['name']} reads removed node {ref}")
+        prepare = {n["name"]: n for n in patched["nodes"]}["Prepare Booking Input"]["parameters"]["jsCode"]
+        self.assertIn("$('Normalize Intake')", prepare)
+        self.assertIn("candidateId: ''", prepare)  # the candidate may not exist yet: worker creates it
+        # the "answer the caller" node still reports the call as saved and gives the booking result
+        respond = {n["name"]: n for n in patched["nodes"]}["Respond Booking Result"]["parameters"]
+        self.assertIn("saved:true", respond["responseBody"])
+
+        self.assertEqual(make_database_first(patched), patched)  # idempotent
+
     def test_calendar_nodes_exist_only_in_booking(self):
         for key, workflow in self.workflows.items():
             google_nodes = [
