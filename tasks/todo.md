@@ -52,7 +52,7 @@ diagnose). Order is strict: A → B → C → apply.
       `Find Candidate for Intake` uses `phone=`, so repeat callers probably create duplicate
       candidates there. The Python client now uses `criteria`. Fix the n8n node the same way
       (live Intake is hand-edited: patch surgically, dry-run first) or retire that path.
-- [ ] **B1** Zoho client + outbox worker: DB row first, CRM sync after.
+- [x] **B1** (done 2026-10-08, open finding: duplicate Zoho candidates, see below) Zoho client + outbox worker: DB row first, CRM sync after.
       **Status 2026-10-07: code done, deployment pending.** Done: outbox table written in the
       same transaction as the call; `app/zoho.py` (retry/fail classification, token cache, 401
       refresh, `criteria` search); `app/worker.py` (SKIP LOCKED, capped 15-min backoff forever);
@@ -76,8 +76,23 @@ diagnose). Order is strict: A → B → C → apply.
       `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45`. Claude Code's auto-mode
       classifier blocks remote *writes* even with allow rules in `.claude/settings.local.json`;
       read-only ssh works, writes are handed to the user's PowerShell.
-      REMAINING: (5) end-to-end real call (n8n Intake + Booking must be activated for it, then
-      deactivated again).
+      **2026-10-08: step (5) DONE and verified.** 1 real VAPI web call (Test Driver Alpha,
+      +1 206 555 0142). Supabase: 1 applicant, 1 call (callback 2026-10-09 17:00 UTC = 10:00
+      Vancouver), outbox row `sent` on attempt 1, `zoho_candidate_id` written back. n8n Intake
+      exec 9254 + Booking exec 9255 success; calendar event `cdlslot1lci7cg` created. n8n CDL 02+03
+      set back to inactive (verified).
+      **FINDING (decide before B2): two Zoho candidates for one call.** n8n's own Zoho branch
+      (`…678001`, 17:01:34, Intake + Callback notes) and the worker (`…679001`, 17:01:35, Intake
+      note) wrote 1s apart and did not see each other (n8n search uses the broken `phone=`).
+      Options: (A) fix the n8n search to `criteria` (a 1s race may remain), (B) worker is the only
+      Zoho writer and n8n keeps booking only (the intended design: DB first, CRM after).
+      Test data left in place on purpose (both candidates, Supabase rows) as before/after evidence;
+      the calendar event is deleted by hand in Google Calendar (the delete script only accepts
+      `vapitest…` ids). Use a different fictional phone for B2.
+      **FINDING (B3):** the VPS resolver intermittently fails to resolve the Supabase host
+      (worker logged ~12 `database unavailable: failed to resolve host` blips on 2026-10-08, all
+      auto-recovered; one happened right before the test call). If it hits while the API handles
+      `POST /calls`, that call's save fails. Look at DNS (systemd-resolved) / retry in the API.
       **Plan for (4), approved in principle, ask again before each live step:**
       a) edit `api/deploy/compose.yaml`: remove the local `db` service and its network use; give
          `cdl-api` `DATABASE_URL` from the server `.env`; add a `worker` service (same image,
