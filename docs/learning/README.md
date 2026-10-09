@@ -55,11 +55,12 @@ it alone first). SQL is explained inside the chunk that uses it.
 
 ### Phase B: CRM sync and resilience
 - [ ] B1 Zoho client + outbox worker
-- [ ] B2 "CRM is down" drill, **recorded as the interview demo**
+- [x] B2 "CRM is down" drill (done 2026-10-09, runbook `docs/B2-CRM-DOWN-DRILL.md`;
+      recording it is a separate final task)
 - [ ] B3 Observability + deploy
 
 ### Phase C: Recruiter dashboard
-- [ ] C (planned once B2 is recorded)
+- [ ] C (next)
 
 ### Then: apply
 

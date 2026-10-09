@@ -179,11 +179,22 @@ diagnose). Order is strict: A → B → C → apply.
       call -> Supabase row -> Zoho. Then B2 (CRM-down demo, record it).
       Server: `hermesadmin@hermes-vps`, docker needs `sudo -n`. n8n Intake + Booking must be
       deactivated again after any test window (currently inactive).
-- [ ] **B2** "CRM is down" drill: break Zoho, take calls, restore, show no
-      lead lost. **Record it — this is the headline interview demo.**
-- [ ] **B3** Logging/observability + deploy.
+- [x] **B2** "CRM is down" drill DONE 2026-10-09 (not recorded; runbook in
+      `docs/B2-CRM-DOWN-DRILL.md`, status board `scripts/outbox_status.py`, read-only).
+      Broke Zoho by appending `ZOHO_RECRUIT_API_DOMAIN=https://zoho-down.invalid` to the server
+      `.env` + recreating the worker; removed it and recreated again to restore (a restart alone
+      does not reload env). 2 real VAPI web calls while down (Drill Wang …0151, Joel Michael
+      …0152): both saved to Supabase, AI told them "saved/booked", outbox `pending` with attempts
+      rising (30/60/120/240s backoff), 0 Zoho writes. After restore both went `sent` on their own
+      (Joel after 5 tries, Drill Wang after 6, ~7 min backoff wait), 1 Zoho candidate + 1 note
+      each, no duplicates; final: calls 6 = sent 6, pending 0, failed 0. The server `.env` is
+      back to 4 keys. Real actions: 2 VAPI calls, 2 Zoho candidates + 2 notes (via the worker).
+      Leftovers: delete the 2 drill calendar events by hand.
+- [ ] **Record the B2 demo** (headline interview demo): redo the runbook on camera after C/B3,
+      ideally with the dashboard showing leads while Zoho is down.
+- [ ] **B3** Logging/observability + deploy (incl. the VPS DNS flake, see FINDING (B3) above).
 - [ ] **C** Recruiter dashboard (review summaries, correct info, track
-      follow-ups). Planned once B2 is recorded.
+      follow-ups). No longer waits for the recording.
 - [ ] **Apply.**
 - Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
   checks.
