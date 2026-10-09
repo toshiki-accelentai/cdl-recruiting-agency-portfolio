@@ -107,6 +107,43 @@ diagnose). Order is strict: A → B → C → apply.
       `call_id`) and `Respond Save Failure` (saved:false, manual_followup) to the live Intake
       (11 nodes, inactive). STILL TO DO: one happy-path call (booking must still work) and one
       call with the API stopped (expect `Respond Save Failure`); then start the API again.
+      **STATE AT END OF 2026-10-08 SESSION (read first tomorrow):**
+      - Call A (happy path, Test Driver Charlie) PASSED with the new `Saved to Database?` node.
+      - Call B (API stopped) 1st try: n8n behaved correctly (exec 9261: Save timed out ->
+        `Respond Save Failure`), but the AI SAID "details saved". Root cause = VAPI prompt line
+        "I've got your details saved…" in `config/vapi/prompts/*.md` step 4 (not the backend).
+      - FIXED live: both assistants' system prompt now branches on `status`/`saved` (new-lead +
+        existing-lead), pushed with `scripts/deploy_vapi_prompt_only.py` (prompt text only; model
+        untouched). Pre-change copies in the session scratchpad only. UNCOMMITTED: the two prompt
+        files, `deploy_vapi_prompt_only.py`, this note.
+      - **LIVE STATE LEFT BEHIND:** the API container `cdl-api-cdl-api-1` is STOPPED for the next
+        test (worker still up). Restart: `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45
+        "sudo -n docker start cdl-api-cdl-api-1"`. n8n CDL 02 + 03 are ACTIVE on purpose (user
+        decision 2026-10-08: it is a demo, stay published). While the API is down, any call will
+        hit the save-failure path.
+      - **2026-10-09 RESULT (call B PASSED):** VAPI live calls use the last PUBLISHED assistant
+        version, not the newest version: `PATCH /assistant` only creates a version (v8, v10 never
+        reached calls); Publish is dashboard-only (no publish API documented). A stale dashboard
+        draft that was published/saved overwrote my change once (new-lead v9). Fix: user replaced
+        the "4. Book it" block in the dashboard and published v11. Test Driver Foxtrot call with
+        the API stopped: n8n `Respond Save Failure`, AI said "I'm sorry… couldn't save your details,
+        please call back" (no "saved", no "booked"). Real-action count for 2026-10-09: 3 VAPI web
+        calls (19:38 Echo on a stale prompt, 19:46 Foxtrot on the published old version, 19:53
+        Foxtrot on v11), 0 Zoho/Supabase/calendar writes from them (API was stopped).
+        Live v11 for new-lead lacks the closing line `**Never say a call is scheduled until the
+        tool has confirmed it.**` (the user dropped it while pasting; the block's first paragraph
+        covers the same rule). `existing-lead` prompt NOT yet published (its PATCHed version is not
+        what calls use); do the same dashboard replace + Publish there. Workflow from now on:
+        edit `config/vapi/prompts/*.md` -> `deploy_vapi_prompt_only.py` -> reload dashboard,
+        verify text, Publish. Calendar events from this session's tests: delete by hand.
+      - (superseded by the result above) NEXT: (1) re-run call B with the API still stopped (Test Driver Echo, 206 555 0146,
+        tomorrow 3 PM) and listen for: no "booked/locked in" before the result, "couldn't save,
+        please call back", never "saved"; verify via n8n exec + VAPI call transcript; (2) restart
+        the API and confirm healthy; (3) align the n8n `Respond Save Failure` message with the
+        prompt ("recruiter will follow up" is untrue when nothing was saved); (4) drift:
+        live VAPI model is `gpt-5` but `config/vapi/desired.json` says gpt-4.1/0.3 (do NOT run
+        `deploy_vapi.py --apply` until reconciled; ask which is intended, then
+        `python scripts/export_config.py`); (5) commit; (6) B2.
       **Known gaps (do before B2):** (a) the Callback note (booking outcome) is no
       longer written to Zoho: route it through the API/outbox if wanted; (c) the generated suite
       `config/n8n/production/modular/` still has the old Zoho-writing Intake (live differs).

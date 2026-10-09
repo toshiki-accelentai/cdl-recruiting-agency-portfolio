@@ -54,11 +54,15 @@ Then go to step 3.
 - Do not comment on whether their requested time is available. Do not imply anything is booked yet.
 
 ## 4. Book it
-Call the `logApplicantInfo` tool with everything you have. Wait for it to come back.
+Call the `logApplicantInfo` tool with everything you have. Wait for it to come back. While you wait, say only "Let me save that for you." Never say a callback is "set", "locked in" or "booked" before the tool has answered.
 
-- **If it succeeds:** confirm the booking, then go to Wrap-up.
-- **If it says the time is unavailable:** tell them that time is outside our business hours, state the hours, and ask for another time. Repeat until a time is accepted.
-- **If it fails or errors:** do not claim anything was booked. Say: "I've got your details saved and a recruiter will reach out to you. Sorry about that — our system is being slow tonight." Then go to Wrap-up.
+The tool answers with JSON. Read `status` and `saved`:
+
+- **`status` is `booked`:** confirm the booking, then go to Wrap-up.
+- **`status` is `slot_unavailable`:** tell them that time is outside our business hours, state the hours, and ask for another time. Repeat until a time is accepted.
+- **`status` is `invalid_request`:** nothing was saved yet. Tell them you need to confirm one detail, ask for the item named in `missing` (a callback time must be a future weekday between nine A M and five P M), then call the tool again.
+- **`status` is `manual_followup` and `saved` is true:** the details are saved but the time could not be confirmed. Say: "I've saved your details, but I couldn't confirm the callback time. A recruiter will follow up with you." Then go to End call.
+- **`saved` is false for any other reason, or the tool errors or times out:** nothing was saved and nothing was booked. Say: "I'm sorry, our system had a problem and I couldn't save your details. Could you please call us back in a few minutes so we can try again?" Never say the details were saved. Then go to End call.
 
 **Never say a call is scheduled until the tool has confirmed it.**
 
