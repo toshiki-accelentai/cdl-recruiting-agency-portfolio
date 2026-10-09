@@ -8,9 +8,9 @@ from copy import deepcopy
 from pathlib import Path
 
 try:
-    from .build_production_workflow import build as build_monolith, code, connect, node
+    from .build_production_workflow import build as build_monolith, code, connect, node, stable_id
 except ImportError:
-    from build_production_workflow import build as build_monolith, code, connect, node
+    from build_production_workflow import build as build_monolith, code, connect, node, stable_id
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -231,6 +231,52 @@ def make_database_first(workflow: dict) -> dict:
         elif n["name"] == "Normalize Booking Outcome":
             n["parameters"]["jsCode"] = n["parameters"]["jsCode"].replace(
                 "$('Resolve Candidate Result')", "$('Prepare Booking Input')")
+    return patched
+
+
+def require_database_save(workflow: dict) -> dict:
+    """Return a copy of an Intake workflow that books and says 'saved' only if the DB save worked.
+
+    The Save to Database API node is a side branch with onError=continue, so a failed save used to
+    be invisible: the booking path ran on and told the caller their details were saved. Now a valid
+    intake passes through 'Saved to Database?' first; if the API returned no call id the caller is
+    told a recruiter will follow up manually. The save is the webhook's first edge, so it has
+    finished by the time the check runs. Idempotent; leaves every existing node untouched.
+    """
+    patched = deepcopy(workflow)
+    if any(n["name"] == "Saved to Database?" for n in patched["nodes"]):
+        return patched
+    valid = next(n for n in patched["nodes"] if n["name"] == "Intake Valid?")
+    x, y = valid["position"]
+    patched["nodes"].append(node(
+        "Saved to Database?",
+        "n8n-nodes-base.if",
+        {"conditions": {
+            "options": {"caseSensitive": True, "typeValidation": "strict", "version": 2},
+            "conditions": [{
+                "id": stable_id("condition:Saved to Database?"),
+                "leftValue": "={{ Boolean($('Save to Database API').first().json.call_id) }}",
+                "rightValue": "",
+                "operator": {"type": "boolean", "operation": "true", "singleValue": True},
+            }],
+            "combinator": "and"}, "options": {}},
+        x + 260, y - 40, 2.2))
+    patched["nodes"].append(node(
+        "Respond Save Failure",
+        "n8n-nodes-base.respondToWebhook",
+        {"respondWith": "json",
+         "responseBody": ("={{ {results:[{toolCallId:$json.toolCallId,result:JSON.stringify("
+                          "{status:'manual_followup',saved:false,booked:false,message:'I could not "
+                          "save your details automatically. A recruiter will follow up with you "
+                          "manually.',callId:$json.callId})}]} }}"),
+         "options": {"responseCode": 200,
+                     "responseHeaders": {"entries": [{"name": "Content-Type", "value": "application/json"}]}}},
+        x + 520, y + 180, 1.4))
+    connections = patched["connections"]
+    connections["Intake Valid?"]["main"][0] = []  # was: straight into the booking path
+    connect(connections, "Intake Valid?", "Saved to Database?", 0)
+    connect(connections, "Saved to Database?", "Prepare Booking Input", 0)
+    connect(connections, "Saved to Database?", "Respond Save Failure", 1)
     return patched
 
 

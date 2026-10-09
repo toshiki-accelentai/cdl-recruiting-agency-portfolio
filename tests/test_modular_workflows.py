@@ -173,6 +173,61 @@ class ModularWorkflowTests(unittest.TestCase):
 
         self.assertEqual(make_database_first(patched), patched)  # idempotent
 
+    def test_caller_hears_saved_only_after_the_database_save_worked(self):
+        """Gap found in B1: the lead could be lost while the AI told the caller 'saved'."""
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import make_database_first, require_database_save
+
+        base = make_database_first(copy.deepcopy(self.workflows["intake"]))
+        before = copy.deepcopy(base)
+        patched = require_database_save(base)
+        self.assertEqual(base, before)  # input not mutated
+
+        old = {n["name"]: n for n in before["nodes"]}
+        new = {n["name"]: n for n in patched["nodes"]}
+        self.assertEqual(set(new) - set(old), {"Saved to Database?", "Respond Save Failure"})
+        for name, n in old.items():  # nothing else changes, hand edits survive
+            self.assertEqual(new[name], n, name)
+
+        conns = patched["connections"]
+        out = lambda src, i: [e["node"] for e in conns[src]["main"][i]]  # noqa: E731
+        self.assertEqual(out("Intake Valid?", 0), ["Saved to Database?"])
+        self.assertEqual(out("Intake Valid?", 1), ["Respond Invalid Intake"])
+        self.assertEqual(out("Saved to Database?", 0), ["Prepare Booking Input"])
+        self.assertEqual(out("Saved to Database?", 1), ["Respond Save Failure"])
+        self.assertNotIn("Respond Save Failure", conns)
+        for src, c in conns.items():  # no dangling edges
+            self.assertIn(src, new)
+            for output in c["main"]:
+                for edge in output:
+                    self.assertIn(edge["node"], new, f"{src} -> {edge['node']}")
+        # The check reads the save result, so the save must finish first: it is the first fan-out edge.
+        self.assertEqual(out("Applicant Intake Webhook", 0)[0], "Save to Database API")
+
+        # The honest answer for a lead we could not store.
+        failure = new["Respond Save Failure"]["parameters"]["responseBody"]
+        for text in ("manual_followup", "saved:false", "booked:false", "$json.toolCallId", "$json.callId"):
+            self.assertIn(text, failure)
+        self.assertEqual(new["Respond Save Failure"]["parameters"]["options"]["responseCode"], 200)
+
+        # Run the real condition in Node: saved when the API returned a call id, not saved otherwise.
+        condition = new["Saved to Database?"]["parameters"]["conditions"]["conditions"][0]["leftValue"]
+        self.assertTrue(condition.startswith("={{") and condition.endswith("}}"))
+        expression = condition[3:-2].strip()
+        script = ("const cases = %s; const out = cases.map(c => { const $ = () => ({first: () => ({json: c})}); "
+                  "return (%s); }); console.log(JSON.stringify(out));" % (
+                      json.dumps([{"call_id": 7, "applicant_id": 7, "duplicate": False},
+                                  {"call_id": 7, "duplicate": True},
+                                  {"error": {"message": "connect ECONNREFUSED"}},
+                                  {"error": {"message": "timeout"}, "statusCode": 500},
+                                  {}]), expression))
+        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+        self.assertEqual(json.loads(result.stdout), [True, True, False, False, False])
+
+        self.assertEqual(require_database_save(patched), patched)  # idempotent
+
     def test_calendar_nodes_exist_only_in_booking(self):
         for key, workflow in self.workflows.items():
             google_nodes = [

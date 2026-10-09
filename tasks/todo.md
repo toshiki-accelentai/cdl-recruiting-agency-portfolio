@@ -100,11 +100,15 @@ diagnose). Order is strict: A → B → C → apply.
       last webhook data and DOES run side-effect nodes (inactive != safe): it saved John Smith
       (A3 payload) as Supabase call 2 and added 1 duplicate Intake note to the existing Zoho
       candidate `…599016` (phone dedupe worked: no new candidate).
-      **Known gaps after the fix (do before B2):** (a) the Callback note (booking outcome) is no
-      longer written to Zoho: route it through the API/outbox if wanted; (b) the caller is told
-      "saved" without waiting for the `Save to Database API` result (side branch,
-      onError=continue): if the API save fails, the lead is lost silently, which breaks the
-      "no lead lost" promise; make the save part of the answer path; (c) the generated suite
+      **Gap (b) FIXED 2026-10-09 (not yet exercised live):** the caller used to be told "saved"
+      without waiting for the `Save to Database API` result (side branch, onError=continue), so a
+      failed save lost the lead silently. `require_database_save` (tested, 4 mutations caught) +
+      `scripts/deploy_intake_require_db_save.py` added `Saved to Database?` (reads the save's
+      `call_id`) and `Respond Save Failure` (saved:false, manual_followup) to the live Intake
+      (11 nodes, inactive). STILL TO DO: one happy-path call (booking must still work) and one
+      call with the API stopped (expect `Respond Save Failure`); then start the API again.
+      **Known gaps (do before B2):** (a) the Callback note (booking outcome) is no
+      longer written to Zoho: route it through the API/outbox if wanted; (c) the generated suite
       `config/n8n/production/modular/` still has the old Zoho-writing Intake (live differs).
       Test leftovers kept on purpose: Zoho candidates Alpha x2 / Bravo x1 / John Smith note,
       Supabase 3 calls; delete the 2 calendar events by hand (Alpha 10/9 10:00, Bravo 10/9 11:00).
