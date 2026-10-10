@@ -193,6 +193,17 @@ diagnose). Order is strict: A → B → C → apply.
 - [ ] **Record the B2 demo** (headline interview demo): redo the runbook on camera after C/B3,
       ideally with the dashboard showing leads while Zoho is down.
 - [ ] **B3** Logging/observability + deploy (incl. the VPS DNS flake, see FINDING (B3) above).
+      **2026-10-10 progress (local only, NOT deployed):** (1) DNS flake could NOT be reproduced
+      (120 lookups in the worker container + 160 direct to the 4 Hetzner resolvers: 0 failures; old
+      logs gone after the B2 recreate), so no server DNS change. (2) `app/db.py connect_with_retry`:
+      3 tries (0.5s, 1s waits), only for `OperationalError`; used by `POST /calls`. (3) Logging:
+      `app/logs.py`; API logs call saved / duplicate / save failed + each failed connect try (ids
+      only, no phone or name); worker logs row id, attempt, next wait, after the commit; errors cut
+      to 150 chars. 88 tests green on local Docker Postgres, 9 new log tests + 4 retry tests,
+      mutation-checked. Removed an empty accidental `api/.git`.
+      **Still to do:** (4) shared-secret header on the API (API + n8n `Save to Database API` node +
+      server `.env`); (5) deploy to hermes-vps (`/opt/cdl-api`, rebuild both containers) + one real
+      call, then read `docker logs` to confirm the new lines.
 - [ ] **C** Recruiter dashboard (review summaries, correct info, track
       follow-ups). No longer waits for the recording.
 - [ ] **Apply.**

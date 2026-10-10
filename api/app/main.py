@@ -1,10 +1,17 @@
+import logging
+
 import psycopg
 from fastapi import FastAPI, Response
 from psycopg.types.json import Jsonb
 
 from app.config import database_url
+from app.db import connect_with_retry
 from app.helpers import classify_temperature, normalize_phone
+from app.logs import setup_logging, short
 from app.schemas import IntakeRequest
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Frontline CDL intake API")
 
@@ -74,8 +81,16 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
 
 @app.post("/calls", status_code=201)
 def post_calls(req: IntakeRequest, response: Response):
-    with psycopg.connect(database_url()) as conn:
-        result = save_intake(conn, req.model_dump(mode="json"), req)
+    try:
+        with connect_with_retry(database_url()) as conn:
+            result = save_intake(conn, req.model_dump(mode="json"), req)
+    except Exception as exc:  # re-raised: the 500 tells n8n "not saved". Log why, without caller data.
+        logger.error("save failed %s: %s", type(exc).__name__, short(exc))
+        raise
     if result["duplicate"]:
         response.status_code = 200
+        logger.info("duplicate call call_id=%s", result["call_id"])
+    else:
+        logger.info("call saved call_id=%s applicant_id=%s needs_review=%s",
+                    result["call_id"], result["applicant_id"], result["needs_review"])
     return result

@@ -9,6 +9,7 @@ Run:  python -m app.worker
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 from zoneinfo import ZoneInfo
@@ -16,7 +17,10 @@ from zoneinfo import ZoneInfo
 import psycopg
 
 from app.config import database_url
+from app.logs import setup_logging, short
 from app.zoho import ZohoClient, ZohoError, candidate_fields
+
+logger = logging.getLogger(__name__)
 
 MAX_BACKOFF_SECONDS = 900  # keep retrying forever, but never wait more than 15 minutes
 POLL_SECONDS = 5
@@ -53,7 +57,27 @@ def note_content(a: dict, call_id: str, callback) -> str:
 
 
 def process_one(conn: psycopg.Connection, zoho) -> str | None:
-    """Claim one due row, send it, record the outcome. Returns sent / retry / failed / None."""
+    """Claim one due row, send it, record the outcome. Returns sent / retry / failed / None.
+
+    The log line is written only after the transaction has committed, so the log never says
+    "sent" for a row the database did not really record as sent.
+    """
+    outcome = _claim_and_send(conn, zoho)
+    if outcome is None:
+        return None
+    result, outbox_id, attempt, wait, error = outcome
+    if result == "sent":
+        logger.info("outbox id=%s sent attempt=%s", outbox_id, attempt)
+    elif result == "retry":
+        logger.warning("outbox id=%s retry attempt=%s next_in=%ss error=%s",
+                       outbox_id, attempt, wait, short(error))
+    else:
+        logger.error("outbox id=%s failed attempt=%s error=%s", outbox_id, attempt, short(error))
+    return result
+
+
+def _claim_and_send(conn: psycopg.Connection, zoho):
+    """The database work of process_one. Returns None or (result, outbox_id, attempt, wait, error)."""
     with conn.transaction():  # the row stays locked (other workers skip it) until we finish
         row = conn.execute(CLAIM_ONE).fetchone()
         if row is None:
@@ -76,15 +100,15 @@ def process_one(conn: psycopg.Connection, zoho) -> str | None:
                          (candidate_id, applicant_id))
             conn.execute("UPDATE outbox SET status = 'sent', attempts = attempts + 1, "
                          "sent_at = now(), last_error = NULL WHERE id = %s", (outbox_id,))
-            return "sent"
+            return "sent", outbox_id, attempts + 1, None, None
         if kind == "fail":
             conn.execute("UPDATE outbox SET status = 'failed', attempts = attempts + 1, "
                          "last_error = %s WHERE id = %s", (error, outbox_id))
-            return "failed"
+            return "failed", outbox_id, attempts + 1, None, error
         conn.execute("UPDATE outbox SET attempts = attempts + 1, last_error = %s, "
                      "next_attempt_at = now() + make_interval(secs => %s) WHERE id = %s",
                      (error, backoff_seconds(attempts + 1), outbox_id))
-        return "retry"
+        return "retry", outbox_id, attempts + 1, backoff_seconds(attempts + 1), error
 
 
 def zoho_from_env() -> ZohoClient:
@@ -100,14 +124,15 @@ def zoho_from_env() -> ZohoClient:
 
 def run_forever(zoho=None, poll_seconds: float = POLL_SECONDS) -> None:
     zoho = zoho or zoho_from_env()
-    print("outbox worker started", flush=True)
+    setup_logging()
+    logger.info("outbox worker started")
     while True:
         try:
             with psycopg.connect(database_url()) as conn:
-                while (result := process_one(conn, zoho)) is not None:
-                    print(f"outbox: {result}", flush=True)
+                while process_one(conn, zoho) is not None:
+                    pass
         except psycopg.OperationalError as exc:  # database briefly unreachable: just try again
-            print(f"database unavailable: {exc}", flush=True)
+            logger.warning("database unavailable: %s", short(exc))
         time.sleep(poll_seconds)
 
 
