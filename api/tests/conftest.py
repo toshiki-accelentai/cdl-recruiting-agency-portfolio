@@ -11,6 +11,7 @@ from app.migrate import migrate
 
 ADMIN_URL = os.environ.get("TEST_ADMIN_URL", "postgresql://cdl:cdl@localhost:5433/postgres")
 TEST_DB = "cdl_test"
+TEST_API_KEY = "test-shared-secret"
 TEST_URL = ADMIN_URL.rsplit("/", 1)[0] + "/" + TEST_DB
 FIXTURE = (Path(__file__).resolve().parents[2]
            / "docs/learning/existing/samples/u3-john-real-shape.json")
@@ -23,6 +24,7 @@ def test_database():
         admin.execute(f'DROP DATABASE IF EXISTS "{TEST_DB}" WITH (FORCE)')
         admin.execute(f'CREATE DATABASE "{TEST_DB}"')
     os.environ["DATABASE_URL"] = TEST_URL
+    os.environ["API_SHARED_SECRET"] = TEST_API_KEY
     migrate(TEST_URL)
 
 
@@ -35,7 +37,7 @@ def clean_tables(test_database):
 @pytest.fixture
 def client(clean_tables):
     from app.main import app
-    return TestClient(app)
+    return TestClient(app, headers={"X-API-Key": TEST_API_KEY})
 
 
 @pytest.fixture

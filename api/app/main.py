@@ -1,10 +1,11 @@
+import hmac
 import logging
 
 import psycopg
-from fastapi import FastAPI, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from psycopg.types.json import Jsonb
 
-from app.config import database_url
+from app.config import api_shared_secret, database_url
 from app.db import connect_with_retry
 from app.helpers import classify_temperature, normalize_phone
 from app.logs import setup_logging, short
@@ -14,6 +15,20 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Frontline CDL intake API")
+
+if not api_shared_secret():
+    logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
+
+
+def require_api_key(x_api_key: str = Header(default="")) -> None:
+    """Only n8n (which knows the shared secret) may save calls. Never open by default."""
+    secret = api_shared_secret()
+    if not secret:
+        raise HTTPException(status_code=503, detail="api key not configured")
+    # compare_digest takes the same time however many leading characters match
+    if not hmac.compare_digest(x_api_key.encode(), secret.encode()):
+        logger.warning("rejected request: missing or wrong X-API-Key")
+        raise HTTPException(status_code=401, detail="invalid api key")
 
 
 UPSERT_APPLICANT = """
@@ -79,7 +94,7 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             "needs_review": needs_review, "duplicate": duplicate}
 
 
-@app.post("/calls", status_code=201)
+@app.post("/calls", status_code=201, dependencies=[Depends(require_api_key)])
 def post_calls(req: IntakeRequest, response: Response):
     try:
         with connect_with_retry(database_url()) as conn:

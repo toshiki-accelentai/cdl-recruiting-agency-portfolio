@@ -116,6 +116,45 @@ class ModularWorkflowTests(unittest.TestCase):
         # idempotent: patching twice changes nothing more
         self.assertEqual(add_save_to_api_branch(patched), patched)
 
+    def test_api_key_auth_patch_changes_only_the_save_node(self):
+        """B3: the API wants an X-API-Key; n8n sends it from a Header Auth credential (not in the JSON)."""
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import add_api_key_auth
+
+        live = copy.deepcopy(self.workflows["intake"])
+        before = copy.deepcopy(live)
+        patched = add_api_key_auth(live, "cred-123", "CDL API key")
+        self.assertEqual(live, before)  # input not mutated
+
+        old = {n["name"]: n for n in before["nodes"]}
+        changed = [n["name"] for n in patched["nodes"] if n != old[n["name"]]]
+        self.assertEqual(changed, ["Save to Database API"])
+        node = next(n for n in patched["nodes"] if n["name"] == "Save to Database API")
+        self.assertEqual(node["parameters"]["authentication"], "genericCredentialType")
+        self.assertEqual(node["parameters"]["genericAuthType"], "httpHeaderAuth")
+        self.assertEqual(node["credentials"], {"httpHeaderAuth": {"id": "cred-123", "name": "CDL API key"}})
+        # everything else on the node (url, body, timeout, retry, onError) is kept
+        for key, value in old["Save to Database API"]["parameters"].items():
+            self.assertEqual(node["parameters"][key], value, key)
+        self.assertEqual(patched["connections"], before["connections"])
+        # the secret itself never appears in the workflow
+        self.assertNotIn("X-API-Key", json.dumps(patched))
+        # idempotent
+        self.assertEqual(add_api_key_auth(patched, "cred-123", "CDL API key"), patched)
+
+    def test_api_key_auth_patch_refuses_a_workflow_without_the_save_node(self):
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import add_api_key_auth
+
+        wf = copy.deepcopy(self.workflows["intake"])
+        wf["nodes"] = [n for n in wf["nodes"] if n["name"] != "Save to Database API"]
+        with self.assertRaises(ValueError):
+            add_api_key_auth(wf, "cred-123", "CDL API key")
+
     def test_database_first_patch_leaves_the_worker_as_the_only_zoho_writer(self):
         """B1 follow-up: n8n and the outbox worker both wrote Zoho and created 2 candidates."""
         import copy

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app import main
 from app.db import connect_with_retry
 from app.zoho import ZohoError
+from tests.conftest import TEST_API_KEY
 from tests.test_connect_retry import FlakyConnect
 from tests.test_worker import FakeZoho, conn, make_due, post_call  # noqa: F401 (conn is a fixture)
 
@@ -46,7 +47,8 @@ def test_api_logs_an_error_when_the_database_save_fails(payload, caplog, monkeyp
     def down(url):
         raise psycopg.OperationalError("failed to resolve host 'db.example'")
     monkeypatch.setattr(main, "connect_with_retry", down)
-    r = TestClient(main.app, raise_server_exceptions=False).post("/calls", json=payload)
+    r = TestClient(main.app, raise_server_exceptions=False,
+                   headers={"X-API-Key": TEST_API_KEY}).post("/calls", json=payload)
     assert r.status_code == 500  # n8n sees the failure and takes the "not saved" path
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert any("save failed" in r.getMessage() and "OperationalError" in r.getMessage()

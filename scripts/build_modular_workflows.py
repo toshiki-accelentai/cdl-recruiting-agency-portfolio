@@ -189,6 +189,23 @@ def add_save_to_api_branch(workflow: dict) -> dict:
     return patched
 
 
+def add_api_key_auth(workflow: dict, credential_id: str, credential_name: str) -> dict:
+    """Return a copy of an Intake workflow whose 'Save to Database API' node sends the API key.
+
+    The key lives in an n8n "Header Auth" credential (name X-API-Key), never in the workflow JSON.
+    The credential id is instance-local, so it is passed in, not stored in the generated suite.
+    Changes only that node; idempotent; used on the hand-edited live workflow.
+    """
+    patched = deepcopy(workflow)
+    node_ = next((n for n in patched["nodes"] if n["name"] == "Save to Database API"), None)
+    if node_ is None:
+        raise ValueError("workflow has no 'Save to Database API' node")
+    node_["parameters"]["authentication"] = "genericCredentialType"
+    node_["parameters"]["genericAuthType"] = "httpHeaderAuth"
+    node_["credentials"] = {"httpHeaderAuth": {"id": credential_id, "name": credential_name}}
+    return patched
+
+
 ZOHO_WRITER_NODES = frozenset({
     "Find Candidate for Intake", "Build Candidate Write Request", "Write Candidate",
     "Resolve Candidate Result", "Candidate Saved?", "Respond Candidate Failure",

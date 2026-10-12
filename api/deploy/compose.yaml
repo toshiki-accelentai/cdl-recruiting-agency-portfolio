@@ -11,6 +11,9 @@ services:
     # Only the DB URL: the API never needs the Zoho credentials.
     environment:
       DATABASE_URL: ${DATABASE_URL}
+    # API_SHARED_SECRET (the key n8n sends as X-API-Key) lives in its own file so the worker,
+    # which reads .env, never sees it. chmod 600, same as .env.
+    env_file: .env.api
     networks: [n8n_app]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
