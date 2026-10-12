@@ -9,6 +9,36 @@ dashboard. Every step ships a learning doc. Index and progress checklist:
 (receive + store, Postgres on Supabase) → B (outbox worker, resilience) → C
 (dashboard). All data fictional; own VAPI + Zoho accounts only.
 
+## Ship schedule — publish by 2026-10-31 (set 2026-10-11)
+
+Budget: 2–3 h/day on the project. 10/23 was considered and dropped: no slack
+left for understanding while building. **The publish date does not move; scope
+is cut instead** (cut lines below). Every session also runs the 15-minute
+learning routine in `docs/learning/README.md` → "Session routine".
+
+- [ ] **10/12 (Mon, Canadian Thanksgiving — no test calls; booking rejects holidays)**
+      Plan mode: B3 remaining scope (in / out). Draft the README skeleton.
+- [ ] **10/12–10/18 — B3 done.** Finish step (4) shared-secret header (in progress,
+      uncommitted on `feat/python-api`) and step (5) deploy + one real call + read the
+      new log lines. Minimal alert when outbox rows stay `pending` too long or go
+      `failed`. Out of scope: a monitoring stack, DNS changes (flake not reproducible).
+- [ ] **10/19–10/25 — C done.** Read-only, NOT public (local or shown only on camera,
+      so no auth work): recent calls, outbox status, Zoho sync result.
+- [ ] **10/26–10/29 — Recording + write-up.** Record the B2 drill (+ dashboard).
+      README + case study in this order: business problem and outcome → n8n/VAPI
+      design → why Python was added for reliability. Known gaps listed honestly.
+- [ ] **10/30–10/31 — Pre-publish check → publish.** No secrets, connection strings or
+      the server IP in files or git history; test data (names, phones) fictional or
+      anonymized; "Known issues" section matches reality; someone else can run the
+      tests from the README. Then start applying.
+
+**Cut lines (decide on the date, don't drift):**
+- B3 not done by 10/18 → C becomes `scripts/outbox_status.py` output + Supabase
+  table view instead of a new screen.
+- C not done by 10/25 → record the drill only; show the dashboard as screenshots.
+- Gaps that don't affect the demo (Callback note to Zoho, generated-suite drift,
+  n8n `phone=` search) go in "Known issues", not into this month's work.
+
 - [x] Phase 0: removed accidental nested `docs/.git` (backed up to the session
       scratchpad), committed baseline on branch `feat/python-api`.
       Baseline: 32 unittest tests pass, JS helper assertions pass (no network).
@@ -192,8 +222,8 @@ diagnose). Order is strict: A → B → C → apply.
       Leftovers: delete the 2 drill calendar events by hand.
 - [ ] **Record the B2 demo** (headline interview demo): redo the runbook on camera after C/B3,
       ideally with the dashboard showing leads while Zoho is down.
-- [ ] **B3** Logging/observability + deploy (incl. the VPS DNS flake, see FINDING (B3) above).
-      **2026-10-10 progress (local only, NOT deployed):** (1) DNS flake could NOT be reproduced
+- [x] **B3** (done 2026-10-12) Logging/observability + deploy + API key (VPS DNS flake: retry added, root cause not found, see FINDING (B3) above).
+      **2026-10-10 progress:** (1) DNS flake could NOT be reproduced
       (120 lookups in the worker container + 160 direct to the 4 Hetzner resolvers: 0 failures; old
       logs gone after the B2 recreate), so no server DNS change. (2) `app/db.py connect_with_retry`:
       3 tries (0.5s, 1s waits), only for `OperationalError`; used by `POST /calls`. (3) Logging:
@@ -201,9 +231,21 @@ diagnose). Order is strict: A → B → C → apply.
       only, no phone or name); worker logs row id, attempt, next wait, after the commit; errors cut
       to 150 chars. 88 tests green on local Docker Postgres, 9 new log tests + 4 retry tests,
       mutation-checked. Removed an empty accidental `api/.git`.
-      **Still to do:** (4) shared-secret header on the API (API + n8n `Save to Database API` node +
-      server `.env`); (5) deploy to hermes-vps (`/opt/cdl-api`, rebuild both containers) + one real
-      call, then read `docker logs` to confirm the new lines.
+      **2026-10-12 steps (4) + (5) DONE and verified.** (4) `POST /calls` needs header `X-API-Key`
+      (401 wrong/missing, 503 if no secret configured, `/docs` open for the healthcheck); key in
+      n8n Header Auth credential `CDL API key` (id `QCHUta63QD70Ahf1`, created by hand in the UI),
+      live Intake node `Save to Database API` patched by `scripts/deploy_api_key_auth.py` (only
+      that node changed; rollback copy of the old Intake was kept only in the session scratchpad).
+      Secret: local `api/deploy/.env.api` (git-ignored) and `/opt/cdl-api/.env.api` (chmod 600,
+      read only by the API container, NOT the worker). 97 API tests + 38 unittest, mutation-checked.
+      (5) Deployed with `scripts/deploy_api_to_vps.ps1` (run by the user; rollback copies
+      `compose.yaml.before-20261010-162540`, `src.before-20261010-162540` on the server). In-container
+      check: no key 401, wrong key 401, right key + `{}` 422. Real test call (Test Driver, ...0160):
+      API log `call saved call_id=7` / `POST /calls 201` from n8n, outbox `sent` attempt 1, Zoho
+      candidate `...688001`. Real actions: 1 VAPI web call, 1 Zoho candidate + 1 note (worker), 1
+      calendar event (not inspected; delete by hand). Not done: VPS DNS flake has no fix (could not
+      reproduce); the generated suite `config/n8n/production/modular/` does not have the key auth
+      (credential ids are instance-local), so never redeploy it over the live Intake.
 - [ ] **C** Recruiter dashboard (review summaries, correct info, track
       follow-ups). No longer waits for the recording.
 - [ ] **Apply.**
