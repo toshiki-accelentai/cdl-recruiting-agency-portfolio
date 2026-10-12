@@ -248,6 +248,31 @@ diagnose). Order is strict: A → B → C → apply.
       (credential ids are instance-local), so never redeploy it over the live Intake.
 - [ ] **C** Recruiter dashboard (review summaries, correct info, track
       follow-ups). No longer waits for the recording.
+      **Scope decided 2026-10-12 (supersedes the "read-only, not public" line in the ship
+      schedule):** production-level, public with login, demo credentials on the resume.
+      Reason: the goal is a real system, not a demo; the mentor's brief is review / correct /
+      follow-up, which needs writes. Design:
+      - FastAPI serves the HTML itself (no separate frontend); everything through the Python API;
+        a correction writes to Postgres and queues an outbox row so the worker updates Zoho.
+      - Auth with two roles: `recruiter` (demo login on the resume: review, correct, follow-up,
+        no delete) and `admin` (owner only, never published). Hashed passwords, expiring sessions,
+        rotatable demo password.
+      - Safe for strangers: rate limit, field length limits, audit log (who changed what), nightly
+        reset of the fictional data from a seed. Only fictional data exists in these accounts.
+      - Public via the existing Caddy on hermes-vps (add a `dashboard.` host block pointing at
+        `cdl-api:8000`; needs a DNS record + Caddy on the same Docker network as `cdl-api`).
+        Close `/docs` and keep `POST /calls` unreachable from outside before going public.
+        Cloudflare Tunnel is the fallback if Caddy can't be used. Zoho-down drill stays admin-only
+        (recording), never a visitor toggle.
+      - Pending-row screen (learner's prediction, corrected): the call IS saved in Postgres; only
+        the Zoho sync is waiting. Show "saved, waiting for Zoho", attempts, next retry, last error,
+        and "urgent: register manually in Zoho with the same phone" (worker dedupes by phone).
+      - Known gap: no `summary` column (only `raw_payload` + Zoho notes); a later migration, listed
+        under Known issues if not done.
+      Order: C1 API read + correct + follow-up endpoints and auth (test-first) → C2 HTML pages →
+      C3 Caddy/DNS publish, `/docs` closed → C4 rate limit, audit log, nightly reset, rotate demo
+      password. **Cut line (10/25):** if auth + list/edit is not live, ship without follow-up
+      tracking and show the rest as screenshots.
 - [ ] **Apply.**
 - Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
   checks.

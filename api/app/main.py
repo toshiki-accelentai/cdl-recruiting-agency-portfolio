@@ -5,6 +5,7 @@ import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from psycopg.types.json import Jsonb
 
+from app.auth import router as auth_router
 from app.config import api_shared_secret, database_url
 from app.db import connect_with_retry
 from app.helpers import classify_temperature, normalize_phone
@@ -15,6 +16,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Frontline CDL intake API")
+app.include_router(auth_router)
 
 if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
