@@ -8,6 +8,7 @@ An expired access token (401) is handled here: refresh once and retry, invisibly
 from __future__ import annotations
 
 import json
+import logging
 import time
 import urllib.error
 import urllib.parse
@@ -20,6 +21,10 @@ ACCOUNTS_DOMAIN = "https://accounts.zoho.com"
 RECRUIT_API = "https://recruit.zoho.com/recruit/v2"
 TOKEN_SAFETY_MARGIN = 60  # refresh this many seconds before the 1-hour token really expires
 RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
+# What real Zoho answers when you update a candidate id that does not exist (probed live 2026-10-13).
+MISSING_ID_MESSAGE = "the id given seems to be invalid"
+
+logger = logging.getLogger(__name__)
 
 
 class ZohoError(Exception):
@@ -132,8 +137,18 @@ class ZohoClient:
         known_id wins over the phone search: after a recruiter corrects the phone, the new number
         matches nothing in Zoho and a search would create a duplicate candidate.
         """
-        existing = known_id or self.find_candidate_id(phone_e164)
         payload = {"data": [fields], "trigger": []}
+        if known_id:
+            try:
+                self._request("PUT", f"/Candidates/{known_id}", payload=payload)
+                return known_id
+            except ZohoError as exc:
+                # Only "that record is gone" (someone deleted it in Zoho) may fall back. Any other
+                # failure, including other INVALID_DATA such as a bad ZIP, must surface unchanged.
+                if exc.kind != "fail" or MISSING_ID_MESSAGE not in str(exc):
+                    raise
+                logger.warning("stored Zoho candidate id no longer exists; searching by phone instead")
+        existing = self.find_candidate_id(phone_e164)
         if existing:
             self._request("PUT", f"/Candidates/{existing}", payload=payload)
             return existing

@@ -157,6 +157,48 @@ def test_upsert_with_a_known_id_updates_that_record_and_never_searches_by_phone(
     assert zoho_calls[0]["body"]["data"] == [new_fields]
 
 
+MISSING_ID = (200, {"data": [{"code": "INVALID_DATA", "message": "the id given seems to be invalid",
+                              "status": "error"}]})  # what real Zoho answered for an unknown id
+CREATED_555 = (201, {"data": [{"code": "SUCCESS", "details": {"id": "555"}}]})
+
+
+def zoho_calls(http):
+    return [(c["method"], c["url"].split("/recruit/v2")[1].split("?")[0])
+            for c in http.calls if "/oauth/v2/token" not in c["url"]]
+
+
+def test_a_known_id_deleted_in_zoho_falls_back_to_the_phone_search_and_creates():
+    client, http = make(TOKEN_OK, MISSING_ID, (204, None), CREATED_555)
+    assert client.upsert_candidate("+12065550142", {"Last_Name": "Driver"}, known_id="777") == "555"
+    assert zoho_calls(http) == [("PUT", "/Candidates/777"), ("GET", "/Candidates/search"),
+                                ("POST", "/Candidates")]
+
+
+def test_a_known_id_deleted_in_zoho_still_reuses_a_candidate_found_by_phone():
+    client, http = make(TOKEN_OK, MISSING_ID, (200, {"data": [{"id": "888"}]}),
+                        (200, {"data": [{"code": "SUCCESS", "details": {"id": "888"}}]}))
+    assert client.upsert_candidate("+12065550142", {"Last_Name": "Driver"}, known_id="777") == "888"
+    assert zoho_calls(http)[-1] == ("PUT", "/Candidates/888")
+
+
+def test_other_invalid_data_errors_with_a_known_id_are_not_swallowed_by_the_fallback():
+    """Only 'the id is gone' may fall back. A bad ZIP must still fail loudly, not create a second candidate."""
+    bad_zip = (200, {"data": [{"code": "INVALID_DATA", "message": "invalid zip", "status": "error"}]})
+    client, http = make(TOKEN_OK, bad_zip)
+    with pytest.raises(ZohoError) as err:
+        client.upsert_candidate("+12065550142", {"Last_Name": "Driver"}, known_id="777")
+    assert err.value.kind == "fail"
+    assert zoho_calls(http) == [("PUT", "/Candidates/777")]
+
+
+def test_a_retryable_error_with_a_known_id_is_not_turned_into_a_search():
+    client, http = make(TOKEN_OK, (503, {}))
+    with pytest.raises(ZohoError) as err:
+        client.upsert_candidate("+12065550142", {"Last_Name": "Driver"}, known_id="777")
+    assert err.value.kind == "retry"
+    assert zoho_calls(http) == [("PUT", "/Candidates/777")]
+
+
 def test_add_note_matches_the_n8n_note_format():
     client, http = make(TOKEN_OK, (201, {"data": [{"code": "SUCCESS", "details": {"id": "n1"}}]}))
     client.add_note("777", "VAPI Intake - abc", "line1\nline2")
