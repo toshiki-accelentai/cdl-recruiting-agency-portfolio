@@ -14,13 +14,15 @@ class FakeZoho:
     def __init__(self):
         self.fail_with = None  # a ZohoError or any Exception, raised by every call
         self.candidates = []
+        self.known_ids = []  # the known_id passed with each upsert, in order
         self.notes = []
 
-    def upsert_candidate(self, phone, fields):
+    def upsert_candidate(self, phone, fields, known_id=None):
         if self.fail_with:
             raise self.fail_with
         self.candidates.append((phone, fields))
-        return f"zoho-{phone}"
+        self.known_ids.append(known_id)
+        return known_id or f"zoho-{phone}"
 
     def add_note(self, candidate_id, title, content):
         if self.fail_with:
@@ -130,6 +132,22 @@ def test_crm_down_then_back_no_lead_lost(client, payload, db, conn, zoho):
     assert results == ["sent"] * 10
     assert {row[0] for row in outbox(db)} == {"sent"}
     assert len(zoho.candidates) == 10
+
+
+def test_worker_hands_zoho_the_stored_candidate_id_so_a_corrected_phone_creates_no_duplicate(
+        client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1", phone="2065550142")
+    assert worker.process_one(conn, zoho) == "sent"
+    assert zoho.known_ids == [None]  # first contact: nothing stored yet, Zoho searches by phone
+    stored_id = db.execute("SELECT zoho_candidate_id FROM applicants").fetchone()[0]
+
+    # a recruiter corrects the number in Postgres; the next sync must follow the stored id
+    db.execute("UPDATE applicants SET phone_e164 = '+12065550999'")
+    post_call(client, payload, "call-2", phone="2065550999")  # lands on the same applicant row
+    assert db.execute("SELECT count(*) FROM applicants").fetchone()[0] == 1
+    assert worker.process_one(conn, zoho) == "sent"
+    assert zoho.known_ids == [None, stored_id]
+    assert zoho.candidates[-1][0] == "+12065550999"
 
 
 def test_repeat_caller_sends_each_call_to_the_same_zoho_candidate(client, payload, db, conn, zoho):

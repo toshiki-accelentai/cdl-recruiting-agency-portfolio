@@ -145,6 +145,18 @@ def test_upsert_updates_when_match_exists():
     assert http.calls[-1]["method"] == "PUT" and http.calls[-1]["url"].endswith("/Candidates/777")
 
 
+def test_upsert_with_a_known_id_updates_that_record_and_never_searches_by_phone():
+    """A recruiter corrected the phone: searching for the new number would find nothing and
+    create a duplicate candidate. The stored Zoho id is the only reliable handle."""
+    client, http = make(TOKEN_OK, (200, {"data": [{"code": "SUCCESS", "details": {"id": "777"}}]}))
+    new_fields = {"Last_Name": "Driver", "Phone": "+12065550999"}
+    assert client.upsert_candidate("+12065550999", new_fields, known_id="777") == "777"
+    zoho_calls = [c for c in http.calls if "/oauth/v2/token" not in c["url"]]
+    assert [c["method"] for c in zoho_calls] == ["PUT"]
+    assert zoho_calls[0]["url"].endswith("/Candidates/777")
+    assert zoho_calls[0]["body"]["data"] == [new_fields]
+
+
 def test_add_note_matches_the_n8n_note_format():
     client, http = make(TOKEN_OK, (201, {"data": [{"code": "SUCCESS", "details": {"id": "n1"}}]}))
     client.add_note("777", "VAPI Intake - abc", "line1\nline2")

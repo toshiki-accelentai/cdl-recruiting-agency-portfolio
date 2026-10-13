@@ -126,8 +126,13 @@ class ZohoClient:
         rows = (data or {}).get("data") or []
         return rows[0]["id"] if rows else None
 
-    def upsert_candidate(self, phone_e164: str, fields: dict) -> str:
-        existing = self.find_candidate_id(phone_e164)
+    def upsert_candidate(self, phone_e164: str, fields: dict, known_id: str | None = None) -> str:
+        """Update the candidate we already stored the id of, else find by phone, else create.
+
+        known_id wins over the phone search: after a recruiter corrects the phone, the new number
+        matches nothing in Zoho and a search would create a duplicate candidate.
+        """
+        existing = known_id or self.find_candidate_id(phone_e164)
         payload = {"data": [fields], "trigger": []}
         if existing:
             self._request("PUT", f"/Candidates/{existing}", payload=payload)

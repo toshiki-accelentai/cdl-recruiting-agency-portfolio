@@ -27,7 +27,7 @@ POLL_SECONDS = 5
 
 CLAIM_ONE = """
 SELECT o.id, o.attempts, a.id, a.name, a.phone_e164, a.city, a.state, a.zip_code, a.experience,
-       a.readiness, a.temperature, c.vapi_call_id, c.preferred_callback_at
+       a.readiness, a.temperature, c.vapi_call_id, c.preferred_callback_at, a.zoho_candidate_id
 FROM outbox o
 JOIN calls c ON c.id = o.call_id
 JOIN applicants a ON a.id = o.applicant_id
@@ -83,12 +83,13 @@ def _claim_and_send(conn: psycopg.Connection, zoho):
         if row is None:
             return None
         (outbox_id, attempts, applicant_id, name, phone, city, state, zip_code, experience,
-         readiness, temperature, call_id, callback) = row
+         readiness, temperature, call_id, callback, known_zoho_id) = row
         applicant = {"name": name, "phone_e164": phone, "city": city, "state": state,
                      "zip_code": zip_code, "experience": experience, "readiness": readiness,
                      "temperature": temperature}
         try:
-            candidate_id = zoho.upsert_candidate(phone, candidate_fields(applicant))
+            candidate_id = zoho.upsert_candidate(phone, candidate_fields(applicant),
+                                                 known_id=known_zoho_id)
             zoho.add_note(candidate_id, f"VAPI Intake — {call_id}",
                           note_content(applicant, call_id, callback))
         except ZohoError as exc:
