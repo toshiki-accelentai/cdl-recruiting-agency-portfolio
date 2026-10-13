@@ -33,7 +33,7 @@ def test_database():
 @pytest.fixture
 def clean_tables(test_database):
     with psycopg.connect(TEST_URL) as conn:
-        conn.execute("TRUNCATE outbox, calls, applicants, users RESTART IDENTITY CASCADE")
+        conn.execute("TRUNCATE audit_log, outbox, calls, applicants, users RESTART IDENTITY CASCADE")
     os.environ["SESSION_SECRET"] = TEST_SESSION_SECRET  # a test may monkeypatch it away
     os.environ["SESSION_COOKIE_SECURE"] = "0"  # the test client speaks plain http
 
