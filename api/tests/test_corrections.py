@@ -135,6 +135,35 @@ def test_fixing_a_missing_name_clears_the_review_flag(web):
     assert q("SELECT needs_review, review_reason FROM calls") == [(False, None)]
 
 
+def test_the_outbox_correction_row_points_at_its_audit_row(web):
+    call_id = add_call("Jane Roe", "+12065550199")
+    patch(web, call_id, name="Jane Q. Roe")
+    assert q("SELECT o.audit_id = a.id FROM outbox o, audit_log a") == [(True,)]
+
+
+def run(sql, params=()):
+    with psycopg.connect(TEST_URL, autocommit=True) as conn:
+        conn.execute(sql, params)
+
+
+def test_the_database_refuses_a_correction_row_without_an_audit_row(web):
+    add_call("Jane Roe", "+12065550199")
+    (applicant_id,) = q("SELECT id FROM applicants")[0]
+    with pytest.raises(psycopg.errors.CheckViolation):
+        run("INSERT INTO outbox (kind, applicant_id) VALUES ('correction', %s)", (applicant_id,))
+
+
+def test_the_database_refuses_an_intake_row_that_carries_an_audit_row(web):
+    call_id = add_call("Jane Roe", "+12065550199")
+    (applicant_id,) = q("SELECT id FROM applicants")[0]
+    (user_id,) = q("SELECT id FROM users")[0]
+    run("INSERT INTO audit_log (user_id, action, applicant_id, changes) "
+        "VALUES (%s, 'correct_applicant', %s, '{}'::jsonb)", (user_id, applicant_id))
+    with pytest.raises(psycopg.errors.CheckViolation):
+        run("INSERT INTO outbox (kind, applicant_id, call_id, audit_id) "
+            "VALUES ('intake', %s, %s, (SELECT id FROM audit_log))", (applicant_id, call_id))
+
+
 # --- calls with no applicant (invalid phone) ------------------------------------------------
 
 def test_giving_a_valid_phone_to_a_call_with_no_applicant_creates_and_attaches_one(web):

@@ -6,6 +6,7 @@ import pytest
 
 from app import worker
 from app.zoho import ZohoError
+from tests.test_calls_api import web  # noqa: F401  (pytest fixture: a logged-in recruiter)
 
 
 class FakeZoho:
@@ -166,3 +167,51 @@ def test_a_row_locked_by_another_worker_is_skipped(client, payload, db, conn, zo
             other.execute("SELECT id FROM outbox WHERE status = 'pending' FOR UPDATE")
             assert worker.process_one(conn, zoho) is None  # worker B must not double-send
     assert worker.process_one(conn, zoho) == "sent"
+
+
+# --- C1c step 2b: the worker sends recruiter corrections ------------------------------------
+
+def _synced_applicant_and_call(db):
+    """A call whose intake already reached Zoho (the applicant has its Zoho id)."""
+    from tests.test_calls_api import add_call
+    call_id = add_call("Jane Roe", "+12065550199", temperature="WARM",
+                       outbox={"status": "sent", "attempts": 1})
+    db.execute("UPDATE applicants SET zoho_candidate_id = 'zoho-1'")
+    return call_id
+
+
+def test_a_correction_updates_the_stored_zoho_candidate_and_notes_every_change(web, db, conn, zoho):
+    call_id = _synced_applicant_and_call(db)
+    resp = web.patch(f"/api/calls/{call_id}", json={"phone": "(206) 555-0123", "temperature": "HOT"})
+    assert resp.status_code == 200
+
+    assert worker.process_one(conn, zoho) == "sent"
+    assert zoho.known_ids == ["zoho-1"]                       # followed the stored id, no phone search
+    assert zoho.candidates[-1][0] == "+12065550123"            # and sent the corrected phone
+    (cid, title, content), = zoho.notes
+    assert cid == "zoho-1" and title.startswith("Recruiter correction")
+    assert "phone: +12065550199 → +12065550123" in content
+    assert "temperature: WARM → HOT" in content
+    assert "Corrected by: demo" in content
+    assert outbox(db)[-1][0] == "sent"
+
+
+def test_a_correction_waits_out_a_zoho_outage_and_is_not_lost(web, db, conn, zoho):
+    call_id = _synced_applicant_and_call(db)
+    web.patch(f"/api/calls/{call_id}", json={"name": "Jane Q. Roe"})
+    zoho.fail_with = ZohoError("retry", "Zoho HTTP 503")
+    assert worker.process_one(conn, zoho) == "retry"
+    assert outbox(db)[-1][:2] == ("pending", 1)
+
+    zoho.fail_with = None
+    make_due(db)
+    assert worker.process_one(conn, zoho) == "sent"
+    assert "name: Jane Roe → Jane Q. Roe" in zoho.notes[-1][2]
+
+
+def test_an_empty_old_value_reads_as_empty_in_the_note(web, db, conn, zoho):
+    call_id = _synced_applicant_and_call(db)
+    db.execute("UPDATE applicants SET zip_code = ''")
+    web.patch(f"/api/calls/{call_id}", json={"zip_code": "33601"})
+    worker.process_one(conn, zoho)
+    assert "zip_code: (empty) → 33601" in zoho.notes[-1][2]

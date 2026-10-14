@@ -90,10 +90,12 @@ def _correct_existing(conn, user_id: int, call_id: int, applicant_id: int, field
     assignments = ", ".join(f"{col} = %({col})s" for col in sets)  # column names come from COLUMNS only
     conn.execute(f"UPDATE applicants SET {assignments} WHERE id = %(applicant_id)s",
                  {**sets, "applicant_id": applicant_id})
-    conn.execute("INSERT INTO audit_log (user_id, action, call_id, applicant_id, changes) "
-                 "VALUES (%s, 'correct_applicant', %s, %s, %s)",
-                 (user_id, call_id, applicant_id, Jsonb(changes)))
-    conn.execute("INSERT INTO outbox (kind, applicant_id) VALUES ('correction', %s)", (applicant_id,))
+    audit_id = conn.execute(
+        "INSERT INTO audit_log (user_id, action, call_id, applicant_id, changes) "
+        "VALUES (%s, 'correct_applicant', %s, %s, %s) RETURNING id",
+        (user_id, call_id, applicant_id, Jsonb(changes))).fetchone()[0]
+    conn.execute("INSERT INTO outbox (kind, applicant_id, audit_id) VALUES ('correction', %s, %s)",
+                 (applicant_id, audit_id))
 
 
 def _attach_applicant(conn, user_id: int, call_id: int, fields: dict) -> tuple[int, bool]:

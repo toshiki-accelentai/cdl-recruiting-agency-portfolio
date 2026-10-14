@@ -27,10 +27,13 @@ POLL_SECONDS = 5
 
 CLAIM_ONE = """
 SELECT o.id, o.attempts, a.id, a.name, a.phone_e164, a.city, a.state, a.zip_code, a.experience,
-       a.readiness, a.temperature, c.vapi_call_id, c.preferred_callback_at, a.zoho_candidate_id
+       a.readiness, a.temperature, c.vapi_call_id, c.preferred_callback_at, a.zoho_candidate_id,
+       o.kind, o.audit_id, al.changes, u.username
 FROM outbox o
-JOIN calls c ON c.id = o.call_id
+LEFT JOIN calls c ON c.id = o.call_id          -- a correction row belongs to no call
 JOIN applicants a ON a.id = o.applicant_id
+LEFT JOIN audit_log al ON al.id = o.audit_id
+LEFT JOIN users u ON u.id = al.user_id
 WHERE o.status = 'pending' AND o.next_attempt_at <= now()
 ORDER BY o.next_attempt_at, o.id
 FOR UPDATE OF o SKIP LOCKED
@@ -54,6 +57,16 @@ def note_content(a: dict, call_id: str, callback) -> str:
         f"Temperature: {a['temperature']}",
         f"Requested callback: {when}",
     ])
+
+
+def correction_note(changes: dict, username: str | None) -> str:
+    """The Zoho note for a recruiter correction: who, then every field as old -> new."""
+    def shown(value) -> str:
+        return str(value) if value not in (None, "") else "(empty)"
+    lines = [f"Corrected by: {username or 'unknown'}"]
+    lines += [f"{field}: {shown(change['from'])} → {shown(change['to'])}"
+              for field, change in changes.items()]
+    return "\n".join(lines)
 
 
 def process_one(conn: psycopg.Connection, zoho) -> str | None:
@@ -83,15 +96,20 @@ def _claim_and_send(conn: psycopg.Connection, zoho):
         if row is None:
             return None
         (outbox_id, attempts, applicant_id, name, phone, city, state, zip_code, experience,
-         readiness, temperature, call_id, callback, known_zoho_id) = row
+         readiness, temperature, call_id, callback, known_zoho_id,
+         kind_of_row, audit_id, changes, username) = row
         applicant = {"name": name, "phone_e164": phone, "city": city, "state": state,
                      "zip_code": zip_code, "experience": experience, "readiness": readiness,
                      "temperature": temperature}
         try:
             candidate_id = zoho.upsert_candidate(phone, candidate_fields(applicant),
                                                  known_id=known_zoho_id)
-            zoho.add_note(candidate_id, f"VAPI Intake — {call_id}",
-                          note_content(applicant, call_id, callback))
+            if kind_of_row == "correction":
+                zoho.add_note(candidate_id, f"Recruiter correction — {audit_id}",
+                              correction_note(changes or {}, username))
+            else:
+                zoho.add_note(candidate_id, f"VAPI Intake — {call_id}",
+                              note_content(applicant, call_id, callback))
         except ZohoError as exc:
             kind, error = exc.kind, str(exc)
         except Exception as exc:  # a bug on our side must never lose or give up on a lead
