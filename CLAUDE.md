@@ -80,6 +80,32 @@ No automated test harness exists yet. Until one does, a change is only "done"
 when a real test call has been placed and the resulting Zoho/Airtable record
 inspected — not when the workflow saves without error.
 
+## Learning routine
+
+The owner is learning through this project (publish target 2026-10-31, schedule in
+`tasks/todo.md`). Each session follows `docs/learning/README.md` → "Session routine":
+ask for a one-line prediction before implementing, let the owner write state-check SQL
+first, and end by prompting a 3-line entry in `docs/learning/interview-story.md`
+(the owner writes it; Claude only fact-checks).
+
+## How to talk to the owner (plain words, real vocabulary)
+
+The owner is not an experienced developer yet and must also learn the technical words for
+interviews. Never make them ask for a simpler version.
+
+- Plain words first: say what a thing does in everyday language, with a short real-life
+  comparison when it helps (front desk, courier, delivery slip).
+- Keep the real term, once, next to the plain explanation, e.g. "the delivery slip (the
+  **outbox row**)". Never drop the term, never leave it unexplained.
+- At most one new term per sentence, defined in that same sentence. Do not stack jargon.
+- Every new term goes into `docs/learning/glossary.md` (one plain sentence; "First seen" = chunk).
+- End each chunk with **Words to learn today**: 3 to 5 terms, each with a one-line plain meaning.
+- Short sentences. Numbers and file names only when they help the owner act.
+- One small chunk at a time: explain ONE idea (a few lines), then ask one quick check question and
+  stop. Give the next chunk only after the owner answers and has understood. Never dump a full
+  walkthrough, and do not stack extra "words to learn" lists until the chunk is understood.
+- English by default; Japanese when the owner asks.
+
 ## Safety
 
 Deploys to VAPI or n8n change a system that answers real phone calls. Treat any

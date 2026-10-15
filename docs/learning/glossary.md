@@ -53,3 +53,18 @@ One line each. Say it out loud in your own words before moving on.
 | **Upsert (`ON CONFLICT`)** | One statement that inserts a row, or updates the existing one if the key already exists; the database is the single judge, so no race between "check" and "insert". | A2 |
 | **`COALESCE(NULLIF(new,''), old)`** | "Use the new value if it was provided, otherwise keep the old one." | A2 |
 | **Flag for review (`needs_review`)** | Saving imperfect data with a marker for a human to fix, instead of rejecting it and losing the lead. | A2 |
+| **Endpoint** | One address of our API that does one job, e.g. `GET /api/calls` lists calls. | C1 |
+| **Session cookie** | A small signed ticket the website gives your browser after login; the browser shows it on every request so you do not log in again. | C1a |
+| **Hash (password hash)** | A one-way scramble of a password. We store the scramble, never the password, and cannot turn it back. | C1a |
+| **Salt** | Random extra text mixed into a password before scrambling, so two people with the same password get different hashes. | C1a |
+| **`session_version`** | A number on each user. Changing the password raises it, which makes every ticket handed out earlier stop working, so everyone is logged out at once. | C1a |
+| **Role** | What a logged-in person is allowed to do: `recruiter` (review and correct) or `admin` (the owner). | C1a |
+| **401 / 403 / 404 / 409 / 422** | HTTP answers: 401 "log in first", 403 "logged in but not allowed", 404 "not found", 409 "conflict with existing data", 422 "your input is invalid". | C1a to C1c |
+| **Pagination (`limit` / `offset`)** | Asking for a list in pages: `limit` = page size, `offset` = how many to skip. | C1b |
+| **Outbox** | A table of "delivery slips": jobs saved in our database that still have to reach Zoho. | B1 |
+| **Worker** | A program that runs all the time, picks up pending slips from the outbox, and delivers them to Zoho. | B1 |
+| **Backoff** | Waiting longer after each failed try (30s, 60s, 120s...) so we do not hammer a service that is down. | B1 |
+| **Audit log** | A permanent record of who changed what and when, with old and new values. | C1c |
+| **Fallback** | The plan B when the first approach fails: if the saved Zoho id is gone, search by phone instead. | C1c |
+| **Mutation test** | Deliberately breaking the code to check that a test notices. If no test fails, the tests are too weak. | A1 to C1 |
+| **Constraint (CHECK)** | A rule the database itself enforces, e.g. "a correction row must point at an audit row". | C1c |
