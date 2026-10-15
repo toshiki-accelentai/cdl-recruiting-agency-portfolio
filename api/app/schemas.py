@@ -46,8 +46,13 @@ class ToolCall(BaseModel):
     function: ToolFunction
 
 
+class Customer(BaseModel):
+    number: str | None = None  # the caller ID; absent on web calls and blocked numbers
+
+
 class CallInfo(BaseModel):
     id: str
+    customer: Customer | None = None
 
 
 class Message(BaseModel):

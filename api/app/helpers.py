@@ -11,6 +11,20 @@ def normalize_phone(value: str) -> str | None:
     return "+" + digits
 
 
+def pick_phones(caller_id: str | None, spoken: str | None) -> tuple[str | None, str]:
+    """Return (identity phone, callback phone).
+
+    The caller ID (from the phone network) is the identity: a mistranscribed digit must never make
+    a second applicant. Without a usable caller ID (web call, blocked number) the spoken number is
+    the identity. The callback phone is the spoken number only when it differs from the identity.
+    """
+    caller = normalize_phone(caller_id or "")
+    said = normalize_phone(spoken or "")
+    identity = caller or said
+    callback = said if said and said != identity else ""
+    return identity, callback
+
+
 def classify_temperature(readiness: str) -> str:
     text = (readiness or "").strip().lower()
     if re.search(r"3\s*days?|immediately|right away", text):

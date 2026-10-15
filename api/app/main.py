@@ -11,7 +11,7 @@ from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
 from app.db import connect_with_retry
 from app.follow_up import router as follow_up_router
-from app.helpers import classify_temperature, normalize_phone
+from app.helpers import classify_temperature, pick_phones
 from app.logs import setup_logging, short
 from app.schemas import IntakeRequest
 
@@ -40,10 +40,11 @@ def require_api_key(x_api_key: str = Header(default="")) -> None:
 
 
 UPSERT_APPLICANT = """
-INSERT INTO applicants (name, phone_e164, city, state, zip_code, experience, readiness, temperature)
-VALUES (%(name)s, %(phone)s, %(city)s, %(state)s, %(zip)s, %(experience)s, %(readiness)s, %(temperature)s)
+INSERT INTO applicants (name, phone_e164, callback_phone, city, state, zip_code, experience, readiness, temperature)
+VALUES (%(name)s, %(phone)s, %(callback)s, %(city)s, %(state)s, %(zip)s, %(experience)s, %(readiness)s, %(temperature)s)
 ON CONFLICT (phone_e164) DO UPDATE SET
     name        = COALESCE(NULLIF(EXCLUDED.name, ''),        applicants.name),
+    callback_phone = COALESCE(NULLIF(EXCLUDED.callback_phone, ''), applicants.callback_phone),
     city        = COALESCE(NULLIF(EXCLUDED.city, ''),        applicants.city),
     state       = COALESCE(NULLIF(EXCLUDED.state, ''),       applicants.state),
     zip_code    = COALESCE(NULLIF(EXCLUDED.zip_code, ''),    applicants.zip_code),
@@ -66,14 +67,15 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
     """
     args = req.message.toolCalls[0].function.arguments
     vapi_call_id = req.message.call.id
-    phone = normalize_phone(args.phoneNumber)
+    caller_id = req.message.call.customer.number if req.message.call.customer else None
+    phone, callback = pick_phones(caller_id, args.phoneNumber)
     reasons = (["invalid_phone"] if phone is None else []) + (["missing_name"] if not args.name else [])
     duplicate = False
     applicant_id = temperature = None
     with conn.transaction():
         if phone is not None:
             applicant_id, temperature = conn.execute(UPSERT_APPLICANT, {
-                "name": args.name, "phone": phone, "city": args.city, "state": args.state.upper(),
+                "name": args.name, "phone": phone, "callback": callback, "city": args.city, "state": args.state.upper(),
                 "zip": args.zipCode, "experience": args.experience, "readiness": args.readiness,
                 "temperature": classify_temperature(args.readiness),
             }).fetchone()
