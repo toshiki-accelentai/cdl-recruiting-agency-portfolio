@@ -10,6 +10,7 @@ from app.config import api_shared_secret, database_url
 from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
 from app.db import connect_with_retry
+from app.follow_up import router as follow_up_router
 from app.helpers import classify_temperature, normalize_phone
 from app.logs import setup_logging, short
 from app.schemas import IntakeRequest
@@ -21,6 +22,7 @@ app = FastAPI(title="Frontline CDL intake API")
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(corrections_router)
+app.include_router(follow_up_router)
 
 if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
