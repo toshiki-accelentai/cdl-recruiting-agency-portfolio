@@ -85,13 +85,13 @@
       "id": "6901a714-a6c5-45a2-9395-455e09e0051b",
       "name": "CDL Recruiting Agency - New Lead",
       "promptFile": "prompts/new-lead.md",
-      "firstMessage": "Hey, thanks for calling Frontline CDL Staffing! Are you calling about a driving job today?"
+      "firstMessage": "Hey, thanks for calling Frontline CDL Staffing! Just so you know, this call is recorded so our recruiters can follow up. Are you calling about a driving job today?"
     },
     "existing-lead": {
       "id": "542bae1c-51b5-4d83-a3fe-446836b4801d",
       "name": "CDL Recruiting Agency - Existing Lead",
       "promptFile": "prompts/existing-lead.md",
-      "firstMessage": "Hey {{ name | default: \"there\" }}, thanks for calling Frontline CDL Staffing! How can I help you today?"
+      "firstMessage": "Hey {{ name | default: \"there\" }}, thanks for calling Frontline CDL Staffing! Just so you know, this call is recorded so our recruiters can follow up. How can I help you today?"
     }
   }
 }

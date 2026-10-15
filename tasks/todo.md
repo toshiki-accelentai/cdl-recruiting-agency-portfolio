@@ -273,9 +273,61 @@ diagnose). Order is strict: A → B → C → apply.
       C3 Caddy/DNS publish, `/docs` closed → C4 rate limit, audit log, nightly reset, rotate demo
       password. **Cut line (10/25):** if auth + list/edit is not live, ship without follow-up
       tracking and show the rest as screenshots.
+      **STATUS 2026-10-14 (end of session): C1 backend DONE, all committed on `feat/python-api`,
+      187 API tests green (needs Docker Desktop running; start `api-db-1`), NOT deployed.**
+      C1a login `f1e4c0c`; C1b list/detail `abaed40`; C1c worker uses stored Zoho id `deb7688`,
+      fallback `e547de6`, corrections endpoint `3cf2778`, worker sends corrections `b5b9661`;
+      C1d follow-up status + `new_call_since` marker `eb9262e`. Migrations 007-010 exist locally
+      only; they reach Supabase when the API container starts after a deploy (user runs
+      `scripts/deploy_api_to_vps.ps1`; API + worker must deploy together). Still to do for a
+      real run: one live Zoho smoke test of a correction (writes to the sandbox Zoho; user decides),
+      create the demo + admin users with a script (not written yet; passwords never in chat/git).
+      Three debug drills done (flipped name check, NULL in the worker query, `session_version = 1`);
+      notes in `docs/learning/interview-story.md`.
+      **NEXT: C2 (HTML pages served by FastAPI).** Decided 2026-10-15: first screen = (B) a
+      "To do" list, one row per PERSON (needs-review calls, Zoho sync failed, `to_call`, "called
+      again" marker; problems first, then HOT→COLD, then earliest callback), full calls table
+      behind a tab. Pages: Login → To do → All calls → Applicant detail (fields | call history +
+      transcript + audio | follow-up, note, change history, Zoho sync). Light, calm theme; rows on
+      desktop, cards on phone. Dropped (no data): CDL class/endorsements, pipeline stages (Zoho
+      owns them), live calls, agent-quality metrics, SMS/scheduling. Backend gap: `/api/calls` is
+      one row per call; the To do list needs a per-applicant read endpoint. Design skills to
+      consider: `design-taste-frontend`, `minimalist-ui`. Order: C2 To do page → C1e → rest of
+      C2. Then C3 (Caddy + DNS, close `/docs`) and C4 (rate limit, nightly reset, rotate demo
+      password).
+      **C1e Call transcript, summary and audio on the applicant page (added 2026-10-15).**
+      Clients expect to hear the call without logging in to VAPI. Both assistants already send
+      `end-of-call-report` to the n8n post-call webhook; the Python API ignores it today.
+      - New API receiver for the end-of-call report: match on `vapi_call_id`, store `transcript`
+        and `summary` (closes the "no summary column" gap). A report with no matching call row
+        (non-driver, off-script, or hung up before `logApplicantInfo`) is saved as a
+        needs-review call, never dropped (A2 rule). Wire it via `server.url` or an n8n forward:
+        a live config change, needs approval.
+      - Audio: VAPI's stored `recordingUrl` is a private bucket (no-login fetch → 400). Checked
+        2026-10-15, read-only: `GET /call/{id}/mono-recording` with the private key → 302 to a
+        signed link valid 30 min (`X-Amz-Expires=1800`), plays without login (206, audio/wav).
+        So: store only the VAPI call id; a logged-in `GET /api/calls/{id}/recording` asks VAPI
+        and redirects to a fresh link. Key stays on the server; never store the signed link.
+      - Recording notice added to both `firstMessage`s in `config/vapi/desired.json`
+        (2026-10-15). **NOT deployed**; deploy with explicit approval, then re-export and confirm
+        a test call speaks it.
+      - Schedule risk before the 10/25 cut line: if short on time, cut audio, keep the queue.
+      **Teaching style for this owner (in CLAUDE.md):** plain words + the real term, one small
+      chunk then one check question, glossary entry per new term.
+      **Uncommitted docs:** CLAUDE.md, glossary.md, learning README, interview-story.md, this file.
 - [ ] **Apply.**
+- [ ] **Interview-prep code review (last item, after publish and first applications; added
+      2026-10-13).** One or more sessions to read and understand the finished portfolio code
+      well enough to defend it in an interview. Per area: walk the data flow out loud without
+      notes, answer "why this design, what did you reject", then plant or find one bug and
+      debug it alone. Areas: intake path (`POST /calls`, dedupe, `needs_review`), outbox +
+      worker (retry/backoff, stored Zoho id + fallback), auth (`session_version`, roles),
+      corrections (409 on a taken phone, audit log), the CRM-down drill, the test suite
+      (what each mutation check proves). Output: finish `docs/learning/interview-story.md`
+      and a one-page "known gaps" list I can state honestly. Deadline: before the first
+      interview, not before publish; it never blocks the 10/31 publish date.
 - Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
-  checks.
+  checks (these are folded into the interview-prep review above).
 
 **Open decision, revisit when planning Phase A/B:** how much of n8n survives?
 Not a full replace — this is a portfolio piece aimed at companies that run n8n
