@@ -5,6 +5,7 @@ import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from psycopg.types.json import Jsonb
 
+from app.applicants import router as applicants_router
 from app.auth import router as auth_router
 from app.config import api_shared_secret, database_url
 from app.corrections import router as corrections_router
@@ -26,6 +27,7 @@ app.include_router(dashboard_router)
 app.include_router(corrections_router)
 app.include_router(follow_up_router)
 app.include_router(todo_router)
+app.include_router(applicants_router)
 app.include_router(pages_router)
 app.mount("/static", static_files, name="static")
 
