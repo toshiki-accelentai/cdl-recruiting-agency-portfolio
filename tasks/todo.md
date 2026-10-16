@@ -312,6 +312,24 @@ diagnose). Order is strict: A → B → C → apply.
         (2026-10-15). **NOT deployed**; deploy with explicit approval, then re-export and confirm
         a test call speaks it.
       - Schedule risk before the 10/25 cut line: if short on time, cut audio, keep the queue.
+      **STATUS 2026-10-16: C1e code DONE and committed (`f7a5257`, `cec07dd`, UI commit after), 277 API
+      tests, NOT deployed, no live change made.** C1f caller ID `4c8514f`; To do endpoint + pages
+      `a8b8b22`, `4ba0d68`; Applicant detail endpoint + page `404fec8`, `90a63b0`. Checked in a browser against
+      two real VAPI calls (read-only GETs): signed link plays, click on a transcript line seeks.
+      **Live changes still waiting for approval (do in this order, report real-action counts):**
+      1. Server `.env.api` on hermes-vps: add `VAPI_PRIVATE_KEY` (the recording endpoint needs it; the key stays
+         in the API container only). Tradeoff: it is VAPI's full-power private key, there is no read-only key.
+      2. Deploy API + worker together with `scripts/deploy_api_to_vps.ps1` (migrations 007 to 012 run on start;
+         they reach Supabase). Then re-export live config and diff.
+      3. n8n: add a node on the post-call webhook that POSTs the end-of-call report to `http://cdl-api:8000/call-reports`
+         with the X-API-Key header (same as "Save to Database API"). Do NOT redeploy the generated modular suite.
+      4. VAPI: the recording notice in `config/vapi/desired.json` firstMessages (committed, not deployed).
+      5. Create the demo + admin users with a script (passwords never in chat/git), then one real phone call:
+         check the call row, summary, transcript, audio, and that `message.call.customer.number` arrives.
+      Assumptions to verify on that first real call: the report webhook carries `analysis.summary`,
+      `artifact.messages` and `artifact.recordingUrl` (the code also accepts the older top-level fields).
+      Not built yet: All calls page; Zoho "Open in Zoho" link (no org URL known); worker note does not yet
+      include `callback_phone`; Caddy/DNS (C3); rate limit and nightly reset (C4).
       **Teaching style for this owner (in CLAUDE.md):** plain words + the real term, one small
       chunk then one check question, glossary entry per new term.
       **Uncommitted docs:** CLAUDE.md, glossary.md, learning README, interview-story.md, this file.
