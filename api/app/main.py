@@ -13,6 +13,7 @@ from app.db import connect_with_retry
 from app.follow_up import router as follow_up_router
 from app.helpers import classify_temperature, pick_phones
 from app.logs import setup_logging, short
+from app.pages import router as pages_router, static_files
 from app.schemas import IntakeRequest
 from app.todo import router as todo_router
 
@@ -25,6 +26,8 @@ app.include_router(dashboard_router)
 app.include_router(corrections_router)
 app.include_router(follow_up_router)
 app.include_router(todo_router)
+app.include_router(pages_router)
+app.mount("/static", static_files, name="static")
 
 if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")

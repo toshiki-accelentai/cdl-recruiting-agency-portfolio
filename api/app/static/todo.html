@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>To do | Frontline CDL</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">Frontline CDL <span class="brand-sub">Recruiter desk</span></a>
+      <div class="who">
+        <span class="mono" id="who"></span>
+        <button class="btn btn-ghost" id="signout" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <div class="page-head">
+      <div>
+        <h1>To do</h1>
+        <p class="page-sub" id="today"></p>
+      </div>
+      <p class="updated" id="updated" aria-live="polite"></p>
+    </div>
+
+    <div id="error-slot"></div>
+
+    <section aria-label="Today at a glance">
+      <div class="summary" id="summary">
+        <div class="stat"><div class="stat-num" data-stat="calls_today">0</div><div class="stat-label">Calls today</div></div>
+        <div class="stat"><div class="stat-num" data-stat="hot_waiting">0</div><div class="stat-label">Hot, waiting</div></div>
+        <div class="stat"><div class="stat-num" data-stat="to_call">0</div><div class="stat-label">To call back</div></div>
+        <div class="stat" id="stat-sync"><div class="stat-num" data-stat="sync_problems">0</div><div class="stat-label">Zoho sync problems</div></div>
+      </div>
+    </section>
+
+    <section class="section" id="attention-section" aria-labelledby="attention-title" hidden>
+      <div class="section-head">
+        <h2 id="attention-title">Needs attention</h2>
+        <span class="count" id="attention-count"></span>
+        <span class="section-note">Fix these first, they can lose a lead</span>
+      </div>
+      <div class="panel"><ul class="rows" id="attention-list"></ul></div>
+    </section>
+
+    <section class="section" aria-labelledby="callback-title">
+      <div class="section-head">
+        <h2 id="callback-title">Call back</h2>
+        <span class="count" id="callback-count"></span>
+        <span class="section-note">Hottest first, then earliest callback time</span>
+      </div>
+      <div class="panel"><ul class="rows" id="callback-list" aria-busy="true"></ul></div>
+    </section>
+  </main>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <script src="/static/todo.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in | Frontline CDL</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="auth">
+    <header><span class="brand">Frontline CDL <span class="brand-sub">Recruiter desk</span></span></header>
+
+    <main class="auth-main" id="main">
+      <div class="auth-card">
+        <h1>Sign in</h1>
+        <p class="auth-lede">Review new applicants, fix what the phone missed, and call back in order.</p>
+
+        <form class="form" id="login-form" novalidate>
+          <div class="field">
+            <label for="username">Username</label>
+            <input class="input" id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+              <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+              <button class="btn btn-ghost reveal" id="reveal" type="button" aria-controls="password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <p class="form-error" id="form-error" role="alert"></p>
+          <button class="btn btn-primary" id="submit" type="submit">Sign in</button>
+        </form>
+      </div>
+    </main>
+
+    <footer class="auth-foot">Demo environment. All applicant data is fictional.</footer>
+  </div>
+  <script src="/static/login.js" defer></script>
+</body>
+</html>
