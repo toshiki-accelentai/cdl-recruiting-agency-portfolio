@@ -14,6 +14,7 @@ from app.follow_up import router as follow_up_router
 from app.helpers import classify_temperature, pick_phones
 from app.logs import setup_logging, short
 from app.schemas import IntakeRequest
+from app.todo import router as todo_router
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(corrections_router)
 app.include_router(follow_up_router)
+app.include_router(todo_router)
 
 if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
