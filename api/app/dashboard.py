@@ -32,6 +32,7 @@ SELECT c.id, c.created_at, c.preferred_callback_at, c.needs_review, c.review_rea
        a.temperature, a.zoho_candidate_id,
        o.status, o.attempts, o.next_attempt_at, o.last_error, o.sent_at,
        a.follow_up_status, a.follow_up_note, a.follow_up_updated_at,
+       c.summary, c.has_recording, c.caller_number,
        (a.follow_up_updated_at IS NOT NULL AND EXISTS (
             SELECT 1 FROM calls newer
             WHERE newer.applicant_id = a.id AND newer.created_at > a.follow_up_updated_at)
@@ -52,13 +53,17 @@ def to_item(row: tuple) -> dict:
     (call_id, created_at, callback_at, needs_review, review_reason, applicant_id, name, phone, city,
      state, zip_code, experience, readiness, temperature, zoho_id,
      sync_status, attempts, next_attempt_at, last_error, sent_at,
-     follow_up_status, follow_up_note, follow_up_updated_at, new_call_since) = row
+     follow_up_status, follow_up_note, follow_up_updated_at, summary, has_recording, caller_number,
+     new_call_since) = row
     return {
         "id": call_id,
         "created_at": created_at,
         "preferred_callback_at": callback_at,
         "needs_review": needs_review,
         "review_reason": review_reason,
+        "summary": summary,  # the transcript is deliberately not here: it is large, and only the detail page needs it
+        "has_recording": has_recording,
+        "caller_number": caller_number,
         "applicant": None if applicant_id is None else {
             "id": applicant_id, "name": name, "phone": phone, "city": city, "state": state,
             "zip_code": zip_code, "experience": experience, "readiness": readiness,

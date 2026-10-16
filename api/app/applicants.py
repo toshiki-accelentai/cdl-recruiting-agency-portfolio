@@ -24,6 +24,8 @@ SELECT a.id, a.name, a.phone_e164, a.callback_phone, a.city, a.state, a.zip_code
 FROM applicants a WHERE a.id = %s
 """
 
+TRANSCRIPTS = "SELECT id, transcript FROM calls WHERE applicant_id = %s"
+
 HISTORY = f"""
 SELECT h.id, h.action, u.username, h.call_id, h.changes, h.created_at
 FROM audit_log h JOIN users u ON u.id = h.user_id
@@ -64,9 +66,11 @@ def get_applicant(applicant_id: int):
         calls = conn.execute(
             SELECT_CALLS + "WHERE c.applicant_id = %s ORDER BY c.created_at DESC, c.id DESC",
             (applicant_id,)).fetchall()
+        transcripts = dict(conn.execute(TRANSCRIPTS, (applicant_id,)).fetchall())
         history = conn.execute(HISTORY, (applicant_id,)).fetchall()
     return {
         "applicant": to_applicant(row),
-        "calls": [without_applicant(to_item(r)) for r in calls],
+        "calls": [{**without_applicant(item), "transcript": transcripts.get(item["id"])}
+                  for item in (to_item(r) for r in calls)],
         "history": [to_history_item(r) for r in history],
     }

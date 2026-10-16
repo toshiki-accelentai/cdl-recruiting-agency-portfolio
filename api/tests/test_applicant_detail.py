@@ -93,3 +93,41 @@ def test_history_lists_follow_up_changes_and_corrections_newest_first(web):
 def test_history_is_empty_for_an_untouched_applicant(web):
     add_call(phone="+12145550167")
     assert web.get(f"/api/applicants/{applicant_id('+12145550167')}").json()["history"] == []
+
+
+# --- C1e: what the end-of-call report added ---------------------------------------------------
+
+LINES = [{"speaker": "agent", "text": "Thanks for calling.", "start": 0.4},
+         {"speaker": "driver", "text": "Hi there.", "start": 6.2}]
+
+
+def add_report(call_id, summary="Wants regional work.", has_recording=True, caller="+14155550123"):
+    import json
+    with psycopg.connect(TEST_URL, autocommit=True) as conn:
+        conn.execute("UPDATE calls SET summary = %s, transcript = %s::jsonb, has_recording = %s, "
+                     "caller_number = %s, report_received_at = now() WHERE id = %s",
+                     (summary, json.dumps(LINES), has_recording, caller, call_id))
+
+
+def test_detail_calls_carry_summary_transcript_and_recording_flag(web):
+    with_report = add_call(phone="+12145550167", minutes_ago=5)
+    without = add_call(phone="+12145550167", minutes_ago=500)
+    add_report(with_report)
+    calls = web.get(f"/api/applicants/{applicant_id('+12145550167')}").json()["calls"]
+    assert calls[0]["id"] == with_report
+    assert calls[0]["summary"] == "Wants regional work." and calls[0]["transcript"] == LINES
+    assert calls[0]["has_recording"] is True and calls[0]["caller_number"] == "+14155550123"
+    assert calls[1]["id"] == without
+    assert calls[1]["summary"] is None and calls[1]["transcript"] is None and calls[1]["has_recording"] is False
+
+
+def test_list_and_todo_rows_carry_the_summary_but_never_the_transcript(web):
+    call_id = add_call(name="Unknown", phone=None, needs_review=True, review_reason="no_intake")
+    add_report(call_id)
+    listed = web.get("/api/calls").json()["items"][0]
+    attention = web.get("/api/todo").json()["attention"][0]
+    detail = web.get(f"/api/calls/{call_id}").json()
+    for item in (listed, attention, detail):
+        assert item["summary"] == "Wants regional work." and item["has_recording"] is True
+        assert item["caller_number"] == "+14155550123"
+        assert "transcript" not in item
