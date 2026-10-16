@@ -20,3 +20,8 @@ def session_cookie_secure() -> bool:
 def api_shared_secret() -> str:
     """The key n8n must send in X-API-Key. Empty string = not configured."""
     return os.environ.get("API_SHARED_SECRET", "")
+
+
+def vapi_private_key() -> str:
+    """Lets the API ask VAPI for a signed recording link. Empty string = not configured."""
+    return os.environ.get("VAPI_PRIVATE_KEY", "")

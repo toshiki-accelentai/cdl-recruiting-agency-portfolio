@@ -76,3 +76,32 @@ def parse_experience_years(value: str) -> float:
         return _clean((float(year_range.group(1)) + float(year_range.group(2))) / 2)
     years = re.search(_NUM + r"\s*\+?\s*years?", text)
     return _clean(float(years.group(1))) if years else 0
+
+
+MAX_TRANSCRIPT_LINES = 500
+MAX_LINE_LENGTH = 2000
+SPEAKERS = {"bot": "agent", "assistant": "agent", "user": "driver"}
+TEXT_LINE = re.compile(r"^\s*(AI|User)\s*:\s*(.+?)\s*$")
+
+
+def build_transcript(messages, text) -> list[dict]:
+    """Spoken lines only, as [{speaker, text, start}]. Falls back to VAPI's plain-text transcript."""
+    lines = []
+    for message in messages if isinstance(messages, list) else []:
+        if not isinstance(message, dict):
+            continue
+        speaker = SPEAKERS.get(message.get("role"))
+        spoken = message.get("message")
+        spoken = spoken.strip() if isinstance(spoken, str) else ""
+        if not speaker or not spoken:
+            continue
+        start = message.get("secondsFromStart")
+        start = round(float(start), 1) if isinstance(start, (int, float)) and not isinstance(start, bool) else None
+        lines.append({"speaker": speaker, "text": spoken[:MAX_LINE_LENGTH], "start": start})
+    if not lines and isinstance(text, str):
+        for raw in text.splitlines():
+            found = TEXT_LINE.match(raw)
+            if found:
+                lines.append({"speaker": "agent" if found.group(1) == "AI" else "driver",
+                              "text": found.group(2)[:MAX_LINE_LENGTH], "start": None})
+    return lines[:MAX_TRANSCRIPT_LINES]

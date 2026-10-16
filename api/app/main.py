@@ -1,12 +1,13 @@
-import hmac
 import logging
 
 import psycopg
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Depends, FastAPI, Response
 from psycopg.types.json import Jsonb
 
+from app.api_key import require_api_key
 from app.applicants import router as applicants_router
 from app.auth import router as auth_router
+from app.call_reports import router as call_reports_router
 from app.config import api_shared_secret, database_url
 from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
@@ -28,22 +29,12 @@ app.include_router(corrections_router)
 app.include_router(follow_up_router)
 app.include_router(todo_router)
 app.include_router(applicants_router)
+app.include_router(call_reports_router)
 app.include_router(pages_router)
 app.mount("/static", static_files, name="static")
 
 if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
-
-
-def require_api_key(x_api_key: str = Header(default="")) -> None:
-    """Only n8n (which knows the shared secret) may save calls. Never open by default."""
-    secret = api_shared_secret()
-    if not secret:
-        raise HTTPException(status_code=503, detail="api key not configured")
-    # compare_digest takes the same time however many leading characters match
-    if not hmac.compare_digest(x_api_key.encode(), secret.encode()):
-        logger.warning("rejected request: missing or wrong X-API-Key")
-        raise HTTPException(status_code=401, detail="invalid api key")
 
 
 UPSERT_APPLICANT = """
@@ -93,9 +84,21 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             (vapi_call_id, applicant_id, args.preferredCallbackTime, Jsonb(payload),
              bool(reasons), ",".join(reasons) or None),
         ).fetchone()
-        if row is None:  # call id already stored: undo the applicant upsert too
-            duplicate = True
-            raise psycopg.Rollback()
+        if row is None:
+            # Either a replay (change nothing), or the end-of-call report got here first and made a
+            # "no_intake" placeholder: then this intake completes that call instead of being dropped.
+            placeholder = conn.execute(
+                "SELECT id FROM calls WHERE vapi_call_id = %s AND applicant_id IS NULL "
+                "AND review_reason = 'no_intake' FOR UPDATE", (vapi_call_id,)).fetchone()
+            if placeholder is None:  # a real replay: undo the applicant upsert too
+                duplicate = True
+                raise psycopg.Rollback()
+            conn.execute(
+                "UPDATE calls SET applicant_id = %s, preferred_callback_at = %s, raw_payload = %s, "
+                "needs_review = %s, review_reason = %s WHERE id = %s",
+                (applicant_id, args.preferredCallbackTime, Jsonb(payload), bool(reasons),
+                 ",".join(reasons) or None, placeholder[0]))
+            row = placeholder
         call_id = row[0]
         if applicant_id is not None:  # nothing to sync for a call with no usable phone
             conn.execute(INSERT_OUTBOX, (call_id, applicant_id))
