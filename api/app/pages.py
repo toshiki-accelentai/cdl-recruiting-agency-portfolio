@@ -34,6 +34,13 @@ def todo_page(request: Request):
     return FileResponse(STATIC_DIR / "todo.html", headers=NO_STORE)
 
 
+@router.get("/applicants/{applicant_id:int}", include_in_schema=False)  # ":int" so "abc" is a plain 404
+def applicant_page(applicant_id: int, request: Request):
+    if not logged_in(request):
+        return RedirectResponse("/login", status_code=303, headers=NO_STORE)
+    return FileResponse(STATIC_DIR / "applicant.html", headers=NO_STORE)
+
+
 @router.get("/login", include_in_schema=False)
 def login_page(request: Request):
     if logged_in(request):

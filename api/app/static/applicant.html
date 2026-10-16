@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Applicant | Frontline CDL</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">Frontline CDL <span class="brand-sub">Recruiter desk</span></a>
+      <div class="who">
+        <span class="mono" id="who"></span>
+        <button class="btn btn-ghost" id="signout" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" id="main">
+    <nav class="crumb" aria-label="Breadcrumb"><a href="/">To do</a> / <span id="crumb-name">Applicant</span></nav>
+    <div id="error-slot"></div>
+    <div id="content" aria-busy="true"></div>
+  </main>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <script src="/static/common.js" defer></script>
+  <script src="/static/applicant.js" defer></script>
+</body>
+</html>
