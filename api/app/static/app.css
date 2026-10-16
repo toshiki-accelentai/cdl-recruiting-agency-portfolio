@@ -258,6 +258,34 @@ h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
   .btn-sm { min-height: 44px; }
 }
 
+/* Call summary, recording player and transcript */
+.call-summary { margin-top: 10px; color: var(--ink); font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; }
+.disclose { margin-top: 12px; }
+.listen { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.player { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
+.player .btn { min-width: 72px; }
+.range { width: 100%; accent-color: var(--accent); height: 28px; cursor: pointer; }
+.clock { color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.player-note { color: var(--ink-3); font-size: 14px; margin-top: 8px; }
+.player-error { color: var(--danger-text); font-size: 14px; margin-top: 8px; }
+.transcript { list-style: none; margin: 12px 0 0; padding: 0; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+.tline { display: grid; grid-template-columns: 44px 56px minmax(0, 1fr); gap: 10px; width: 100%; text-align: left; padding: 8px 12px; border: 0; background: transparent; font-size: 14px; line-height: 1.5; cursor: pointer; }
+.tline[disabled] { cursor: default; }
+.tline:hover:not([disabled]) { background: var(--surface-2); }
+.tline.is-now { background: var(--accent-tint); }
+.tline .t { color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; padding-top: 2px; }
+.tline .who { color: var(--ink-3); font-weight: 500; }
+.tline .said { overflow-wrap: anywhere; }
+.attn-audio { display: block; width: 100%; max-width: 420px; margin-top: 10px; height: 40px; }
+.attn-summary { color: var(--ink-2); font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .player { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .player .clock { grid-column: 2 / 4; grid-row: 2; }
+  .tline { grid-template-columns: 40px minmax(0, 1fr); }
+  .tline .who { display: none; }
+}
+
 /* Login */
 .auth { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; padding: 28px 24px; max-width: 1080px; margin: 0 auto; }
 .auth-main { display: flex; align-items: center; }

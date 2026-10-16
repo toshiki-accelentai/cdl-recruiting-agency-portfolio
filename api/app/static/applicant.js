@@ -19,6 +19,7 @@
   var REVIEW_REASON = {
     invalid_phone: "The phone number couldn't be used.",
     missing_name: "The caller never gave a name.",
+    no_intake: "The call ended before the agent saved any details.",
   };
   var FIELD_LABEL = {
     name: "name", phone: "phone", city: "city", state: "state", zip_code: "ZIP code",
@@ -127,6 +128,119 @@
     return spec ? el("span", { cls: spec[0], text: spec[1] }) : null;
   }
 
+  // ---- recording player and transcript ----------------------------------------------------
+
+  function mmss(seconds) {
+    var total = Math.max(0, Math.floor(seconds || 0));
+    return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
+  }
+
+  function transcriptList(lines, audio) {
+    var list = el("ul", { cls: "transcript", attrs: { "aria-label": "Transcript" } });
+    var buttons = [];
+    lines.forEach(function (line) {
+      var seekable = audio && line.start != null;
+      var button = el("button", { cls: "tline", attrs: { type: "button" } },
+        el("span", { cls: "t", text: line.start != null ? mmss(line.start) : "" }),
+        el("span", { cls: "who", text: line.speaker === "agent" ? "Agent" : "Driver" }),
+        el("span", { cls: "said", text: line.text }));
+      if (seekable) {
+        button.addEventListener("click", function () { audio.currentTime = line.start; audio.play(); });
+      } else {
+        button.disabled = true;
+      }
+      buttons.push({ line: line, button: button });
+      list.appendChild(el("li", {}, button));
+    });
+    list.highlight = function (now) {
+      var current = null;
+      buttons.forEach(function (entry) {
+        if (entry.line.start != null && entry.line.start <= now) current = entry;
+        entry.button.classList.remove("is-now");
+      });
+      if (current) current.button.classList.add("is-now");
+    };
+    return list;
+  }
+
+  function playerBlock(call) {
+    var box = el("div", { cls: "listen" });
+    var audio = null;
+    var lines = Array.isArray(call.transcript) ? call.transcript : [];
+
+    if (call.has_recording) {
+      var src = "/api/calls/" + call.id + "/recording";
+      audio = el("audio", { attrs: { preload: "metadata", src: src } });
+      var playButton = el("button", { cls: "btn btn-sm", text: "Play", attrs: { type: "button" } });
+      var seek = el("input", { cls: "range", attrs: { type: "range", min: "0", max: "0", step: "0.1", value: "0", "aria-label": "Seek" } });
+      var clock = el("span", { cls: "clock", text: "0:00 / 0:00" });
+      var speed = el("button", { cls: "btn btn-sm", text: "1x", attrs: { type: "button", "aria-label": "Playback speed" } });
+      var problem = el("p", { cls: "player-error", attrs: { role: "alert" } });
+      var retried = false;
+
+      function paint() {
+        var length = isFinite(audio.duration) ? audio.duration : 0;
+        seek.max = String(length);
+        seek.value = String(audio.currentTime);
+        clock.textContent = mmss(audio.currentTime) + " / " + mmss(length);
+        if (list) list.highlight(audio.currentTime);
+      }
+
+      playButton.addEventListener("click", function () { if (audio.paused) audio.play(); else audio.pause(); });
+      audio.addEventListener("play", function () { playButton.textContent = "Pause"; });
+      audio.addEventListener("pause", function () { playButton.textContent = "Play"; });
+      audio.addEventListener("timeupdate", paint);
+      audio.addEventListener("loadedmetadata", paint);
+      seek.addEventListener("input", function () { audio.currentTime = Number(seek.value); });
+      speed.addEventListener("click", function () {
+        var next = audio.playbackRate === 1 ? 1.5 : audio.playbackRate === 1.5 ? 2 : 1;
+        audio.playbackRate = next;
+        speed.textContent = next + "x";
+      });
+      audio.addEventListener("error", function () {
+        if (!retried) { // the signed link lasts 30 minutes: ask for a fresh one once
+          retried = true;
+          audio.src = src + "?retry=" + Date.now();
+          return;
+        }
+        problem.textContent = "Couldn't load the recording. Try again in a minute.";
+      });
+
+      box.appendChild(audio);
+      box.appendChild(el("div", { cls: "player" }, playButton, seek, clock, speed));
+      box.appendChild(problem);
+    }
+
+    var list = lines.length ? transcriptList(lines, audio) : null;
+    if (list) box.appendChild(list);
+    if (!audio && !list) box.appendChild(el("p", { cls: "player-note", text: "No recording or transcript for this call." }));
+    return box;
+  }
+
+  function disclosure(call) {
+    var hasMedia = call.has_recording || (Array.isArray(call.transcript) && call.transcript.length);
+    if (!hasMedia) return null;
+    var wrap = el("div", { cls: "disclose" });
+    var label = call.has_recording ? "Listen and read transcript" : "Read transcript";
+    var toggle = el("button", { cls: "btn btn-sm", text: label, attrs: { type: "button", "aria-expanded": "false" } });
+    var body = null;
+    toggle.addEventListener("click", function () {
+      if (!body) { // built on first open, so a page full of calls does not load every recording
+        body = playerBlock(call);
+        wrap.appendChild(body);
+        toggle.textContent = "Hide";
+        toggle.setAttribute("aria-expanded", "true");
+        return;
+      }
+      var hidden = !body.hidden;
+      body.hidden = hidden;
+      toggle.textContent = hidden ? label : "Hide";
+      toggle.setAttribute("aria-expanded", String(!hidden));
+    });
+    wrap.appendChild(toggle);
+    return wrap;
+  }
+
   function callRow(call) {
     var chips = el("div", { cls: "call-chips" });
     if (call.needs_review) chips.appendChild(el("span", { cls: "chip chip-warn", text: "Needs review" }));
@@ -142,11 +256,14 @@
     if (call.needs_review) {
       row.appendChild(el("p", { cls: "call-line", text: REVIEW_REASON[call.review_reason] || "A recruiter should check this call." }));
     }
+    if (call.summary) row.appendChild(el("p", { cls: "call-summary", text: call.summary }));
     if (call.sync && call.sync.status === "failed") {
       var detail = "Saved here, not in Zoho yet. " + call.sync.attempts + (call.sync.attempts === 1 ? " try." : " tries.");
       if (call.sync.last_error) detail += " " + clip(call.sync.last_error, 140);
       row.appendChild(el("p", { cls: "call-line", text: detail }));
     }
+    var media = disclosure(call);
+    if (media) row.appendChild(media);
     return row;
   }
 

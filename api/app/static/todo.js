@@ -11,6 +11,7 @@
   var REVIEW_REASON = {
     invalid_phone: "The phone number couldn't be used, so no applicant was created.",
     missing_name: "The caller never gave a name.",
+    no_intake: "The call ended before the agent saved any details.",
   };
   var state = { data: null, timer: null, busy: Object.create(null) };
 
@@ -32,7 +33,8 @@
       ? el("a", { cls: "attn-name name-link", text: who, attrs: { href: "/applicants/" + call.applicant.id } })
       : el("span", { cls: "attn-name", text: who });
     var body = el("div", {}, el("div", {}, nameNode));
-    if (call.applicant && call.applicant.phone) body.appendChild(phoneLink(call.applicant.phone));
+    var phone = (call.applicant && call.applicant.phone) || call.caller_number;
+    if (phone) body.appendChild(phoneLink(phone));
 
     if (failed) {
       var tries = call.sync.attempts + (call.sync.attempts === 1 ? " try" : " tries");
@@ -42,6 +44,13 @@
       body.appendChild(el("p", { cls: "attn-hint", text: "Until it syncs, add this person in Zoho by hand with the same phone number." }));
     } else {
       body.appendChild(el("p", { cls: "attn-detail", text: REVIEW_REASON[call.review_reason] || "A recruiter should check this call." }));
+    }
+
+    if (!(call.applicant && call.applicant.id)) {
+      if (call.summary) body.appendChild(el("p", { cls: "attn-summary", text: clip(call.summary, 280) }));
+      if (call.has_recording) {
+        body.appendChild(el("audio", { cls: "attn-audio", attrs: { controls: "", preload: "none", src: "/api/calls/" + call.id + "/recording", "aria-label": "Call recording" } }));
+      }
     }
 
     var when = el("span", { cls: "attn-when", text: agoText(call.created_at), attrs: { title: whenText(call.created_at) } });
