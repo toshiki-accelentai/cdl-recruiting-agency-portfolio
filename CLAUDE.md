@@ -88,15 +88,13 @@ ask for a one-line prediction before implementing, let the owner write state-che
 first, and end by prompting a 3-line entry in `docs/learning/interview-story.md`
 (the owner writes it; Claude only fact-checks).
 
-## Learning While Finishing the Project
+## Learning and verification
 
-- Keep the current delivery priority. Do not pause dashboard work to reverse-engineer the entire repository or require line-by-line mastery first.
-- The owner decides the user outcome, business rules, constraints, and acceptance criteria. Claude may propose designs and implement bounded changes.
-- Follow the existing learning routine. For a meaningful feature, ask for one useful prediction before implementation; do not add repeated quizzes or turn every small coding task into a lesson.
-- After each meaningful change, briefly explain what changed, why, the main code path (with file and line references), and how it was verified. State what the owner decided and what Claude generated; never imply the owner authored AI-generated code.
-- When debugging as a learning exercise, show the expected and observed behavior and point to the relevant test or code. Invite the owner's hypothesis before giving a hint when practical. If the owner asks for a direct fix, make the fix and explain it briefly afterward.
-- Build interview readiness by helping the owner explain and verify a few critical paths: deterministic booking or temperature rules, API-to-database-to-CRM handling, and a recruiter dashboard flow. Do not require memorizing every line or dependency.
-- Keep interview notes factual: distinguish the original workflow and its real results from the portfolio rebuild, and distinguish owner decisions from AI implementation.
+- Do not ask me to judge technical correctness by reading code alone. Help me define the desired user outcome in plain language.
+- For each significant change, recommend an approach and explain the expected behavior, important failure cases, and reasons for the choice.
+- After implementation, report the expected result, the observed result from tests and the actual UI/API/database/integration, and what remains unverified. A passing AI-written test alone is not enough.
+- For public access, authentication, data writes, and external integrations, check relevant primary documentation and recommend independent review when important uncertainty remains.
+- Teach one small concept from the real code at a time. Invite a short prediction, then show the evidence. Keep the current dashboard moving; reserve deeper study for a few critical paths.
 
 ## How to talk to the owner (plain words, real vocabulary)
 
