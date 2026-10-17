@@ -316,7 +316,15 @@ diagnose). Order is strict: A → B → C → apply.
       tests, NOT deployed, no live change made.** C1f caller ID `4c8514f`; To do endpoint + pages
       `a8b8b22`, `4ba0d68`; Applicant detail endpoint + page `404fec8`, `90a63b0`. Checked in a browser against
       two real VAPI calls (read-only GETs): signed link plays, click on a transcript line seeks.
-      **Live changes still waiting for approval (do in this order, report real-action counts):**
+      **DEPLOYED 2026-10-16 17:59 Vancouver (approved by the owner): API + worker on hermes-vps, migrations 007 to
+      012 applied to Supabase (checked read-only: 7 applicants, 7 calls, 7 outbox rows unchanged; `users` and
+      `audit_log` exist and are empty).** Real actions: 1 deploy script run (about 8 SSH sessions, 3 scp, 2 container
+      rebuilds), 6 migrations, 0 phone calls, 0 Zoho writes. Checked from inside the container: 11 of 11 (key auth
+      401/401/422, login 401 for an unknown user, pages 200, dashboard endpoints 401 without a login). Rollback copies:
+      `compose.yaml.before-20261016-175927`, `src.before-20261016-175927` in /opt/cdl-api. `.env.api` on the server now
+      has API_SHARED_SECRET, SESSION_SECRET, VAPI_PRIVATE_KEY. The deploy script's last check had a PowerShell BOM bug,
+      fixed (cmd /c type). The dashboard is NOT reachable from outside yet (no published port: C3), and there are 0 users.
+      **Still waiting for approval (steps 1 and 2 below are done):**
       1. Server `.env.api` on hermes-vps: add `VAPI_PRIVATE_KEY` (the recording endpoint needs it; the key stays
          in the API container only). Tradeoff: it is VAPI's full-power private key, there is no read-only key.
       2. Deploy API + worker together with `scripts/deploy_api_to_vps.ps1` (migrations 007 to 012 run on start;

@@ -43,6 +43,8 @@ Start-Sleep -Seconds 25
 
 Write-Host "6/6 checks"
 Run-Remote "cd $dir && sudo -n docker compose ps --format '{{.Name}} {{.Status}}'"
-Get-Content scripts\check_api_key_on_server.py | ssh -i $key $remote "sudo -n docker exec -i cdl-api-cdl-api-1 python -"
+# cmd.exe pipes the raw bytes. PowerShell 5.1 would put a BOM in front of the script, and python rejects it.
+$checkCmd = "ssh -i `"$key`" $remote `"sudo -n docker exec -i cdl-api-cdl-api-1 python -`""
+cmd /c "type scripts\check_api_key_on_server.py | $checkCmd"
 Run-Remote "cd $dir && sudo -n docker compose logs --tail 6 cdl-api worker 2>&1 | cut -c1-200"
 Write-Host "Done. Rollback if needed: copy compose.yaml.before-$stamp back and src.before-$stamp to src, then docker compose up -d --build."
