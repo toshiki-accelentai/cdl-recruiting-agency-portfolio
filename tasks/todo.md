@@ -324,7 +324,10 @@ diagnose). Order is strict: A → B → C → apply.
       3. n8n: add a node on the post-call webhook that POSTs the end-of-call report to `http://cdl-api:8000/call-reports`
          with the X-API-Key header (same as "Save to Database API"). Do NOT redeploy the generated modular suite.
       4. VAPI: the recording notice in `config/vapi/desired.json` firstMessages (committed, not deployed).
-      5. Create the demo + admin users with a script (passwords never in chat/git), then one real phone call:
+      5. Create the logins with `api/app/users_cli.py` (written, tested; passwords go to an owner-only `*.password` file,
+         never printed, git-ignored). After step 2 (migration 007 creates the `users` table), from the repo root:
+         `cd api; .venv\Scripts\python.exe -m app.users_cli create demo recruiter --write-password-to ..\demo.password --env-file deploy\.env.supabase`
+         and the same with `owner admin`. `rotate` and `list` exist too. This is a LIVE write to Supabase: ask first. Then one real phone call:
          check the call row, summary, transcript, audio, and that `message.call.customer.number` arrives.
       Assumptions to verify on that first real call: the report webhook carries `analysis.summary`,
       `artifact.messages` and `artifact.recordingUrl` (the code also accepts the older top-level fields).

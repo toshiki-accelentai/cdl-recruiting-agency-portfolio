@@ -9,3 +9,6 @@ __pycache__/
 
 # local audit dumps (contain live secrets)
 .audit/
+
+# Passwords written by `python -m app.users_cli` (never commit)
+*.password
