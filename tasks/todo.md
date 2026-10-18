@@ -324,6 +324,13 @@ diagnose). Order is strict: A → B → C → apply.
       `compose.yaml.before-20261016-175927`, `src.before-20261016-175927` in /opt/cdl-api. `.env.api` on the server now
       has API_SHARED_SECRET, SESSION_SECRET, VAPI_PRIVATE_KEY. The deploy script's last check had a PowerShell BOM bug,
       fixed (cmd /c type). The dashboard is NOT reachable from outside yet (no published port: C3), and there are 0 users.
+      **LOGINS CREATED 2026-10-17 (approved):** `demo` (recruiter) and `owner` (admin) in Supabase via `users_cli`; the
+      passwords are in `C:\Users\gdeta\cdl-passwords\` (outside the repo; move owner's into a password manager, then delete
+      the file). Checked inside the server container: both log in (200), `/api/me` and `/api/todo` work with the session
+      (200, 7 rows to call back from the 7 test applicants), a wrong password gives 401. Real actions: 2 inserts into
+      `users`, 2 ssh sessions, 0 calls, 0 Zoho writes. NOT verified: a real browser against the live server (needs C3),
+      HTTPS and the Secure cookie, audio playback of a real recording on the server, the n8n to /call-reports hop.
+      Auth is going public in C3: get an independent review of login, cookie and rate-limit settings before DNS goes live.
       **Still waiting for approval (steps 1 and 2 below are done):**
       1. Server `.env.api` on hermes-vps: add `VAPI_PRIVATE_KEY` (the recording endpoint needs it; the key stays
          in the API container only). Tradeoff: it is VAPI's full-power private key, there is no read-only key.
