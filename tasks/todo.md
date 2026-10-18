@@ -351,6 +351,10 @@ diagnose). Order is strict: A → B → C → apply.
       **Teaching style for this owner (in CLAUDE.md):** plain words + the real term, one small
       chunk then one check question, glossary entry per new term.
       **Uncommitted docs:** CLAUDE.md, glossary.md, learning README, interview-story.md, this file.
+      **C3 PLAN written 2026-10-17, NOT executed: `docs/C3-PLAN.md`.** Caddy already runs (`n8n-caddy-1`, same network as
+      `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
+      order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
+      by fictional seed data before the link goes on a resume.
 - [ ] **Apply.**
 - [ ] **Interview-prep code review (last item, after publish and first applications; added
       2026-10-13).** One or more sessions to read and understand the finished portfolio code
