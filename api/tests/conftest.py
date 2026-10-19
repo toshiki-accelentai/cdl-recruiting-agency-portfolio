@@ -30,6 +30,13 @@ def test_database():
     migrate(TEST_URL)
 
 
+@pytest.fixture(autouse=True)
+def fresh_login_throttle():
+    """The login limit lives in memory; every test starts with a clean slate."""
+    from app import throttle
+    throttle.login_throttle.reset()
+
+
 @pytest.fixture
 def clean_tables(test_database):
     with psycopg.connect(TEST_URL) as conn:

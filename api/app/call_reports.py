@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from psycopg.types.json import Jsonb
 
 from app import recordings
-from app.api_key import require_api_key
+from app.api_key import require_api_key, require_internal_caller
 from app.auth import current_user
 from app.config import database_url
 from app.db import connect_with_retry
@@ -82,7 +82,7 @@ def _summary(message: ReportMessage) -> str | None:
     return text[:MAX_SUMMARY_LENGTH] or None
 
 
-@router.post("/call-reports", dependencies=[Depends(require_api_key)])
+@router.post("/call-reports", dependencies=[Depends(require_internal_caller), Depends(require_api_key)])
 def post_call_report(req: ReportRequest, response: Response):
     message = req.message
     if message.type != REPORT_TYPE:

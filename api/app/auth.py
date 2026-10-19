@@ -14,6 +14,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from app.config import database_url, session_cookie_secure, session_secret
 from app.db import connect_with_retry
+from app.throttle import client_ip, login_throttle
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +93,21 @@ def require_role(*roles: str):
 
 
 @router.post("/login")
-def login(response: Response, username: Annotated[str, Form()], password: Annotated[str, Form()]):
+def login(request: Request, response: Response, username: Annotated[str, Form()], password: Annotated[str, Form()]):
     serializer = _serializer()  # 503 before touching the database if no secret is configured
+    address = client_ip(request)
+    wait = login_throttle.blocked_for(address, username)
+    if wait:  # checked before the password, so a blocked guesser also costs us no password hashing
+        logger.warning("login throttled")
+        raise HTTPException(status_code=429, detail="too many sign-in attempts, try again later",
+                            headers={"Retry-After": str(wait)})
     with connect_with_retry(database_url()) as conn:
         user = check_password(conn, username, password)
     if user is None:
+        login_throttle.record_failure(address, username)
         logger.warning("login failed")  # never log the username or password typed
         raise HTTPException(status_code=401, detail="invalid username or password")
+    login_throttle.record_success(address, username)
     token = serializer.dumps({"u": user["id"], "v": user["session_version"]})
     response.set_cookie(COOKIE_NAME, token, max_age=SESSION_MAX_AGE_SECONDS, httponly=True,
                         samesite="lax", secure=session_cookie_secure())

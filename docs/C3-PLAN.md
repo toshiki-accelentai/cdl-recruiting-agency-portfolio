@@ -1,6 +1,9 @@
 # C3 plan: publish the dashboard (Caddy + DNS), close `/docs`
 
-Status 2026-10-17: PLAN ONLY. Nothing below has been run. Every live step needs the owner's approval first.
+Status 2026-10-19: step 1 (code) is DONE and committed, NOT deployed. Steps 2 to 7 have not been run. Every live step
+needs the owner's approval first. Step 1 evidence: 322 API tests, five deliberate breakages each caught, and a check in
+a real browser (the sign-in page shows the 429 message on the 6th wrong try; `/docs`, `/redoc`, `/openapi.json` are 404;
+`/healthz` is 200; `/calls` and `/call-reports` are 404 when a proxy header is present).
 
 ## Outcome in plain words
 

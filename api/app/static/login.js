@@ -45,6 +45,9 @@
       if (response.status === 401) {
         showError("That username or password isn't right. Try again.", password);
         password.select();
+      } else if (response.status === 429) {
+        var minutes = Math.max(1, Math.ceil(Number(response.headers.get("Retry-After")) / 60));
+        showError("Too many tries. Wait about " + minutes + (minutes === 1 ? " minute" : " minutes") + " and try again.");
       } else {
         showError("Sign in isn't available right now. Try again in a minute.");
       }

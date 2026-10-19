@@ -58,8 +58,8 @@ def test_empty_secret_setting_also_refuses_everything(anonymous, payload, monkey
     assert r.status_code == 503
 
 
-def test_docs_page_stays_open_for_the_docker_healthcheck(anonymous):
-    assert anonymous.get("/docs").status_code == 200
+def test_healthz_stays_open_for_the_docker_healthcheck(anonymous):
+    assert anonymous.get("/healthz").status_code == 200
 
 
 def test_rejected_request_is_logged_without_the_key(anonymous, payload, caplog):

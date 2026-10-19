@@ -2,7 +2,7 @@
 import hmac
 import logging
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 
 from app.config import api_shared_secret
 
@@ -18,3 +18,14 @@ def require_api_key(x_api_key: str = Header(default="")) -> None:
     if not hmac.compare_digest(x_api_key.encode(), secret.encode()):
         logger.warning("rejected request: missing or wrong X-API-Key")
         raise HTTPException(status_code=401, detail="invalid api key")
+
+
+# Caddy adds these to everything it forwards. n8n calls cdl-api directly, so its requests never carry them.
+PROXY_HEADERS = ("x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "forwarded", "x-real-ip")
+
+
+def require_internal_caller(request: Request) -> None:
+    """For endpoints only n8n may call. A request that came through the public proxy gets the same 404 as an
+    unknown path, so an outsider cannot even learn that the endpoint exists."""
+    if any(header in request.headers for header in PROXY_HEADERS):
+        raise HTTPException(status_code=404, detail="Not Found")

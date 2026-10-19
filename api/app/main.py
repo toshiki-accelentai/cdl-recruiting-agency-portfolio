@@ -4,7 +4,7 @@ import psycopg
 from fastapi import Depends, FastAPI, Response
 from psycopg.types.json import Jsonb
 
-from app.api_key import require_api_key
+from app.api_key import require_api_key, require_internal_caller
 from app.applicants import router as applicants_router
 from app.auth import router as auth_router
 from app.call_reports import router as call_reports_router
@@ -22,7 +22,8 @@ from app.todo import router as todo_router
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Frontline CDL intake API")
+# docs_url, redoc_url and openapi_url are off: they list every endpoint, and this API is about to be public.
+app = FastAPI(title="Frontline CDL intake API", docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(corrections_router)
@@ -114,7 +115,13 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             "needs_review": needs_review, "duplicate": duplicate}
 
 
-@app.post("/calls", status_code=201, dependencies=[Depends(require_api_key)])
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    """For the container health check only: the process is up. It must not need the database."""
+    return {"status": "ok"}
+
+
+@app.post("/calls", status_code=201, dependencies=[Depends(require_internal_caller), Depends(require_api_key)])
 def post_calls(req: IntakeRequest, response: Response):
     try:
         with connect_with_retry(database_url()) as conn:
