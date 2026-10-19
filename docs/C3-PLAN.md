@@ -14,9 +14,14 @@ https://cdl-demo.accelentai.com (not advertised, demo password still private).
 - Seen in the log within minutes of going live: 105 requests from 20 addresses, including Let's Encrypt validation and automated
   scanners asking for /.env and similar (all 404). The hostname is discoverable at once (certificate transparency logs), so the
   hardening in step 1 is not optional.
-- NOT verified: the owner signing in in a real browser (the policy header could block something on the To do page), audio
-  playback (no recorded call in the database yet), the n8n to /call-reports hop. Steps 6 and 7 (independent review, C4
-  seed data and nightly reset) are not done. Do not put the link or the demo password on a resume before them.
+- Owner check in a real browser (2026-10-19): sign-in failed once in the owner's normal browser window with "Couldn't reach the
+  server" (the request never reached Caddy; cause not found, an extension or saved state is likely), then worked in a private window
+  or another browser. After sign-in: To do shows 7 people, the detail page opens, no red console errors (so the security policy
+  blocks nothing on those pages). Also seen: Caddy advertises HTTP/3 (`Alt-Svc: h3`) but UDP 443 is closed; browsers fall back, but
+  it is a mismatch (the n8n site has it too). Optional cleanup, needs approval: serve only h1/h2 or open UDP 443.
+- NOT verified: audio playback under the policy (no recorded call in the database yet; `media-src` allows the recording host),
+  the n8n to /call-reports hop. Steps 6 and 7 (independent review, C4 seed data and nightly reset) are not done. Do not put the
+  link or the demo password on a resume before them.
 
 ## Outcome in plain words
 
