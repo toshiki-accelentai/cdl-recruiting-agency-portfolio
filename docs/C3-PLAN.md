@@ -1,9 +1,13 @@
 # C3 plan: publish the dashboard (Caddy + DNS), close `/docs`
 
-Status 2026-10-19: step 1 (code) is DONE and committed, NOT deployed. Steps 2 to 7 have not been run. Every live step
-needs the owner's approval first. Step 1 evidence: 322 API tests, five deliberate breakages each caught, and a check in
-a real browser (the sign-in page shows the 429 message on the 6th wrong try; `/docs`, `/redoc`, `/openapi.json` are 404;
-`/healthz` is 200; `/calls` and `/call-reports` are 404 when a proxy header is present).
+Status 2026-10-19 (evening): steps 1 and 2 are DONE. Step 1 (code) is committed (`bc592c1`). Step 2 (deploy) ran on
+hermes-vps at 16:13 Vancouver, approved by the owner; rollback copies `compose.yaml.before-20261019-161345` and
+`src.before-20261019-161345` are in /opt/cdl-api. Checked inside the live container with
+`scripts/check_public_surface_on_server.py`: 19 of 19 (docs 404, /healthz 200, /calls and /call-reports 404 with a proxy
+header and still 401/422 for n8n, login limit 401 x5 then 429, other address not blocked), both real logins 200, and
+Supabase unchanged (7 applicants, 7 calls, 2 users, no new migration). Real actions: 1 deploy (about 8 SSH sessions, 3
+scp, 2 rebuilds), 0 migrations, 0 phone calls, 0 Zoho writes. Steps 3 to 7 (DNS, Caddy, outside checks, independent
+review, C4 seed data) have not been run and each needs the owner's approval first.
 
 ## Outcome in plain words
 
