@@ -1,13 +1,22 @@
 # C3 plan: publish the dashboard (Caddy + DNS), close `/docs`
 
-Status 2026-10-19 (evening): steps 1 and 2 are DONE. Step 1 (code) is committed (`bc592c1`). Step 2 (deploy) ran on
-hermes-vps at 16:13 Vancouver, approved by the owner; rollback copies `compose.yaml.before-20261019-161345` and
-`src.before-20261019-161345` are in /opt/cdl-api. Checked inside the live container with
-`scripts/check_public_surface_on_server.py`: 19 of 19 (docs 404, /healthz 200, /calls and /call-reports 404 with a proxy
-header and still 401/422 for n8n, login limit 401 x5 then 429, other address not blocked), both real logins 200, and
-Supabase unchanged (7 applicants, 7 calls, 2 users, no new migration). Real actions: 1 deploy (about 8 SSH sessions, 3
-scp, 2 rebuilds), 0 migrations, 0 phone calls, 0 Zoho writes. Steps 3 to 7 (DNS, Caddy, outside checks, independent
-review, C4 seed data) have not been run and each needs the owner's approval first.
+Status 2026-10-19 (night): steps 1 to 5 are DONE except the owner's own browser check. The dashboard is LIVE at
+https://cdl-demo.accelentai.com (not advertised, demo password still private).
+- Step 1 code `bc592c1`; step 2 deploy 16:13 Vancouver (rollback `src.before-20261019-161345`, `compose.yaml.before-20261019-161345`);
+  19 of 19 checks inside the container, both logins 200, Supabase unchanged.
+- Step 3 DNS: the owner added `A cdl-demo -> 62.238.51.45`, DNS only (grey), verified at both Cloudflare nameservers and 1.1.1.1/8.8.8.8.
+- Step 4 Caddy (approved): backup `/opt/n8n/Caddyfile.before-20261019-233253` (250 bytes), site block appended (1171 bytes), `caddy validate`
+  OK, graceful reload OK. Let's Encrypt certificate (TLS 1.3) valid 2026-10-19 to 2027-01-17, renewed automatically by Caddy.
+  Rollback: `cat <backup> | sudo tee /opt/n8n/Caddyfile` then `docker exec n8n-caddy-1 caddy reload --config /etc/caddy/Caddyfile`.
+- Step 5 outside checks from the laptop: 26 of 26 (http redirects to https, security headers, /docs /redoc /openapi.json 404,
+  POST /calls and /call-reports 404, dashboard endpoints 401 without a login, sign-in limit 401 x5 then 429 through Caddy,
+  n8n.accelentai.com still answers). Caddy's log shows cookies as REDACTED and holds no password text.
+- Seen in the log within minutes of going live: 105 requests from 20 addresses, including Let's Encrypt validation and automated
+  scanners asking for /.env and similar (all 404). The hostname is discoverable at once (certificate transparency logs), so the
+  hardening in step 1 is not optional.
+- NOT verified: the owner signing in in a real browser (the policy header could block something on the To do page), audio
+  playback (no recorded call in the database yet), the n8n to /call-reports hop. Steps 6 and 7 (independent review, C4
+  seed data and nightly reset) are not done. Do not put the link or the demo password on a resume before them.
 
 ## Outcome in plain words
 
