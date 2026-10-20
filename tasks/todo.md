@@ -365,7 +365,13 @@ diagnose). Order is strict: A → B → C → apply.
       `calls` row), 0 new rows, 0 outbox rows, 0 Zoho writes, 0 phone calls. Checked read-only afterwards: 7 of 7 calls now have
       summary + transcript + recording flag; row counts unchanged (applicants 7, calls 7, outbox 7, users 2). To undo: set
       `summary`, `transcript`, `caller_number`, `report_received_at` to NULL and `has_recording` to false on those 7 rows.
-      Still missing for NEW calls: n8n does not forward the end-of-call report to `/call-reports` yet.
+      **N8N HOP DONE 2026-10-20 (the owner did the n8n edit by hand, guided):** new node `Save Report to Database API` in the live
+      `CDL 04 - Post-Call Report` (n8n.accelentai.com, id XGMOFG1hROutdkCF): POST `http://cdl-api:8000/call-reports`, Header Auth
+      credential `CDL API key`, body = the VAPI report, 3 tries, 2000 ms wait, 10 s timeout, a side branch off `Acknowledge Post Call`.
+      Gotcha: in this n8n, Save only stores a draft; the owner had to press Publish (the first test call, id 8, missed the hop and
+      has no summary/transcript yet). Verified with a real call (id 9, 23:18 UTC): API log `POST /call-reports 200` from the n8n
+      container, row 9 has summary + transcript + recording flag, outbox sent. Real actions: 2 phone calls (owner), usual test writes
+      to the owner's Zoho/Calendar, 0 Claude writes. Open: call 8 can be backfilled with the same container script.
       **SPEED FIX B + STATIC CACHE built 2026-10-20, committed (now deployed, see above).** The owner still felt it slow and the row removal
       clunky. Cause: after a click nothing moved until the save returned (about 0.4 s), then the row faded but kept its height, then
       the whole list was rebuilt (everything jumped). Now (`api/app/static/todo.js`, `app.css`): the row closes smoothly at once
