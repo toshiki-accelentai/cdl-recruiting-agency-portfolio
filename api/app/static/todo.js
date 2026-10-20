@@ -13,7 +13,12 @@
     missing_name: "The caller never gave a name.",
     no_intake: "The call ended before the agent saved any details.",
   };
-  var state = { data: null, timer: null, busy: Object.create(null) };
+  var ROW_MOTION_MS = 300; // a bit longer than the CSS transition, so the row is removed after it finished
+  // hidden: ids that left the screen on purpose (even if a refresh still lists them for a moment)
+  // inflight: ids with a save running, so a second click cannot start another one
+  // removed: the last row we removed, kept for Undo
+  // version: bumped by every local change; a refresh that started before a change is out of date and is dropped
+  var state = { data: null, sig: "", version: 0, timer: null, hidden: Object.create(null), inflight: Object.create(null), removed: Object.create(null) };
 
   function fact(key, value) {
     if (!value) return null;
@@ -109,29 +114,46 @@
     return el("li", { cls: "empty" }, el("p", { cls: "empty-title", text: title }), el("p", { cls: "empty-body", text: body }));
   }
 
-  function render(data) {
-    var summary = data.summary;
+  function allCaughtUp() {
+    return emptyState("You're all caught up", "New applicants appear here as soon as the agent saves a call.");
+  }
+
+  function visibleCallBack(data) {
+    return data.call_back.filter(function (row) { return !state.hidden[row.applicant.id]; });
+  }
+
+  // What the lists contain. If a refresh brings the same lists, nothing is redrawn (no flicker).
+  function signature(data) { return JSON.stringify([data.attention, data.call_back]); }
+
+  // The numbers follow what is on screen: a row that already left counts as gone.
+  function applyCounts(data) {
+    var rows = visibleCallBack(data);
+    var summary = Object.assign({}, data.summary, {
+      to_call: rows.length,
+      hot_waiting: rows.filter(function (row) { return row.applicant.temperature === "HOT"; }).length,
+    });
     document.querySelectorAll("[data-stat]").forEach(function (node) { node.textContent = String(summary[node.dataset.stat]); });
     $("stat-sync").classList.toggle("is-problem", summary.sync_problems > 0);
+    $("callback-count").textContent = String(rows.length);
+    var total = rows.length + data.attention.length;
+    document.title = (total ? "(" + total + ") " : "") + "To do | Frontline CDL";
+    $("updated").textContent = "Updated " + timeText(new Date());
+  }
 
+  function render(data) {
     var attentionList = $("attention-list");
     attentionList.replaceChildren();
     data.attention.forEach(function (call) { attentionList.appendChild(el("li", {}, attentionRow(call))); });
     $("attention-section").hidden = data.attention.length === 0;
     $("attention-count").textContent = String(data.attention.length);
 
+    var rows = visibleCallBack(data);
     var list = $("callback-list");
     list.replaceChildren();
-    if (data.call_back.length === 0) {
-      list.appendChild(emptyState("You're all caught up", "New applicants appear here as soon as the agent saves a call."));
-    } else {
-      data.call_back.forEach(function (row) { list.appendChild(callBackRow(row)); });
-    }
+    if (rows.length === 0) list.appendChild(allCaughtUp());
+    else rows.forEach(function (row) { list.appendChild(callBackRow(row)); });
     list.setAttribute("aria-busy", "false");
-    $("callback-count").textContent = String(data.call_back.length);
-
-    document.title = (data.call_back.length + data.attention.length ? "(" + (data.call_back.length + data.attention.length) + ") " : "") + "To do | Frontline CDL";
-    $("updated").textContent = "Updated " + timeText(new Date());
+    applyCounts(data);
     $("error-slot").replaceChildren();
   }
 
@@ -149,17 +171,76 @@
     $("callback-list").setAttribute("aria-busy", "false");
   }
 
+  // ---- row motion: a row closes (or opens) smoothly; nothing else on the page is redrawn -----
+
+  function rowFor(id) { return document.querySelector('#callback-list [data-applicant="' + id + '"]'); }
+
+  function removeRow(id) {
+    var li = rowFor(id);
+    if (!li) return;
+    var list = li.parentNode;
+    if (li.contains(document.activeElement)) { // keep the keyboard place: move focus to the next row
+      var neighbour = li.nextElementSibling || li.previousElementSibling;
+      var target = neighbour && neighbour.querySelector("button, a");
+      if (!target) { target = $("callback-title"); target.setAttribute("tabindex", "-1"); }
+      target.focus({ preventScroll: true });
+    }
+    li.querySelectorAll("button, a").forEach(function (node) { node.tabIndex = -1; });
+    li.style.height = li.offsetHeight + "px"; // from a fixed height, so it can animate to 0
+    void li.offsetHeight;
+    li.classList.add("is-leaving");
+    li.style.height = "0px";
+    window.setTimeout(function () {
+      li.remove();
+      if (!list.querySelector(".row")) list.appendChild(allCaughtUp());
+    }, ROW_MOTION_MS);
+  }
+
+  // dataIndex is the row's place in state.data.call_back, which already contains it
+  function insertRow(rowData, dataIndex) {
+    var list = $("callback-list");
+    var empty = list.querySelector(".empty");
+    if (empty) empty.remove();
+    var old = rowFor(rowData.applicant.id);
+    if (old) old.remove();
+    var li = callBackRow(rowData);
+    var before = null;
+    var rows = state.data.call_back;
+    for (var i = dataIndex + 1; i < rows.length && !before; i++) {
+      var next = rowFor(rows[i].applicant.id);
+      if (next && !next.classList.contains("is-leaving")) before = next;
+    }
+    list.insertBefore(li, before);
+    var natural = li.offsetHeight;
+    li.style.height = "0px";
+    li.classList.add("is-entering");
+    void li.offsetHeight;
+    li.classList.remove("is-entering");
+    li.style.height = natural + "px";
+    window.setTimeout(function () { li.style.height = ""; }, ROW_MOTION_MS);
+  }
+
   // ---- data -------------------------------------------------------------------------------
 
   function load() {
+    var startedAt = state.version;
     return fetch("/api/todo", { headers: { Accept: "application/json" } }).then(function (response) {
       if (response.status === 401) { toLogin(); return null; }
       if (!response.ok) throw new Error("status " + response.status);
       return response.json();
     }).then(function (data) {
       if (!data) return;
+      // Out of date (we changed something after it started) or a save is running: the server may not know
+      // yet, so this answer could undo what the screen shows. Drop it; the next refresh will be right.
+      if (startedAt !== state.version || Object.keys(state.inflight).length) return;
+      Object.keys(state.hidden).forEach(function (id) { // the server caught up: no need to keep hiding it
+        if (!data.call_back.some(function (row) { return String(row.applicant.id) === id; })) delete state.hidden[id];
+      });
+      var changed = signature(data) !== state.sig;
       state.data = data;
-      render(data);
+      state.sig = signature(data);
+      if (changed) render(data);
+      else { applyCounts(data); $("error-slot").replaceChildren(); }
     }).catch(function () {
       if (!state.data) { $("callback-list").replaceChildren(); }
       showLoadError();
@@ -177,22 +258,65 @@
     });
   }
 
-  function markFollowUp(person, status) {
-    if (state.busy[person.id]) return;
-    state.busy[person.id] = true;
-    var row = document.querySelector('[data-applicant="' + person.id + '"]');
-    if (row) row.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+  // our copy of the list: drop a row, so the next refresh sees the same lists and redraws nothing
+  function forget(id) {
+    state.data.call_back = state.data.call_back.filter(function (row) { return row.applicant.id !== id; });
+    state.sig = signature(state.data);
+  }
 
-    patchFollowUp(person.id, status).then(function () {
-      if (row) row.classList.add("is-leaving");
-      window.setTimeout(load, 260);
-      toast("Marked " + person.name + " as " + STATUS_WORD[status] + ".", "Undo", function () {
-        patchFollowUp(person.id, "to_call").then(load).catch(function () { toast("Couldn't undo. Try again from the list.", null); });
-      });
+  // put a row back into our copy of the list (never twice) and return where it went
+  function putBack(rowData, index) {
+    state.data.call_back = state.data.call_back.filter(function (row) { return row.applicant.id !== rowData.applicant.id; });
+    var at = Math.min(index, state.data.call_back.length);
+    state.data.call_back.splice(at, 0, rowData);
+    state.sig = signature(state.data);
+    return at;
+  }
+
+  // Optimistic: the row closes at once, the save runs in the background. If the save fails, the row comes back.
+  function markFollowUp(person, status) {
+    var id = person.id;
+    if (state.inflight[id]) return;
+    var index = state.data.call_back.findIndex(function (row) { return row.applicant.id === id; });
+    if (index < 0) return;
+    var rowData = state.data.call_back[index];
+    state.version++;
+    state.inflight[id] = true;
+    state.hidden[id] = true;
+    removeRow(id);
+    applyCounts(state.data);
+
+    patchFollowUp(id, status).then(function () {
+      forget(id);
+      state.removed[id] = { row: rowData, index: index };
+      toast("Marked " + person.name + " as " + STATUS_WORD[status] + ".", "Undo", function () { undoFollowUp(id); });
     }).catch(function () {
-      if (row) row.querySelectorAll("button").forEach(function (b) { b.disabled = false; });
+      delete state.hidden[id];
+      insertRow(rowData, putBack(rowData, index));
+      applyCounts(state.data);
       toast("Couldn't save that. Nothing was changed.", null);
-    }).then(function () { delete state.busy[person.id]; });
+    }).then(function () { state.version++; delete state.inflight[id]; });
+  }
+
+  function undoFollowUp(id) {
+    var record = state.removed[id];
+    if (!record || state.inflight[id]) { load(); return; }
+    state.version++;
+    state.inflight[id] = true;
+    var at = putBack(record.row, record.index);
+    delete state.hidden[id];
+    insertRow(record.row, at);
+    applyCounts(state.data);
+
+    patchFollowUp(id, "to_call").then(function () {
+      delete state.removed[id];
+    }).catch(function () {
+      forget(id);
+      state.hidden[id] = true;
+      removeRow(id);
+      applyCounts(state.data);
+      toast("Couldn't undo. Try again from the list.", null);
+    }).then(function () { state.version++; delete state.inflight[id]; });
   }
 
   // ---- boot -------------------------------------------------------------------------------

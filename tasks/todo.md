@@ -355,6 +355,16 @@ diagnose). Order is strict: A → B → C → apply.
       `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
       order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
       by fictional seed data before the link goes on a resume.
+      **SPEED FIX B + STATIC CACHE built 2026-10-20, committed, NOT deployed.** The owner still felt it slow and the row removal
+      clunky. Cause: after a click nothing moved until the save returned (about 0.4 s), then the row faded but kept its height, then
+      the whole list was rebuilt (everything jumped). Now (`api/app/static/todo.js`, `app.css`): the row closes smoothly at once
+      (height, padding, opacity 200 to 260 ms), the number changes in the first frame, the save runs in the background, a failed
+      save brings the row back in place, Undo is instant, and no full reload. A refresh that started before a change is dropped
+      (that race showed the count as 7 for a moment; fixed and checked). Found on the way: static files had no cache headers, so a
+      browser kept an OLD app.css after a deploy; pages now link `/static/x?v=<fingerprint>` (`api/app/pages.py`), cached for a
+      year, and a changed file gets a new URL. 356 API tests. Checked in a real local browser (no way to measure frame rates when the
+      pane is not visible): transitions start at the click, stale refresh dropped, failure and undo OK. NOT done: the detail page
+      still reloads everything after a follow-up change; the first page load still needs HTML, then the data (two round trips).
       **SPEED FIX A DEPLOYED 2026-10-19 17:32 Vancouver (approved by the owner), code `bfe304c`.** Rollback copies:
       `src.before-20261019-173220`, `compose.yaml.before-20261019-173220` (compose unchanged). Verified: in the live container
       19 of 19 checks, both logins 200, outside 26 of 26, no pool warnings or errors in the API and worker logs (only the expected
