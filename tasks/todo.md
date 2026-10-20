@@ -355,6 +355,15 @@ diagnose). Order is strict: A → B → C → apply.
       `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
       order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
       by fictional seed data before the link goes on a resume.
+      **SPEED FIX A DEPLOYED 2026-10-19 17:32 Vancouver (approved by the owner), code `bfe304c`.** Rollback copies:
+      `src.before-20261019-173220`, `compose.yaml.before-20261019-173220` (compose unchanged). Verified: in the live container
+      19 of 19 checks, both logins 200, outside 26 of 26, no pool warnings or errors in the API and worker logs (only the expected
+      warnings from the deliberate wrong-password tests). Speed measured in the container, same script as before: To do handler
+      361 ms -> 199 ms, applicant handler 367 ms -> 199 ms (the first call after a start is about 400 ms because it opens the first
+      connection). Server-side per dashboard request about 640 ms -> about 260 ms; adding the 170 ms Vancouver to Helsinki distance
+      the page request should be about 430 ms (calculated, not measured end to end: that needs a signed-in browser). Real actions:
+      1 deploy (about 8 SSH sessions, 3 scp, 2 rebuilds), 0 migrations, 0 phone calls, 0 Zoho writes. Open: the owner's felt speed,
+      optional speed fix B (instant feedback in the page).
       **SPEED FIX A (connection pool) built 2026-10-19, committed, NOT deployed.** Why: every request opened new database
       connections (about 250 ms each, two per request: sign-in check + the work). Now `api/app/db.py` lends out 1 to 4 open
       connections (`psycopg-pool`, approved by the owner), all 11 request-path call sites use `db_connection()`; the CLI and the
