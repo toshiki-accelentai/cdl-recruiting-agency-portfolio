@@ -12,8 +12,8 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from app.config import database_url, session_cookie_secure, session_secret
-from app.db import connect_with_retry
+from app.config import session_cookie_secure, session_secret
+from app.db import db_connection
 from app.throttle import client_ip, login_throttle
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ def current_user(request: Request) -> dict:
         data = _serializer().loads(token, max_age=SESSION_MAX_AGE_SECONDS)
     except BadSignature:  # tampered, wrong key, or older than SESSION_MAX_AGE_SECONDS
         raise HTTPException(status_code=401, detail="not logged in")
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         row = conn.execute(
             "SELECT id, username, role, session_version FROM users WHERE id = %s", (data["u"],)
         ).fetchone()
@@ -101,7 +101,7 @@ def login(request: Request, response: Response, username: Annotated[str, Form()]
         logger.warning("login throttled")
         raise HTTPException(status_code=429, detail="too many sign-in attempts, try again later",
                             headers={"Retry-After": str(wait)})
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         user = check_password(conn, username, password)
     if user is None:
         login_throttle.record_failure(address, username)

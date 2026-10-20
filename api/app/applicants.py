@@ -5,9 +5,8 @@ Login required (any role). Never returns raw_payload.
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import current_user
-from app.config import database_url
 from app.dashboard import SELECT_CALLS, to_item
-from app.db import connect_with_retry
+from app.db import db_connection
 
 router = APIRouter(prefix="/api", dependencies=[Depends(current_user)])
 
@@ -59,7 +58,7 @@ def without_applicant(call: dict) -> dict:
 
 @router.get("/applicants/{applicant_id}")
 def get_applicant(applicant_id: int):
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         row = conn.execute(APPLICANT, (applicant_id,)).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="applicant not found")

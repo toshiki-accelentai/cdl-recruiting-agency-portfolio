@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import Depends, FastAPI, Response
@@ -8,10 +9,10 @@ from app.api_key import require_api_key, require_internal_caller
 from app.applicants import router as applicants_router
 from app.auth import router as auth_router
 from app.call_reports import router as call_reports_router
-from app.config import api_shared_secret, database_url
+from app.config import api_shared_secret
 from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
-from app.db import connect_with_retry
+from app.db import close_pools, db_connection
 from app.follow_up import router as follow_up_router
 from app.helpers import classify_temperature, pick_phones
 from app.logs import setup_logging, short
@@ -23,7 +24,13 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # docs_url, redoc_url and openapi_url are off: they list every endpoint, and this API is about to be public.
-app = FastAPI(title="Frontline CDL intake API", docs_url=None, redoc_url=None, openapi_url=None)
+@asynccontextmanager
+async def lifespan(_app):
+    yield
+    close_pools()  # hand the database connections back politely when the container stops
+
+
+app = FastAPI(title="Frontline CDL intake API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(corrections_router)
@@ -124,7 +131,7 @@ def healthz():
 @app.post("/calls", status_code=201, dependencies=[Depends(require_internal_caller), Depends(require_api_key)])
 def post_calls(req: IntakeRequest, response: Response):
     try:
-        with connect_with_retry(database_url()) as conn:
+        with db_connection() as conn:
             result = save_intake(conn, req.model_dump(mode="json"), req)
     except Exception as exc:  # re-raised: the 500 tells n8n "not saved". Log why, without caller data.
         logger.error("save failed %s: %s", type(exc).__name__, short(exc))

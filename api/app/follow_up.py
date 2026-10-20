@@ -9,8 +9,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 
 from app.auth import require_role
-from app.config import database_url
-from app.db import connect_with_retry
+from app.db import db_connection
 
 router = APIRouter(prefix="/api")
 
@@ -34,7 +33,7 @@ class FollowUpUpdate(BaseModel):
 def update_follow_up(applicant_id: int, update: FollowUpUpdate,
                      user: Annotated[dict, Depends(require_role("recruiter", "admin"))]):
     wanted = {"follow_up_status": update.status, "follow_up_note": update.note}
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         with conn.transaction():
             row = conn.execute(
                 "SELECT follow_up_status, follow_up_note, follow_up_updated_at FROM applicants "

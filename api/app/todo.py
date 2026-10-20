@@ -8,9 +8,8 @@ Login required (any role). Never returns raw_payload.
 from fastapi import APIRouter, Depends
 
 from app.auth import current_user
-from app.config import database_url
 from app.dashboard import SELECT_CALLS, to_item
-from app.db import connect_with_retry
+from app.db import db_connection
 from app.schemas import BUSINESS_TZ
 
 router = APIRouter(prefix="/api", dependencies=[Depends(current_user)])
@@ -61,7 +60,7 @@ def to_call_back_item(row: tuple) -> dict:
 @router.get("/todo")
 def todo():
     tz = BUSINESS_TZ.key
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         attention = [to_item(r) for r in conn.execute(ATTENTION).fetchall()]
         call_back = [to_call_back_item(r) for r in conn.execute(CALL_BACK).fetchall()]
         calls_today = conn.execute(CALLS_TODAY, (tz, tz)).fetchone()[0]

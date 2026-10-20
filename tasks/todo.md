@@ -355,6 +355,14 @@ diagnose). Order is strict: A → B → C → apply.
       `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
       order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
       by fictional seed data before the link goes on a resume.
+      **SPEED FIX A (connection pool) built 2026-10-19, committed, NOT deployed.** Why: every request opened new database
+      connections (about 250 ms each, two per request: sign-in check + the work). Now `api/app/db.py` lends out 1 to 4 open
+      connections (`psycopg-pool`, approved by the owner), all 11 request-path call sites use `db_connection()`; the CLI and the
+      worker are unchanged. Measured inside the live container (read-only): server-side time per dashboard request
+      639 ms -> 264 ms (2.4x). Expected for the user: about 810 ms -> 430 ms per page load (the 170 ms Vancouver to Helsinki
+      distance stays). 343 API tests, 3 mutation checks plus 2 more, local browser check OK. To go live: deploy (the rebuild installs
+      `psycopg-pool`), then re-measure in the container. Optional later: speed fix B (instant feedback in the page), the pool's
+      per-borrow check costs one 29 ms round trip (about 22 percent of the 264 ms).
 - [ ] **Apply.**
 - [ ] **Interview-prep code review (last item, after publish and first applications; added
       2026-10-13).** One or more sessions to read and understand the finished portfolio code

@@ -14,8 +14,7 @@ from psycopg.types.json import Jsonb
 from app import recordings
 from app.api_key import require_api_key, require_internal_caller
 from app.auth import current_user
-from app.config import database_url
-from app.db import connect_with_retry
+from app.db import db_connection
 from app.helpers import build_transcript, normalize_phone
 from app.schemas import BaseModel, Customer
 from app.logs import short
@@ -100,7 +99,7 @@ def post_call_report(req: ReportRequest, response: Response):
         "stub": Jsonb({"source": REPORT_TYPE, "endedReason": message.endedReason}),  # the report itself is not kept
     }
     try:
-        with connect_with_retry(database_url()) as conn:
+        with db_connection() as conn:
             with conn.transaction():
                 row = conn.execute(UPDATE_REPORT, values).fetchone()
                 if row is not None:
@@ -117,7 +116,7 @@ def post_call_report(req: ReportRequest, response: Response):
 
 @router.get("/api/calls/{call_id}/recording")
 def get_recording(call_id: int, _user: dict = Depends(current_user)):
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         row = conn.execute("SELECT vapi_call_id, has_recording FROM calls WHERE id = %s", (call_id,)).fetchone()
     if row is None or not row[1]:
         raise HTTPException(status_code=404, detail="no recording for this call")

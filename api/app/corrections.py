@@ -11,9 +11,8 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator, model_validator
 
 from app.auth import require_role
-from app.config import database_url
 from app.dashboard import SELECT_CALLS, to_item
-from app.db import connect_with_retry
+from app.db import db_connection
 from app.helpers import classify_temperature, normalize_phone
 
 router = APIRouter(prefix="/api")
@@ -138,7 +137,7 @@ def correct_call(call_id: int, correction: CallCorrection,
                  user: Annotated[dict, Depends(require_role("recruiter", "admin"))]):
     fields = correction.model_dump(exclude_none=True)
     attached_to_existing = False
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         with conn.transaction():  # all or nothing: a 409 or 422 below undoes everything above it
             row = conn.execute("SELECT applicant_id, needs_review FROM calls WHERE id = %s FOR UPDATE",
                                (call_id,)).fetchone()

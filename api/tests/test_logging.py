@@ -44,9 +44,9 @@ def test_api_logs_a_flagged_call(client, payload, caplog):
 
 
 def test_api_logs_an_error_when_the_database_save_fails(payload, caplog, monkeypatch):
-    def down(url):
+    def down(*args, **kwargs):
         raise psycopg.OperationalError("failed to resolve host 'db.example'")
-    monkeypatch.setattr(main, "connect_with_retry", down)
+    monkeypatch.setattr(main, "db_connection", down)
     r = TestClient(main.app, raise_server_exceptions=False,
                    headers={"X-API-Key": TEST_API_KEY}).post("/calls", json=payload)
     assert r.status_code == 500  # n8n sees the failure and takes the "not saved" path

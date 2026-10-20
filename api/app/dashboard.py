@@ -7,8 +7,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import current_user
-from app.config import database_url
-from app.db import connect_with_retry
+from app.db import db_connection
 
 router = APIRouter(prefix="/api", dependencies=[Depends(current_user)])
 
@@ -89,7 +88,7 @@ def list_calls(
 ):
     params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up,
               "limit": limit, "offset": offset}
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         total = conn.execute(
             "SELECT count(*) FROM calls c LEFT JOIN applicants a ON a.id = c.applicant_id "
             "LEFT JOIN outbox o ON o.call_id = c.id" + FILTERS, params
@@ -103,7 +102,7 @@ def list_calls(
 
 @router.get("/calls/{call_id}")
 def get_call(call_id: int):
-    with connect_with_retry(database_url()) as conn:
+    with db_connection() as conn:
         row = conn.execute(SELECT_CALLS + "WHERE c.id = %s", (call_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="call not found")
