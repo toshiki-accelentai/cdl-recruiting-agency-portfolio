@@ -355,7 +355,12 @@ diagnose). Order is strict: A → B → C → apply.
       `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
       order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
       by fictional seed data before the link goes on a resume.
-      **SPEED FIX B + STATIC CACHE built 2026-10-20, committed, NOT deployed.** The owner still felt it slow and the row removal
+      **SPEED FIX B + STATIC CACHE DEPLOYED 2026-10-19 17:57 Vancouver (approved by the owner), code `0b13733`.** Rollback copies:
+      `src.before-20261019-175652`, `compose.yaml.before-20261019-175652` (compose unchanged). Verified: in the live container
+      19 of 19 checks, both logins 200 (wrong password 401), outside 26 of 26, fingerprinted URLs `public, max-age=31536000,
+      immutable`, plain URLs `no-cache` with 304 on ETag, no errors in the API logs. Real actions: 1 deploy script run, 0
+      migrations, 0 phone calls, 0 Zoho writes. Owner's browser check: faster, rows close smoothly.
+      **SPEED FIX B + STATIC CACHE built 2026-10-20, committed (now deployed, see above).** The owner still felt it slow and the row removal
       clunky. Cause: after a click nothing moved until the save returned (about 0.4 s), then the row faded but kept its height, then
       the whole list was rebuilt (everything jumped). Now (`api/app/static/todo.js`, `app.css`): the row closes smoothly at once
       (height, padding, opacity 200 to 260 ms), the number changes in the first frame, the save runs in the background, a failed
