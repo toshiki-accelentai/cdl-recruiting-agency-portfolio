@@ -360,6 +360,12 @@ diagnose). Order is strict: A → B → C → apply.
       19 of 19 checks, both logins 200 (wrong password 401), outside 26 of 26, fingerprinted URLs `public, max-age=31536000,
       immutable`, plain URLs `no-cache` with 304 on ETag, no errors in the API logs. Real actions: 1 deploy script run, 0
       migrations, 0 phone calls, 0 Zoho writes. Owner's browser check: faster, rows close smoothly.
+      **BACKFILL DONE 2026-10-19 (approved by the owner):** the 7 existing calls got summary, transcript and the recording flag.
+      Real actions: 7 VAPI `GET /call/{id}` (read), 7 `POST /call-reports` from inside the container (each updates one existing
+      `calls` row), 0 new rows, 0 outbox rows, 0 Zoho writes, 0 phone calls. Checked read-only afterwards: 7 of 7 calls now have
+      summary + transcript + recording flag; row counts unchanged (applicants 7, calls 7, outbox 7, users 2). To undo: set
+      `summary`, `transcript`, `caller_number`, `report_received_at` to NULL and `has_recording` to false on those 7 rows.
+      Still missing for NEW calls: n8n does not forward the end-of-call report to `/call-reports` yet.
       **SPEED FIX B + STATIC CACHE built 2026-10-20, committed (now deployed, see above).** The owner still felt it slow and the row removal
       clunky. Cause: after a click nothing moved until the save returned (about 0.4 s), then the row faded but kept its height, then
       the whole list was rebuilt (everything jumped). Now (`api/app/static/todo.js`, `app.css`): the row closes smoothly at once
@@ -387,6 +393,11 @@ diagnose). Order is strict: A → B → C → apply.
       distance stays). 343 API tests, 3 mutation checks plus 2 more, local browser check OK. To go live: deploy (the rebuild installs
       `psycopg-pool`), then re-measure in the container. Optional later: speed fix B (instant feedback in the page), the pool's
       per-borrow check costs one 29 ms round trip (about 22 percent of the 264 ms).
+- [ ] **n8n workflow review (owner does this themself; added 2026-10-19 as a reminder).** Go through the n8n
+      workflows by hand (the real ones on `accelentai.app.n8n.cloud`, not the inactive copy) and check them against
+      `config/n8n/`: which node sends the end-of-call report (it must reach `POST /call-reports`), the `toolCalls[0]`
+      vs `toolCallList[0]` mix, the Zoho `Authorization` header (AUDIT #6), and that nothing still writes to Airtable
+      that should not. Do before the independent security review and before the link goes on a resume.
 - [ ] **Apply.**
 - [ ] **Interview-prep code review (last item, after publish and first applications; added
       2026-10-13).** One or more sessions to read and understand the finished portfolio code
