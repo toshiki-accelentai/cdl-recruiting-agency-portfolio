@@ -3,64 +3,161 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>To do | Frontline CDL</title>
+  <meta name="color-scheme" content="light">
+  <title>Overview | Frontline CDL</title>
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/workspace.css">
 </head>
-<body>
+<body class="app-body">
   <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" href="/#overview"><span class="brand-mark" aria-hidden="true">F</span><span>Frontline CDL<small>Recruiter desk</small></span></a>
+    <nav class="side-nav">
+      <p class="nav-caption">Workspace</p>
+      <a class="nav-link" href="/#overview" data-route="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Overview</a>
+      <a class="nav-link" href="/#applicants" data-route="applicants"><span class="nav-glyph" aria-hidden="true">♙</span>Applicants</a>
+      <a class="nav-link" href="/#activity" data-route="activity"><span class="nav-glyph" aria-hidden="true">↗</span>Call activity</a>
+      <p class="nav-caption nav-caption-secondary">Insights</p>
+      <a class="nav-link" href="/#analytics" data-route="analytics"><span class="nav-glyph" aria-hidden="true">▥</span>Analytics</a>
+    </nav>
+    <div class="sidebar-footer"><span class="team-mark" aria-hidden="true">FL</span><span><strong>Frontline CDL</strong><small>Recruiting team</small></span></div>
+  </aside>
 
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="/">Frontline CDL <span class="brand-sub">Recruiter desk</span></a>
-      <div class="who">
-        <span class="mono" id="who"></span>
-        <button class="btn btn-ghost" id="signout" type="button">Sign out</button>
-      </div>
-    </div>
-  </header>
+  <div class="app-main">
+    <header class="topbar"><div class="topbar-inner">
+      <div class="topbar-context" id="workspace-context">Overview</div>
+      <div class="who"><span id="who"></span><button class="btn btn-ghost" id="signout" type="button">Sign out</button></div>
+    </div></header>
 
-  <main class="page" id="main">
-    <div class="page-head">
-      <div>
-        <h1>To do</h1>
-        <p class="page-sub" id="today"></p>
-      </div>
-      <p class="updated" id="updated" aria-live="polite"></p>
-    </div>
+    <main class="page shell-page" id="main">
+      <div id="error-slot"></div>
 
-    <div id="error-slot"></div>
+      <section class="page-view" data-view="overview" aria-labelledby="overview-title">
+        <div class="page-head overview-head">
+          <div><p class="eyebrow">Recruiter workspace</p><h1 id="overview-title">Today’s overview</h1><p class="page-sub" id="today"></p></div>
+          <p class="updated" id="updated" aria-live="polite"></p>
+        </div>
 
-    <section aria-label="Today at a glance">
-      <div class="summary" id="summary">
-        <div class="stat"><div class="stat-num" data-stat="calls_today">0</div><div class="stat-label">Calls today</div></div>
-        <div class="stat"><div class="stat-num" data-stat="hot_waiting">0</div><div class="stat-label">Hot, waiting</div></div>
-        <div class="stat"><div class="stat-num" data-stat="to_call">0</div><div class="stat-label">To call back</div></div>
-        <div class="stat" id="stat-sync"><div class="stat-num" data-stat="sync_problems">0</div><div class="stat-label">Zoho sync problems</div></div>
-      </div>
-    </section>
+        <section class="priority-overview" aria-label="Callback priority">
+          <article class="next-action" id="next-action" aria-live="polite">
+            <div class="next-action-top"><span class="priority-category"><span class="priority-dot" aria-hidden="true"></span>Contact next</span><span class="urgent-reason" id="next-reason" hidden></span></div>
+            <div class="next-action-main"><div><h2 id="next-name">Loading your callback queue…</h2><p id="next-detail">We’ll put the earliest requested callback first.</p></div><a class="btn btn-primary" id="next-link" href="/#applicants">Review applicant <span aria-hidden="true">→</span></a></div>
+            <p class="priority-explanation" id="priority-explanation">Requested callback times set the order. Applicants without a time appear after scheduled callbacks.</p>
+          </article>
+          <aside class="up-next" aria-label="Next in the queue"><p class="up-next-label">After that</p><a class="up-next-person" id="after-link" href="/#applicants"><span class="following-rank">02</span><span><strong id="after-name">Loading…</strong><small id="after-time"></small></span><span class="up-next-arrow" aria-hidden="true">→</span></a><p id="after-note">Based on the next requested callback time.</p></aside>
+        </section>
 
-    <section class="section" id="attention-section" aria-labelledby="attention-title" hidden>
-      <div class="section-head">
-        <h2 id="attention-title">Needs attention</h2>
-        <span class="count" id="attention-count"></span>
-        <span class="section-note">Fix these first, they can lose a lead</span>
-      </div>
-      <div class="panel"><ul class="rows" id="attention-list"></ul></div>
-    </section>
+        <section class="overview-activity" aria-label="Recent workload">
+          <div class="activity-strip" id="summary">
+            <a href="/#activity"><strong data-stat="calls_today">0</strong><span>Calls today</span></a><i aria-hidden="true"></i>
+            <a href="/#applicants"><strong data-stat="to_call">0</strong><span>Awaiting contact</span></a><i aria-hidden="true"></i>
+            <a href="/#applicants"><strong data-stat="hot_waiting">0</strong><span>High readiness</span></a><i aria-hidden="true"></i>
+            <a href="/#activity" id="stat-sync"><strong data-stat="sync_problems">0</strong><span>Zoho sync issues</span></a>
+          </div>
+        </section>
 
-    <section class="section" aria-labelledby="callback-title">
-      <div class="section-head">
-        <h2 id="callback-title">Call back</h2>
-        <span class="count" id="callback-count"></span>
-        <span class="section-note">Hottest first, then earliest callback time</span>
-      </div>
-      <div class="panel"><ul class="rows" id="callback-list" aria-busy="true"></ul></div>
-    </section>
-  </main>
+        <section class="section" id="attention-section" aria-labelledby="attention-title" hidden>
+          <div class="section-head"><div><p class="eyebrow">Needs a closer look</p><h2 id="attention-title">Call and sync issues</h2></div><span class="count" id="attention-count"></span><a class="text-link" href="/#activity">View activity <span aria-hidden="true">→</span></a></div>
+          <div class="panel"><ul class="rows" id="attention-list"></ul></div>
+        </section>
+
+        <section class="section" aria-labelledby="callback-title">
+          <div class="section-head"><div><p class="eyebrow">Follow-up queue</p><h2 id="callback-title">Applicants to contact</h2></div><span class="count" id="callback-count"></span><span class="section-note">Scheduled times first, then readiness</span></div>
+          <div class="panel"><ul class="rows" id="callback-list" aria-busy="true"></ul></div>
+        </section>
+      </section>
+
+      <section class="page-view" data-view="applicants" aria-labelledby="applicants-title" hidden>
+        <div class="page-head"><div><p class="eyebrow">People</p><h1 id="applicants-title">Applicants</h1><p class="page-sub">Find a driver, check their follow-up status, and open their full call history.</p></div><button class="btn" id="applicants-refresh" type="button">Refresh</button></div>
+        <section class="directory-panel panel" aria-label="Applicant directory">
+          <div class="directory-toolbar"><label class="search-field"><span class="search-icon" aria-hidden="true">⌕</span><span class="sr-only">Search loaded applicants</span><input class="input" id="applicant-search" type="search" placeholder="Search name, phone, or location" autocomplete="off"></label><div class="filter-tabs" id="applicant-status-filter" role="group" aria-label="Filter applicants by status"><button type="button" data-status="all" aria-pressed="true">All</button><button type="button" data-status="to_call" aria-pressed="false">To contact</button><button type="button" data-status="called" aria-pressed="false">Called</button><button type="button" data-status="no_answer" aria-pressed="false">No answer</button><button type="button" data-status="done" aria-pressed="false">Done</button></div></div>
+          <p class="data-scope" id="applicant-scope" aria-live="polite">Loading recent applicants…</p>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Applicant</th><th scope="col">Readiness</th><th scope="col">Callback</th><th scope="col">Follow-up</th><th scope="col">Last call</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead><tbody id="applicant-rows"><tr><td colspan="6" class="table-empty">Loading applicants…</td></tr></tbody></table></div>
+          <div class="directory-footer"><span id="applicant-result-count"></span><button class="btn" id="applicants-more" type="button" hidden>Load older calls</button></div>
+        </section>
+      </section>
+
+      <section class="page-view" data-view="activity" aria-labelledby="activity-title" hidden>
+        <div class="page-head"><div><p class="eyebrow">Call log</p><h1 id="activity-title">Call activity</h1><p class="page-sub">Review inbound calls, callback requests, and sync status.</p></div><button class="btn" id="activity-refresh" type="button">Refresh</button></div>
+        <section class="activity-panel panel" aria-label="Call activity list">
+          <div class="activity-toolbar">
+            <label class="filter-control"><span>Review</span><select id="activity-review" class="input"><option value="">All calls</option><option value="true">Needs review</option><option value="false">No review needed</option></select></label>
+            <label class="filter-control"><span>Zoho sync</span><select id="activity-sync" class="input"><option value="">Any status</option><option value="pending">Waiting</option><option value="sent">Sent</option><option value="failed">Failed</option></select></label>
+            <label class="filter-control"><span>Follow-up</span><select id="activity-follow-up" class="input"><option value="">Any status</option><option value="to_call">To contact</option><option value="called">Called</option><option value="no_answer">No answer</option><option value="done">Done</option></select></label>
+            <label class="filter-control"><span>Order</span><select id="activity-sort" class="input"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="needs_review">Review first</option><option value="temperature">Readiness</option></select></label>
+          </div>
+          <p class="data-scope" id="activity-scope" aria-live="polite">Loading calls…</p>
+          <ol class="activity-list" id="activity-list" aria-busy="true"><li class="table-empty">Loading calls…</li></ol>
+          <div class="directory-footer"><span id="activity-page-count"></span><div class="pagination"><button class="btn" id="activity-prev" type="button" disabled>Previous</button><button class="btn" id="activity-next" type="button" disabled>Next</button></div></div>
+        </section>
+      </section>
+      <section class="page-view" data-view="analytics" aria-labelledby="analytics-title" hidden>
+        <div class="page-head analytics-head">
+          <div><h1 id="analytics-title">Analytics</h1><p class="page-sub">A closer look at call volume, intake quality, and follow-through.</p></div>
+          <div class="analytics-controls">
+            <div class="filter-tabs" id="analytics-period" role="group" aria-label="Reporting period">
+              <button type="button" data-days="1" aria-pressed="false">Today</button>
+              <button type="button" data-days="7" aria-pressed="true">7 days</button>
+              <button type="button" data-days="30" aria-pressed="false">30 days</button>
+            </div>
+            <button class="btn" id="analytics-refresh" type="button">Refresh</button>
+          </div>
+        </div>
+        <p class="analytics-coverage" id="analytics-coverage" aria-live="polite">Metrics load when you open this page.</p>
+        <div id="analytics-notice" aria-live="polite"></div>
+        <div id="analytics-content" hidden>
+          <section class="metric-summary panel" aria-label="Call performance metrics">
+            <article class="metric"><h2>Calls received</h2><p class="metric-value" id="metric-calls"></p><p class="metric-detail" id="metric-people"></p></article>
+            <article class="metric"><h2>Intake success rate</h2><p class="metric-value" id="metric-success"></p><p class="metric-detail" id="metric-success-detail"></p></article>
+            <article class="metric"><h2>Callback requests</h2><p class="metric-value" id="metric-callbacks"></p><p class="metric-detail" id="metric-callbacks-detail"></p></article>
+            <article class="metric"><h2>Zoho sync rate</h2><p class="metric-value" id="metric-sync"></p><p class="metric-detail" id="metric-sync-detail"></p></article>
+          </section>
+          <p class="analytics-empty" id="analytics-empty" hidden>No recorded calls in this period. Choose a longer period to see more activity.</p>
+
+          <div class="analytics-chart-grid">
+            <section class="panel analytics-panel" aria-labelledby="volume-title">
+              <div class="analytics-panel-head"><div><h2 id="volume-title">Call volume</h2><p>Daily calls recorded in the recruiter desk</p></div><span class="chart-total" id="volume-total"></span></div>
+              <figure class="volume-figure">
+                <div class="volume-plot" id="volume-plot" role="img" aria-label="Daily call volume"></div>
+                <figcaption class="chart-caption" id="volume-caption"></figcaption>
+              </figure>
+              <details class="chart-data"><summary>View daily counts</summary><table class="counts-table"><thead><tr><th scope="col">Date</th><th scope="col">Calls</th></tr></thead><tbody id="volume-table"></tbody></table></details>
+            </section>
+            <section class="panel analytics-panel" aria-labelledby="outcomes-title">
+              <div class="analytics-panel-head"><div><h2 id="outcomes-title">Intake outcomes</h2><p>Each call appears in one group</p></div></div>
+              <ul class="metric-breakdown" id="intake-breakdown"></ul>
+              <p class="analytics-footnote">Success means an applicant was saved with no review flag. It does not confirm a booking or a hire.</p>
+              <a class="text-link analytics-link" href="/#activity">Review call activity <span aria-hidden="true">→</span></a>
+            </section>
+          </div>
+
+          <div class="analytics-distribution-grid">
+            <section class="panel analytics-panel" aria-labelledby="readiness-title"><div class="analytics-panel-head"><div><h2 id="readiness-title">Applicant readiness</h2><p class="applicant-cohort"></p></div></div><ul class="metric-breakdown" id="readiness-breakdown"></ul></section>
+            <section class="panel analytics-panel" aria-labelledby="followup-title"><div class="analytics-panel-head"><div><h2 id="followup-title">Current follow-up</h2><p class="applicant-cohort"></p></div><a class="text-link" href="/#applicants">View applicants <span aria-hidden="true">→</span></a></div><ul class="metric-breakdown" id="followup-breakdown"></ul></section>
+          </div>
+
+          <details class="metric-definitions panel">
+            <summary>How these metrics are calculated</summary>
+            <dl>
+              <div><dt>Calls received</dt><dd>Call records saved in this desk during the selected business dates, including repeat calls. Dates use the record creation time in America/Vancouver. Calls that never reach this desk are not included.</dd></div>
+              <div><dt>Intake success rate</dt><dd>Calls linked to an applicant with no review flag, divided by all recorded calls in the period. This is a saved-intake quality measure, not Vapi's conversation success evaluation.</dd></div>
+              <div><dt>Callback requests</dt><dd>Calls with a saved callback date and time, divided by all recorded calls for the percentage. A requested time does not prove a confirmed calendar booking.</dd></div>
+              <div><dt>Zoho sync rate</dt><dd>Calls marked sent, divided by calls with a tracked sync status: sent, pending, or failed. Calls without a sync record are excluded. Pending calls can still sync later.</dd></div>
+              <div><dt>Readiness and follow-up</dt><dd>Current profile status of unique applicants who called during this period. Repeat calls count once. These are current workload snapshots, not historical status changes or hiring outcomes.</dd></div>
+              <div><dt>Additional voice metrics</dt><dd>Call duration, response latency, cost per call, and provider-evaluated conversation success are not available in the current call feed. They are not estimated here.</dd></div>
+            </dl>
+          </details>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <script src="/static/common.js" defer></script>
+  <script src="/static/workspace.js" defer></script>
   <script src="/static/todo.js" defer></script>
+  <script src="/static/sections.js" defer></script>
+  <script src="/static/metrics.js" defer></script>
+  <script src="/static/analytics.js" defer></script>
 </body>
 </html>

@@ -81,10 +81,23 @@
     return button;
   }
 
-  function callBackRow(row) {
+  function queueStage(row) {
+    if (!row.preferred_callback_at) return { label: "Confirm a time", urgent: false };
+    var delta = new Date(row.preferred_callback_at).getTime() - Date.now();
+    if (delta < 0) return { label: "Contact now", urgent: true };
+    if (delta <= 60 * 60 * 1000) return { label: "Due next", urgent: true };
+    var when = whenText(row.preferred_callback_at);
+    if (when.indexOf("Today,") === 0) return { label: "Later today", urgent: false };
+    if (when.indexOf("Tomorrow,") === 0) return { label: "Tomorrow", urgent: false };
+    return { label: "Scheduled", urgent: false };
+  }
+
+  function callBackRow(row, rank) {
     var person = row.applicant;
+    var stage = queueStage(row);
     var nameLine = el("div", { cls: "name-line" },
       el("a", { cls: "name name-link", text: person.name || "No name given", attrs: { href: "/applicants/" + person.id } }));
+    nameLine.appendChild(Desk.followUpChip(person.follow_up && person.follow_up.status));
     if (row.new_call_since) nameLine.appendChild(el("span", { cls: "chip chip-accent", text: "Called again" }));
     if (row.call_count > 1) nameLine.appendChild(el("span", { cls: "faint", text: row.call_count + " calls" }));
 
@@ -103,9 +116,34 @@
     var seg = el("div", { cls: "seg", attrs: { role: "group", "aria-label": "Follow-up for " + person.name } },
       actionButton("Called", "called", person), actionButton("No answer", "no_answer", person), actionButton("Done", "done", person));
 
-    var item = el("li", { cls: "row", attrs: { "data-applicant": String(person.id) } },
-      el("div", { cls: "c-heat" }, heatChip(person.temperature)), main, whenCell(row), el("div", { cls: "c-act" }, seg));
+    var rankNode = el("span", { cls: "queue-rank", text: String(rank || 1).padStart(2, "0"), attrs: { "aria-label": "Queue position " + (rank || 1) } });
+    var stageNode = el("span", { cls: "processing-label" + (stage.urgent ? " urgent" : ""), text: stage.label });
+    var heat = el("div", { cls: "c-heat queue-priority" }, rankNode, el("div", { cls: "queue-priority-detail" }, heatChip(person.temperature), stageNode));
+    var item = el("li", { cls: "row", attrs: { "data-applicant": String(person.id) } }, heat, main, whenCell(row), el("div", { cls: "c-act" }, seg));
     return item;
+  }
+
+  function refreshQueueRanks() {
+    var rows = Array.prototype.slice.call(document.querySelectorAll("#callback-list .row:not(.is-leaving)"));
+    rows.forEach(function (item, index) {
+      var rank = index + 1;
+      var rankNode = item.querySelector(".queue-rank");
+      if (rankNode) {
+        rankNode.textContent = String(rank).padStart(2, "0");
+        rankNode.setAttribute("aria-label", "Queue position " + rank);
+      }
+      item.classList.toggle("priority-first", rank === 1);
+      if (state.data) {
+        var id = item.getAttribute("data-applicant");
+        var dataRow = state.data.call_back.filter(function (row) { return String(row.applicant.id) === id; })[0];
+        var label = item.querySelector(".processing-label");
+        if (dataRow && label) {
+          var stage = queueStage(dataRow);
+          label.textContent = stage.label;
+          label.classList.toggle("urgent", stage.urgent);
+        }
+      }
+    });
   }
 
   // ---- render -----------------------------------------------------------------------------
@@ -122,6 +160,67 @@
     return data.call_back.filter(function (row) { return !state.hidden[row.applicant.id]; });
   }
 
+  var READINESS_ORDER = { HOT: 0, MEDIUM: 1, WARM: 2, COLD: 3 };
+
+  function comparePriority(a, b) {
+    var aTime = a.preferred_callback_at ? new Date(a.preferred_callback_at).getTime() : Infinity;
+    var bTime = b.preferred_callback_at ? new Date(b.preferred_callback_at).getTime() : Infinity;
+    if (aTime !== bTime) return aTime - bTime;
+    var aReady = READINESS_ORDER[a.applicant.temperature] == null ? 4 : READINESS_ORDER[a.applicant.temperature];
+    var bReady = READINESS_ORDER[b.applicant.temperature] == null ? 4 : READINESS_ORDER[b.applicant.temperature];
+    if (aReady !== bReady) return aReady - bReady;
+    return Number(a.applicant.id) - Number(b.applicant.id);
+  }
+
+  function priorityText(row) {
+    if (!row) return null;
+    if (!row.preferred_callback_at) return { badge: "No time set", detail: "No callback time was recorded. Check the applicant’s preferred time before calling." };
+    var delta = new Date(row.preferred_callback_at).getTime() - Date.now();
+    if (delta < 0) return { badge: "Overdue", detail: "Requested callback " + whenText(row.preferred_callback_at) + "." };
+    if (delta <= 60 * 60 * 1000) return { badge: "Due soon", detail: "Requested callback " + whenText(row.preferred_callback_at) + "." };
+    return { badge: "Scheduled", detail: "Requested callback " + whenText(row.preferred_callback_at) + "." };
+  }
+
+  function renderPriority(data) {
+    var rows = visibleCallBack(data).slice().sort(comparePriority);
+    var next = rows[0];
+    var after = rows[1];
+    var reason = $("next-reason");
+    var action = $("next-action");
+    action.classList.toggle("has-overdue", Boolean(next && next.preferred_callback_at && new Date(next.preferred_callback_at).getTime() < Date.now()));
+    if (next) {
+      var priority = priorityText(next);
+      reason.className = "urgent-reason" + (priority.badge === "Overdue" || priority.badge === "Due soon" ? "" : " is-neutral");
+      $("next-name").textContent = next.applicant.name || "No name given";
+      $("next-detail").textContent = priority.detail;
+      reason.textContent = priority.badge;
+      reason.hidden = false;
+      $("next-link").href = "/applicants/" + next.applicant.id;
+      $("priority-explanation").textContent = "Next by requested callback time, then stated readiness. Confirm availability if no time was recorded.";
+    } else {
+      $("next-name").textContent = "No callbacks waiting";
+      $("next-detail").textContent = "New applicants will appear here when a call is saved.";
+      reason.textContent = "All caught up";
+      reason.className = "urgent-reason is-neutral";
+      reason.hidden = false;
+      $("next-link").href = "/#applicants";
+      $("priority-explanation").textContent = "You can review all saved applicants or check recent calls from the navigation.";
+    }
+    if (after) {
+      var person = after.applicant;
+      $("after-name").textContent = person.name || "No name given";
+      $("after-time").textContent = after.preferred_callback_at ? whenText(after.preferred_callback_at) : "No time requested · confirm before calling";
+      $("after-link").href = "/applicants/" + person.id;
+      $("after-link").setAttribute("aria-label", "Review " + (person.name || "applicant") + ", second in callback queue");
+      $("after-note").textContent = "Second in line, based on the requested callback time.";
+    } else {
+      $("after-name").textContent = rows.length ? "No one after this" : "Queue is clear";
+      $("after-time").textContent = rows.length ? "Only one applicant is waiting" : "No callback requests are waiting";
+      $("after-link").href = "/#applicants";
+      $("after-note").textContent = "See Applicants for people marked called, no answer, or done.";
+    }
+  }
+
   // What the lists contain. If a refresh brings the same lists, nothing is redrawn (no flicker).
   function signature(data) { return JSON.stringify([data.attention, data.call_back]); }
 
@@ -136,14 +235,16 @@
     $("stat-sync").classList.toggle("is-problem", summary.sync_problems > 0);
     $("callback-count").textContent = String(rows.length);
     var total = rows.length + data.attention.length;
-    document.title = (total ? "(" + total + ") " : "") + "To do | Frontline CDL";
+    if (Desk.currentRoute === "overview") document.title = (total ? "(" + total + ") " : "") + "Overview | Frontline CDL";
     $("updated").textContent = "Updated " + timeText(new Date());
+    renderPriority(data);
+    refreshQueueRanks();
   }
 
   function render(data) {
     var attentionList = $("attention-list");
     attentionList.replaceChildren();
-    data.attention.forEach(function (call) { attentionList.appendChild(el("li", {}, attentionRow(call))); });
+    data.attention.forEach(function (call) { attentionList.appendChild(attentionRow(call)); });
     $("attention-section").hidden = data.attention.length === 0;
     $("attention-count").textContent = String(data.attention.length);
 
@@ -151,7 +252,8 @@
     var list = $("callback-list");
     list.replaceChildren();
     if (rows.length === 0) list.appendChild(allCaughtUp());
-    else rows.forEach(function (row) { list.appendChild(callBackRow(row)); });
+    else rows.forEach(function (row, index) { list.appendChild(callBackRow(row, index + 1)); });
+    refreshQueueRanks();
     list.setAttribute("aria-busy", "false");
     applyCounts(data);
     $("error-slot").replaceChildren();
@@ -190,6 +292,7 @@
     void li.offsetHeight;
     li.classList.add("is-leaving");
     li.style.height = "0px";
+    refreshQueueRanks();
     window.setTimeout(function () {
       li.remove();
       if (!list.querySelector(".row")) list.appendChild(allCaughtUp());
@@ -203,7 +306,9 @@
     if (empty) empty.remove();
     var old = rowFor(rowData.applicant.id);
     if (old) old.remove();
-    var li = callBackRow(rowData);
+    var currentRows = visibleCallBack(state.data);
+    var rank = currentRows.findIndex(function (row) { return row.applicant.id === rowData.applicant.id; }) + 1;
+    var li = callBackRow(rowData, rank);
     var before = null;
     var rows = state.data.call_back;
     for (var i = dataIndex + 1; i < rows.length && !before; i++) {
@@ -211,6 +316,7 @@
       if (next && !next.classList.contains("is-leaving")) before = next;
     }
     list.insertBefore(li, before);
+    refreshQueueRanks();
     var natural = li.offsetHeight;
     li.style.height = "0px";
     li.classList.add("is-entering");
@@ -236,6 +342,7 @@
       Object.keys(state.hidden).forEach(function (id) { // the server caught up: no need to keep hiding it
         if (!data.call_back.some(function (row) { return String(row.applicant.id) === id; })) delete state.hidden[id];
       });
+      data.call_back.sort(comparePriority);
       var changed = signature(data) !== state.sig;
       state.data = data;
       state.sig = signature(data);
@@ -322,8 +429,6 @@
   // ---- boot -------------------------------------------------------------------------------
 
   $("today").textContent = new Intl.DateTimeFormat("en-US", { timeZone: Desk.TZ, weekday: "long", month: "long", day: "numeric" }).format(new Date());
-
-  Desk.initTopbar();
 
   renderSkeleton();
   load();

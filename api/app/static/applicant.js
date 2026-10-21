@@ -96,7 +96,7 @@
     var current = person.follow_up.status;
     var seg = el("div", { cls: "seg", attrs: { role: "group", "aria-label": "Follow-up status" } });
     FOLLOW_UP.forEach(function (option) {
-      var button = el("button", { text: option.label, attrs: { type: "button", "aria-pressed": String(option.status === current) } });
+      var button = el("button", { text: option.label, attrs: { type: "button", "data-follow-up": option.status, "aria-pressed": String(option.status === current) } });
       button.addEventListener("click", function () { setFollowUp(option.status, current); });
       seg.appendChild(button);
     });
@@ -514,6 +514,5 @@
     $("content").setAttribute("aria-busy", "false");
   }
 
-  Desk.initTopbar();
   if (!applicantId) { renderNotFound(); } else { load(); }
 })();

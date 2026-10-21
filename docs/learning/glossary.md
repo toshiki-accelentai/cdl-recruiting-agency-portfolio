@@ -68,3 +68,30 @@ One line each. Say it out loud in your own words before moving on.
 | **Fallback** | The plan B when the first approach fails: if the saved Zoho id is gone, search by phone instead. | C1c |
 | **Mutation test** | Deliberately breaking the code to check that a test notices. If no test fails, the tests are too weak. | A1 to C1 |
 | **Constraint (CHECK)** | A rule the database itself enforces, e.g. "a correction row must point at an audit row". | C1c |
+| **Docker / container** | A program that runs other programs in sealed boxes (containers). Each box holds the program and everything it needs, so it works the same on your PC and on a server. | C1 |
+| **Test database** | A throwaway database used only by tests. It may be wiped at any time, so it must never be the real one. | C1 |
+| **Development / staging / production** | Three places a system runs: your own machine (break things freely), a copy of the real setup for a final check, and the real one that customers use. Only production holds real data. | C1 |
+| **CI (continuous integration)** | A robot that runs all the tests automatically every time the code changes, in disposable containers, before anything goes live. | C1 |
+| **Deploy** | Putting new code on the real server and restarting it, so the live system runs the new version. | C3 |
+| **Migration** | A numbered database change (new table or column) run once, in order. Writing the file changes nothing; running it does. | C1 to C3 |
+| **Rollback** | Going back to the previous working version. It restores code, not database changes already made. | C3 |
+| **Port** | A numbered door on a server. The number says which program should get the message (80 and 443: Caddy, 8000: our API). | C3 |
+| **Reverse proxy (Caddy)** | The front door of a server: it receives requests from the internet and passes them to the right program inside. | C3 |
+| **DNS record (A record)** | One line in the internet's phone book: this name goes to that IP address. | C3 |
+| **TLS / HTTPS certificate** | Proof the site is really yours, which also encrypts the connection. Caddy gets it for free from Let's Encrypt. | C3 |
+| **Health check (/healthz)** | A tiny page that only proves the program is running, so Docker can tell if the container is healthy. | C3 |
+| **Rate limit (throttle, 429)** | A speed limit on tries, such as wrong passwords. Past the limit the answer is 429, too many requests. | C3 |
+| **CSP (Content-Security-Policy)** | A rule sent to the browser listing what a page may load, so a hacked or wrong file cannot run. | C3 |
+| **Round trip / latency** | A round trip is one message out and one answer back. Latency is the waiting caused by distance and setup, not by heavy work. | C2 speed |
+| **Connection pool** | A few database connections kept open and lent out to requests, so nobody pays about 250 ms to open a new one. | C2 speed |
+| **Optimistic update** | Showing the expected result on screen at once and fixing it only if the server says no. | C2 speed |
+| **Independent review** | A check by someone who did not write the code, so they do not share its blind spots. | C3 |
+| **Workflow (n8n)** | One chain of steps in n8n: receive something, process it, send it on. | C1e n8n hop |
+| **Side branch** | A second path off the same step, so a new job runs next to the main flow and a failure in one does not stop the other. | C1e n8n hop |
+| **Backup (before a change)** | A copy made before editing, so a mistake can be undone by switching back. | C1e n8n hop |
+| **Internal hostname** | A name that only works inside the same network (like `cdl-api`), so a service is never called through the public internet. | C1e n8n hop |
+| **Header Auth credential** | An API key saved once in n8n and attached automatically to each call as a header. | C1e n8n hop |
+| **Retry / timeout / max tries** | Try again after a pause; stop waiting after a set time; max tries counts the first attempt too. | C1e n8n hop |
+| **Idempotent** | Doing the same call twice has the same result as doing it once, which is what makes a retry safe. | C1e n8n hop |
+| **Blip vs outage** | A blip is a short glitch a retry can fix. An outage is long and needs a queue (like the outbox). | C1e n8n hop |
+| **Draft vs published (n8n)** | In this n8n, Save stores a draft only. The live workflow keeps running the last published version until you press Publish. | C1e n8n hop |

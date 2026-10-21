@@ -3,31 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
   <title>Applicant | Frontline CDL</title>
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/workspace.css">
 </head>
-<body>
+<body class="app-body">
   <a class="skip-link" href="#main">Skip to content</a>
-
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="/">Frontline CDL <span class="brand-sub">Recruiter desk</span></a>
-      <div class="who">
-        <span class="mono" id="who"></span>
-        <button class="btn btn-ghost" id="signout" type="button">Sign out</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="page" id="main">
-    <nav class="crumb" aria-label="Breadcrumb"><a href="/">To do</a> / <span id="crumb-name">Applicant</span></nav>
-    <div id="error-slot"></div>
-    <div id="content" aria-busy="true"></div>
-  </main>
-
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" href="/#overview"><span class="brand-mark" aria-hidden="true">F</span><span>Frontline CDL<small>Recruiter desk</small></span></a>
+    <nav class="side-nav">
+      <p class="nav-caption">Workspace</p>
+      <a class="nav-link" href="/#overview" data-route="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Overview</a>
+      <a class="nav-link" href="/#applicants" data-route="applicants"><span class="nav-glyph" aria-hidden="true">♙</span>Applicants</a>
+      <a class="nav-link" href="/#activity" data-route="activity"><span class="nav-glyph" aria-hidden="true">↗</span>Call activity</a>
+      <p class="nav-caption nav-caption-secondary">Insights</p>
+      <a class="nav-link" href="/#analytics" data-route="analytics"><span class="nav-glyph" aria-hidden="true">▥</span>Analytics</a>
+    </nav>
+    <div class="sidebar-footer"><span class="team-mark" aria-hidden="true">FL</span><span><strong>Frontline CDL</strong><small>Recruiting team</small></span></div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar"><div class="topbar-inner"><div class="topbar-context" id="workspace-context">Applicant</div><div class="who"><span id="who"></span><button class="btn btn-ghost" id="signout" type="button">Sign out</button></div></div></header>
+    <main class="page shell-page" id="main">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="/#overview">Overview</a><span aria-hidden="true">/</span><span id="crumb-name">Applicant</span></nav>
+      <div id="error-slot"></div>
+      <div id="content" aria-busy="true"></div>
+    </main>
+  </div>
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <script src="/static/common.js" defer></script>
+  <script src="/static/workspace.js" defer></script>
   <script src="/static/applicant.js" defer></script>
 </body>
 </html>

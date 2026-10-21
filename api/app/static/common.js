@@ -75,18 +75,30 @@
   }
 
   var HEAT = {
-    HOT: { label: "Hot", bars: 4, chip: "chip-danger" },
-    MEDIUM: { label: "Medium", bars: 3, chip: "chip-warn" },
-    WARM: { label: "Warm", bars: 2, chip: "chip-calm" },
-    COLD: { label: "Cold", bars: 1, chip: "chip-calm" },
+    HOT: { label: "Hot", bars: 4, chip: "chip-hot" },
+    MEDIUM: { label: "Medium", bars: 3, chip: "chip-medium" },
+    WARM: { label: "Warm", bars: 2, chip: "chip-warm" },
+    COLD: { label: "Cold", bars: 1, chip: "chip-cold" },
+  };
+  var FOLLOW_UP = {
+    to_call: { label: "To contact", cls: "status-to-call", symbol: "○" },
+    called: { label: "Called", cls: "status-called", symbol: "↗" },
+    no_answer: { label: "No answer", cls: "status-no-answer", symbol: "↻" },
+    done: { label: "Done", cls: "status-done", symbol: "✓" }
   };
 
   // Four bars plus a word, so urgency never depends on color alone.
   function heatChip(temperature) {
-    var spec = HEAT[temperature] || HEAT.COLD;
+    var spec = Object.prototype.hasOwnProperty.call(HEAT, temperature) ? HEAT[temperature] : { label: "Not set", bars: 0, chip: "chip-calm" };
     var bars = el("span", { cls: "heat", attrs: { "aria-hidden": "true" } });
     for (var i = 1; i <= 4; i++) bars.appendChild(el("i", { cls: i <= spec.bars ? "on" : "" }));
     return el("span", { cls: "chip " + spec.chip }, bars, el("span", { text: spec.label }));
+  }
+
+  function followUpChip(status) {
+    var spec = Object.prototype.hasOwnProperty.call(FOLLOW_UP, status) ? FOLLOW_UP[status] : { label: "Not set", cls: "", symbol: "·" };
+    return el("span", { cls: "status-chip " + spec.cls },
+      el("span", { cls: "status-symbol", text: spec.symbol, attrs: { "aria-hidden": "true" } }), el("span", { text: spec.label }));
   }
 
   function phoneLink(e164, extraCls) {
@@ -105,6 +117,6 @@
 
   window.Desk = {
     TZ: TZ, $: $, el: el, phoneText: phoneText, timeText: timeText, whenText: whenText, agoText: agoText,
-    clip: clip, toLogin: toLogin, toast: toast, heatChip: heatChip, phoneLink: phoneLink, initTopbar: initTopbar,
+    clip: clip, toLogin: toLogin, toast: toast, heatChip: heatChip, followUpChip: followUpChip, phoneLink: phoneLink, initTopbar: initTopbar,
   };
 })();

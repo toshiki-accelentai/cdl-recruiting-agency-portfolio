@@ -32,7 +32,8 @@ def test_login_page_is_public(anon):
 def test_logged_in_user_gets_the_todo_page(web):
     r = web.get("/", follow_redirects=False)
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
-    assert "To do" in r.text
+    assert 'id="overview-title"' in r.text
+    assert 'data-view="analytics"' in r.text
 
 
 def test_logged_in_user_is_sent_from_login_to_the_todo_page(web):
@@ -46,7 +47,9 @@ def test_pages_are_never_cached(anon, web):
 
 
 def test_stylesheet_and_scripts_are_served(anon):
-    for path in ("/static/app.css", "/static/login.js", "/static/todo.js", "/static/applicant.js", "/static/common.js"):
+    for path in ("/static/app.css", "/static/login.js", "/static/todo.js", "/static/applicant.js",
+                 "/static/common.js", "/static/workspace.css", "/static/workspace.js", "/static/sections.js",
+                 "/static/metrics.js", "/static/analytics.js"):
         r = anon.get(path)
         assert r.status_code == 200, path
 
@@ -56,7 +59,7 @@ def test_static_folder_has_no_directory_listing_or_path_escape(anon):
     assert anon.get("/static/../main.py").status_code in (404, 400)
 
 
-@pytest.mark.parametrize("name", ["todo.js", "login.js", "applicant.js", "common.js"])
+@pytest.mark.parametrize("name", ["todo.js", "login.js", "applicant.js", "common.js", "workspace.js", "sections.js", "metrics.js", "analytics.js"])
 def test_page_scripts_never_write_html_from_data(name):
     """Names, notes and error text come from callers. innerHTML would let them inject markup."""
     source = (STATIC / name).read_text(encoding="utf-8")

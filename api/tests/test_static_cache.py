@@ -38,13 +38,16 @@ def test_the_login_page_uses_fingerprinted_asset_urls(anon):
 
 def test_the_todo_page_uses_fingerprinted_asset_urls(web):
     found = dict(VERSIONED.findall(web.get("/").text))
-    assert set(found) == {"/static/app.css", "/static/common.js", "/static/todo.js"}
+    assert set(found) == {"/static/app.css", "/static/common.js", "/static/todo.js",
+                          "/static/workspace.css", "/static/workspace.js", "/static/sections.js",
+                          "/static/metrics.js", "/static/analytics.js"}
     assert all(found[name] == fingerprint(name.rsplit("/", 1)[1]) for name in found)
 
 
 def test_the_applicant_page_uses_fingerprinted_asset_urls(web):
     found = dict(VERSIONED.findall(web.get("/applicants/1").text))
-    assert set(found) == {"/static/app.css", "/static/common.js", "/static/applicant.js"}
+    assert set(found) == {"/static/app.css", "/static/common.js", "/static/applicant.js",
+                          "/static/workspace.css", "/static/workspace.js"}
 
 
 @pytest.mark.parametrize("path", ["/login", "/", "/applicants/1"])
