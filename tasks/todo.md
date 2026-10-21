@@ -414,6 +414,12 @@ diagnose). Order is strict: A → B → C → apply.
       run against any real DB). **NEXT: step 2b sample recordings, step 5 SECURITY-REVIEW findings 3-5, then Part B
       independent review, then the live steps (each needs approval).** UI files under `api/app/static/` are being changed in Codex: do not touch or commit them.
       Run tests with `api/.venv/Scripts/python.exe -m pytest` (needs Docker Desktop + `api-db-1`).
+      Never run two pytest sessions at once: each drops and recreates `cdl_test` (fake red otherwise).
+      **UI REDESIGN DEPLOYED 2026-10-21 16:11 Vancouver (approved by the owner), release commit `8b57652`** (branch
+      `release/ui-20261021`, worktree `cdl-release-ui`: baseline `4302d12` + UI commit `3ab7a36`, no demo files). Rollback copies:
+      `src.before-20261021-161114`, `compose.yaml.before-20261021-161114`. Verified: live source identical to the release
+      commit, both containers up, 0 errors in logs, public-surface check all passed, new static files served. Real actions:
+      1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes. Not verified: signed-in browser look (owner).
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
