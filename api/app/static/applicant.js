@@ -268,11 +268,12 @@
   }
 
   function callsSection(calls) {
-    var list = el("ul", { cls: "rows" });
+    var list = el("ul", { cls: "rows call-list" });
     calls.forEach(function (call) { list.appendChild(callRow(call)); });
+    // The section is already a card; the list sits directly in it (no second border inside).
     return el("section", { attrs: { "aria-labelledby": "calls-title" } },
       el("div", { cls: "section-head" }, el("h2", { text: "Calls", attrs: { id: "calls-title" } }), el("span", { cls: "count", text: String(calls.length) })),
-      el("div", { cls: "panel" }, list));
+      list);
   }
 
   // ---- profile (view and edit) ------------------------------------------------------------

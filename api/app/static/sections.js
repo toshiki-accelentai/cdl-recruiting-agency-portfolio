@@ -177,7 +177,6 @@
       body.appendChild(details);
     }
     item.appendChild(body);
-    item.appendChild(el("span", { cls: "activity-id mono", text: "#" + call.id }));
     return item;
   }
 
@@ -254,7 +253,7 @@
 
   var activitySearch = el("input", { cls: "input activity-search-input", attrs: { type: "search", placeholder: "Search this page", "aria-label": "Search calls on this page" } });
   activitySearch.addEventListener("input", function () { activity.query = activitySearch.value.toLocaleLowerCase().trim(); renderActivity(); });
-  var activitySearchWrap = el("label", { cls: "search-field activity-search" }, el("span", { cls: "search-icon", attrs: { "aria-hidden": "true" }, text: "⌕" }), activitySearch);
+  var activitySearchWrap = el("label", { cls: "search-field activity-search" }, Desk.icon("search", "search-icon"), activitySearch);
   $("activity-scope").parentNode.insertBefore(activitySearchWrap, $("activity-scope"));
 
   window.addEventListener("desk:route", function (event) {

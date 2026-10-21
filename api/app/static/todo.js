@@ -22,7 +22,7 @@
 
   function fact(key, value) {
     if (!value) return null;
-    return el("span", {}, el("span", { cls: "k", text: key }), document.createTextNode(value));
+    return el("span", {}, key ? el("span", { cls: "k", text: key }) : null, document.createTextNode(value));
   }
 
   // ---- attention rows (one per call) ------------------------------------------------------
@@ -81,33 +81,24 @@
     return button;
   }
 
-  function queueStage(row) {
-    if (!row.preferred_callback_at) return { label: "Confirm a time", urgent: false };
-    var delta = new Date(row.preferred_callback_at).getTime() - Date.now();
-    if (delta < 0) return { label: "Contact now", urgent: true };
-    if (delta <= 60 * 60 * 1000) return { label: "Due next", urgent: true };
-    var when = whenText(row.preferred_callback_at);
-    if (when.indexOf("Today,") === 0) return { label: "Later today", urgent: false };
-    if (when.indexOf("Tomorrow,") === 0) return { label: "Tomorrow", urgent: false };
-    return { label: "Scheduled", urgent: false };
-  }
-
   function callBackRow(row, rank) {
     var person = row.applicant;
-    var stage = queueStage(row);
+    var status = person.follow_up && person.follow_up.status;
     var nameLine = el("div", { cls: "name-line" },
-      el("a", { cls: "name name-link", text: person.name || "No name given", attrs: { href: "/applicants/" + person.id } }));
-    nameLine.appendChild(Desk.followUpChip(person.follow_up && person.follow_up.status));
+      el("a", { cls: "name name-link", text: person.name || "No name given", attrs: { href: "/applicants/" + person.id } }),
+      heatChip(person.temperature));
+    // Everyone in this list is waiting for contact, so only a different status is worth a chip.
+    if (status && status !== "to_call") nameLine.appendChild(Desk.followUpChip(status));
     if (row.new_call_since) nameLine.appendChild(el("span", { cls: "chip chip-accent", text: "Called again" }));
     if (row.call_count > 1) nameLine.appendChild(el("span", { cls: "faint", text: row.call_count + " calls" }));
 
-    var phoneLine = el("div", {}, phoneLink(person.phone));
+    var phoneLine = el("div", { cls: "phone-line" }, phoneLink(person.phone));
     if (person.callback_phone) {
       phoneLine.appendChild(el("span", { cls: "also" }, document.createTextNode("Call back at "), phoneLink(person.callback_phone, "")));
     }
 
     var place = [person.city, person.state].filter(Boolean).join(", ");
-    var facts = el("div", { cls: "facts" }, fact("Location", place), fact("Experience", person.experience), fact("Ready", person.readiness));
+    var facts = el("div", { cls: "facts" }, fact(null, place), fact(null, person.experience), fact("Ready", person.readiness));
 
     var main = el("div", { cls: "c-main" }, nameLine, phoneLine, facts);
     var note = person.follow_up && person.follow_up.note;
@@ -116,10 +107,8 @@
     var seg = el("div", { cls: "seg", attrs: { role: "group", "aria-label": "Follow-up for " + person.name } },
       actionButton("Called", "called", person), actionButton("No answer", "no_answer", person), actionButton("Done", "done", person));
 
-    var rankNode = el("span", { cls: "queue-rank", text: String(rank || 1).padStart(2, "0"), attrs: { "aria-label": "Queue position " + (rank || 1) } });
-    var stageNode = el("span", { cls: "processing-label" + (stage.urgent ? " urgent" : ""), text: stage.label });
-    var heat = el("div", { cls: "c-heat queue-priority" }, rankNode, el("div", { cls: "queue-priority-detail" }, heatChip(person.temperature), stageNode));
-    var item = el("li", { cls: "row", attrs: { "data-applicant": String(person.id) } }, heat, main, whenCell(row), el("div", { cls: "c-act" }, seg));
+    var rankNode = el("span", { cls: "queue-rank c-rank", text: String(rank || 1), attrs: { "aria-label": "Queue position " + (rank || 1) } });
+    var item = el("li", { cls: "row", attrs: { "data-applicant": String(person.id) } }, rankNode, main, whenCell(row), el("div", { cls: "c-act" }, seg));
     return item;
   }
 
@@ -129,20 +118,10 @@
       var rank = index + 1;
       var rankNode = item.querySelector(".queue-rank");
       if (rankNode) {
-        rankNode.textContent = String(rank).padStart(2, "0");
+        rankNode.textContent = String(rank);
         rankNode.setAttribute("aria-label", "Queue position " + rank);
       }
       item.classList.toggle("priority-first", rank === 1);
-      if (state.data) {
-        var id = item.getAttribute("data-applicant");
-        var dataRow = state.data.call_back.filter(function (row) { return String(row.applicant.id) === id; })[0];
-        var label = item.querySelector(".processing-label");
-        if (dataRow && label) {
-          var stage = queueStage(dataRow);
-          label.textContent = stage.label;
-          label.classList.toggle("urgent", stage.urgent);
-        }
-      }
     });
   }
 
@@ -196,7 +175,6 @@
       reason.textContent = priority.badge;
       reason.hidden = false;
       $("next-link").href = "/applicants/" + next.applicant.id;
-      $("priority-explanation").textContent = "Next by requested callback time, then stated readiness. Confirm availability if no time was recorded.";
     } else {
       $("next-name").textContent = "No callbacks waiting";
       $("next-detail").textContent = "New applicants will appear here when a call is saved.";
@@ -204,20 +182,17 @@
       reason.className = "urgent-reason is-neutral";
       reason.hidden = false;
       $("next-link").href = "/#applicants";
-      $("priority-explanation").textContent = "You can review all saved applicants or check recent calls from the navigation.";
     }
     if (after) {
       var person = after.applicant;
       $("after-name").textContent = person.name || "No name given";
-      $("after-time").textContent = after.preferred_callback_at ? whenText(after.preferred_callback_at) : "No time requested · confirm before calling";
+      $("after-time").textContent = after.preferred_callback_at ? whenText(after.preferred_callback_at) : "No time requested";
       $("after-link").href = "/applicants/" + person.id;
       $("after-link").setAttribute("aria-label", "Review " + (person.name || "applicant") + ", second in callback queue");
-      $("after-note").textContent = "Second in line, based on the requested callback time.";
     } else {
       $("after-name").textContent = rows.length ? "No one after this" : "Queue is clear";
       $("after-time").textContent = rows.length ? "Only one applicant is waiting" : "No callback requests are waiting";
       $("after-link").href = "/#applicants";
-      $("after-note").textContent = "See Applicants for people marked called, no answer, or done.";
     }
   }
 

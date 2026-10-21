@@ -3,39 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="light">
   <title>Sign in | Frontline CDL</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236d4ae0'/%3E%3Cpath d='M11 23V9h10M11 16h8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/workspace.css">
 </head>
-<body>
-  <div class="auth">
-    <header><span class="brand">Frontline CDL <span class="brand-sub">Recruiter desk</span></span></header>
+<body class="auth-body">
+  <main class="auth-main" id="main">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark" aria-hidden="true">F</span><span>Frontline CDL<small>Recruiter desk</small></span></div>
+      <h1>Sign in</h1>
+      <p class="auth-lede">Review new applicants and call them back in order.</p>
 
-    <main class="auth-main" id="main">
-      <div class="auth-card">
-        <h1>Sign in</h1>
-        <p class="auth-lede">Review new applicants, fix what the phone missed, and call back in order.</p>
-
-        <form class="form" id="login-form" novalidate>
-          <div class="field">
-            <label for="username">Username</label>
-            <input class="input" id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+      <form class="form" id="login-form" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input class="input" id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+            <button class="btn btn-ghost reveal" id="reveal" type="button" aria-controls="password" aria-pressed="false">Show</button>
           </div>
-          <div class="field">
-            <label for="password">Password</label>
-            <div class="input-wrap">
-              <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
-              <button class="btn btn-ghost reveal" id="reveal" type="button" aria-controls="password" aria-pressed="false">Show</button>
-            </div>
-          </div>
-          <p class="form-error" id="form-error" role="alert"></p>
-          <button class="btn btn-primary" id="submit" type="submit">Sign in</button>
-        </form>
-      </div>
-    </main>
-
-    <footer class="auth-foot">Demo environment. All applicant data is fictional.</footer>
-  </div>
+        </div>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <button class="btn btn-primary" id="submit" type="submit">Sign in</button>
+      </form>
+    </div>
+    <p class="auth-foot">Demo environment. All applicant data is fictional.</p>
+  </main>
   <script src="/static/login.js" defer></script>
 </body>
 </html>

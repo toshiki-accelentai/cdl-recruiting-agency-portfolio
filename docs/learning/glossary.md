@@ -95,3 +95,7 @@ One line each. Say it out loud in your own words before moving on.
 | **Idempotent** | Doing the same call twice has the same result as doing it once, which is what makes a retry safe. | C1e n8n hop |
 | **Blip vs outage** | A blip is a short glitch a retry can fix. An outage is long and needs a queue (like the outbox). | C1e n8n hop |
 | **Draft vs published (n8n)** | In this n8n, Save stores a draft only. The live workflow keeps running the last published version until you press Publish. | C1e n8n hop |
+| **Design tokens** | Named values for colors, sizes and spacing (like `--accent`), set once and reused everywhere, so one change restyles the whole app. | UI redesign |
+| **Type scale** | A short, fixed list of text sizes (here 12 to 28px) that every screen picks from, instead of a new size per element. | UI redesign |
+| **SVG sprite** | One hidden block of icon drawings in the page; each icon on screen just points to one of them by name. | UI redesign |
+| **Reduced motion** | An operating-system setting for people who get dizzy from animation; the app turns its movement off when it is on. | UI redesign |

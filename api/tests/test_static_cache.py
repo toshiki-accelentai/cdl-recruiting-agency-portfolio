@@ -33,7 +33,8 @@ def fingerprint(name):
 def test_the_login_page_uses_fingerprinted_asset_urls(anon):
     html = anon.get("/login").text
     found = dict(VERSIONED.findall(html))
-    assert found == {"/static/app.css": fingerprint("app.css"), "/static/login.js": fingerprint("login.js")}
+    assert found == {"/static/app.css": fingerprint("app.css"), "/static/workspace.css": fingerprint("workspace.css"),
+                     "/static/login.js": fingerprint("login.js")}
 
 
 def test_the_todo_page_uses_fingerprinted_asset_urls(web):

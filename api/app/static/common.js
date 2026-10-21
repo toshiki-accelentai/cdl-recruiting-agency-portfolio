@@ -81,11 +81,23 @@
     COLD: { label: "Cold", bars: 1, chip: "chip-cold" },
   };
   var FOLLOW_UP = {
-    to_call: { label: "To contact", cls: "status-to-call", symbol: "○" },
-    called: { label: "Called", cls: "status-called", symbol: "↗" },
-    no_answer: { label: "No answer", cls: "status-no-answer", symbol: "↻" },
-    done: { label: "Done", cls: "status-done", symbol: "✓" }
+    to_call: { label: "To contact", cls: "status-to-call" },
+    called: { label: "Called", cls: "status-called" },
+    no_answer: { label: "No answer", cls: "status-no-answer" },
+    done: { label: "Done", cls: "status-done" }
   };
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  // An icon from the sprite in the page (<symbol id="i-name">). Decorative: the text next to it carries the meaning.
+  function icon(name, extraCls) {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "icon" + (extraCls ? " " + extraCls : ""));
+    svg.setAttribute("aria-hidden", "true");
+    var use = document.createElementNS(SVG_NS, "use");
+    use.setAttribute("href", "#i-" + name);
+    svg.appendChild(use);
+    return svg;
+  }
 
   // Four bars plus a word, so urgency never depends on color alone.
   function heatChip(temperature) {
@@ -96,9 +108,9 @@
   }
 
   function followUpChip(status) {
-    var spec = Object.prototype.hasOwnProperty.call(FOLLOW_UP, status) ? FOLLOW_UP[status] : { label: "Not set", cls: "", symbol: "·" };
+    var spec = Object.prototype.hasOwnProperty.call(FOLLOW_UP, status) ? FOLLOW_UP[status] : { label: "Not set", cls: "" };
     return el("span", { cls: "status-chip " + spec.cls },
-      el("span", { cls: "status-symbol", text: spec.symbol, attrs: { "aria-hidden": "true" } }), el("span", { text: spec.label }));
+      el("span", { cls: "status-dot", attrs: { "aria-hidden": "true" } }), el("span", { text: spec.label }));
   }
 
   function phoneLink(e164, extraCls) {
@@ -111,12 +123,16 @@
       fetch("/logout", { method: "POST" }).then(toLogin, toLogin);
     });
     fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
-      if (me) $("who").textContent = me.username;
+      if (!me) return;
+      $("who").textContent = me.username;
+      var avatar = document.querySelector(".who-avatar");
+      if (avatar) avatar.textContent = me.username.charAt(0).toUpperCase();
     }).catch(function () {});
   }
 
   window.Desk = {
     TZ: TZ, $: $, el: el, phoneText: phoneText, timeText: timeText, whenText: whenText, agoText: agoText,
     clip: clip, toLogin: toLogin, toast: toast, heatChip: heatChip, followUpChip: followUpChip, phoneLink: phoneLink, initTopbar: initTopbar,
+    icon: icon,
   };
 })();
