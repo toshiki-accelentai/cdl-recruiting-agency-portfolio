@@ -404,7 +404,13 @@ diagnose). Order is strict: A → B → C → apply.
       `config/n8n/`: which node sends the end-of-call report (it must reach `POST /call-reports`), the `toolCalls[0]`
       vs `toolCallList[0]` mix, the Zoho `Authorization` header (AUDIT #6), and that nothing still writes to Airtable
       that should not. Do before the independent security review and before the link goes on a resume.
+- [ ] **C4 demo server (decided 2026-10-20, plan in `docs/C4-PLAN.md`).** Separate demo container + Postgres on
+      hermes-vps, fictional seed, nightly reset, one or two sample recordings, no Zoho/VAPI keys. First-pass review in
+      `docs/SECURITY-REVIEW.md`: do not share the demo password before this is live.
 - [ ] **Apply.**
+- [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
+      agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
+      notice, masked phones; costs a number plus per-minute fees.
 - [ ] **Interview-prep code review (last item, after publish and first applications; added
       2026-10-13).** One or more sessions to read and understand the finished portfolio code
       well enough to defend it in an interview. Per area: walk the data flow out loud without
