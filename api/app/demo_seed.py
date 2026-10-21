@@ -171,16 +171,21 @@ def _insert_person(conn, now, person, numbers) -> None:
         _insert_sync(conn, now, call_id, applicant_id, call["sync"])
 
 
+def write_demo_rows(conn: psycopg.Connection, now: datetime | None = None) -> None:
+    """Insert the fictional rows. No guards here: the callers (seed, demo_reset) check them first."""
+    now = now or datetime.now(timezone.utc)
+    numbers = iter(range(1, 1000))
+    for person in PEOPLE:
+        _insert_person(conn, now, person, numbers)
+    _insert_call(conn, now, next(numbers), None, NO_INTAKE, NO_INTAKE_CALLER)
+
+
 def seed(conn: psycopg.Connection, now: datetime | None = None) -> None:
     """Write the fictional demo data in one transaction. Raises before writing if a guard fails."""
     require_demo_mode()
-    now = now or datetime.now(timezone.utc)
-    numbers = iter(range(1, 1000))
     with conn.transaction():
         _require_empty(conn)
-        for person in PEOPLE:
-            _insert_person(conn, now, person, numbers)
-        _insert_call(conn, now, next(numbers), None, NO_INTAKE, NO_INTAKE_CALLER)
+        write_demo_rows(conn, now)
 
 
 def main() -> int:

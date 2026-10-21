@@ -409,9 +409,10 @@ diagnose). Order is strict: A → B → C → apply.
       `docs/SECURITY-REVIEW.md`: do not share the demo password before this is live.
       **STATUS 2026-10-21:** Part A step 1 DONE (`edcbbb8`, tests that the server runs with no n8n/VAPI key) and step 2
       DONE (`9dd4a42`, `app/demo_seed.py`, guarded by `DEMO_MODE=1` + empty DB; never run against any real DB, only the
-      test DB). Full suite 377 passed. **NEXT: step 2b sample recordings, step 3 nightly reset `app.demo_reset`
-      (same guards), step 5 SECURITY-REVIEW findings 3-5, then Part B independent review, then the live steps (each
-      needs approval).** UI files under `api/app/static/` are being changed in Codex: do not touch or commit them.
+      test DB). Step 3 DONE 2026-10-21 (`app/demo_reset.py`, one transaction, logins untouched, refuses on a call
+      without the demo marker or an applicant with a Zoho id; 9 tests, 4 mutation checks; full suite 386 passed; never
+      run against any real DB). **NEXT: step 2b sample recordings, step 5 SECURITY-REVIEW findings 3-5, then Part B
+      independent review, then the live steps (each needs approval).** UI files under `api/app/static/` are being changed in Codex: do not touch or commit them.
       Run tests with `api/.venv/Scripts/python.exe -m pytest` (needs Docker Desktop + `api-db-1`).
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
