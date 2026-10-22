@@ -71,7 +71,7 @@ def test_names_and_phones_are_all_different(clean_tables, demo_mode):
     run_seed()
     assert count("SELECT count(*) - count(DISTINCT name) FROM applicants") == 0
     assert count("SELECT count(*) - count(DISTINCT phone_e164) FROM applicants") == 0
-    assert count("SELECT count(*) FROM applicants WHERE name ILIKE 'demo %'") == 0  # 'Demo ...' is the real sample call
+    assert count("SELECT count(*) FROM applicants WHERE name ILIKE 'demo %'") == 0  # the seed stays free of 'Demo' labels
 
 
 def test_the_roster_has_variety_in_when_and_how_people_called(clean_tables, demo_mode):
@@ -106,10 +106,38 @@ def test_shows_every_screen_state(clean_tables, demo_mode):
                  "WHERE c.applicant_id = a.id) >= 2") >= 1  # someone who called twice
 
 
-def test_every_call_has_a_summary_and_transcript_and_no_recording_yet(clean_tables, demo_mode):
+def test_every_call_has_a_summary_and_transcript(clean_tables, demo_mode):
     run_seed()
     assert count("SELECT count(*) FROM calls WHERE summary IS NULL OR transcript IS NULL") == 0
-    assert count("SELECT count(*) FROM calls WHERE has_recording") == 0  # sample recordings come in step 2b
+
+
+def test_exactly_the_two_sample_calls_have_a_recording(clean_tables, demo_mode):
+    from app.recordings import DEMO_RECORDING_FILES
+    run_seed()
+    assert count("SELECT count(*) FROM calls WHERE has_recording") == 2
+    with psycopg.connect(TEST_URL) as conn:
+        ids = {r[0] for r in conn.execute("SELECT vapi_call_id FROM calls WHERE has_recording")}
+    assert ids == set(DEMO_RECORDING_FILES)
+
+
+def test_the_two_sample_calls_are_the_intake_and_the_flagged_hang_up(clean_tables, demo_mode):
+    run_seed()
+    with psycopg.connect(TEST_URL) as conn:
+        intake = conn.execute("SELECT a.name, a.city, c.needs_review FROM calls c JOIN applicants a ON a.id = c.applicant_id "
+                              "WHERE c.has_recording").fetchall()
+        flagged = conn.execute("SELECT review_reason FROM calls WHERE has_recording AND applicant_id IS NULL").fetchall()
+        lines = conn.execute("SELECT jsonb_array_length(transcript) FROM calls WHERE has_recording ORDER BY 1").fetchall()
+    assert intake == [("Carlos Rivera", "Fresno", False)]
+    assert flagged == [("no_intake",)]
+    assert lines[0][0] >= 3 and lines[1][0] >= 20  # the real transcripts, with their real timestamps
+
+
+def test_transcript_times_follow_the_audio_not_a_fixed_step(clean_tables, demo_mode):
+    run_seed()
+    with psycopg.connect(TEST_URL) as conn:
+        starts = [t["start"] for t in conn.execute(
+            "SELECT transcript FROM calls WHERE has_recording AND applicant_id IS NOT NULL").fetchone()[0]]
+    assert starts == sorted(starts) and len(set(round(b - a, 1) for a, b in zip(starts, starts[1:]))) > 3
 
 
 def test_no_zoho_ids_and_no_real_payloads(clean_tables, demo_mode):

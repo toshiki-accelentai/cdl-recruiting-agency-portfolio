@@ -5,9 +5,11 @@ private key, GET /call/{id}/mono-recording answers with a redirect to a signed l
 minutes. The key stays here, on the server; the browser only ever sees the signed link.
 """
 import logging
+import os
 import re
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from app.config import vapi_private_key
 
@@ -17,6 +19,27 @@ VAPI_BASE = "https://api.vapi.ai"
 REQUEST_TIMEOUT_SECONDS = 10
 PLAIN_CALL_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")  # the id goes into a URL path: nothing else may through
 REDIRECT_CODES = {301, 302, 303, 307, 308}
+
+
+# The demo server plays two sample recordings from local files instead of asking VAPI. The file name comes from this
+# fixed table, keyed by the call's stored id; a request never supplies a name or a path.
+DEMO_RECORDING_FILES = {
+    "demo-sample-intake": "sample-intake-call.wav",
+    "demo-sample-hangup": "sample-incomplete-call.wav",
+}
+
+
+def demo_recordings_dir() -> Path | None:
+    """The folder of sample recordings, or None when this is not the demo server."""
+    value = os.environ.get("DEMO_RECORDINGS_DIR", "")
+    return Path(value) if value else None
+
+
+def demo_recording_file(folder: Path, vapi_call_id: str) -> Path | None:
+    """The sample file for this call, or None when the call has none or the file is not there."""
+    name = DEMO_RECORDING_FILES.get(vapi_call_id)
+    path = folder / name if name else None
+    return path if path is not None and path.is_file() else None
 
 
 class NotConfigured(Exception):

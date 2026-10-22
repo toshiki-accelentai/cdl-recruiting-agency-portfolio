@@ -5,7 +5,7 @@
 Two guards, so it can never write into the real database: DEMO_MODE must be exactly "1", and the database must be
 empty (no applicants, calls, outbox rows or change history). Every name, number and city is made up; phone numbers
 use 555-0100 to 555-0199, which US numbering keeps for fiction. Times are relative to now, so the demo always looks
-like this week. No recordings yet (step 2b) and no Zoho ids (the demo never talks to Zoho).
+like this week. Two calls (the sample intake and the sample hang-up) have real audio, served from local files; no Zoho ids (the demo never talks to Zoho).
 The 8 featured people below are hand-written; the rest of the roster is the table in demo_roster.py.
 """
 import logging
@@ -17,7 +17,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.config import database_url
-from app import demo_roster
+from app import demo_roster, demo_samples
 from app.db import connect_with_retry
 
 logger = logging.getLogger(__name__)
@@ -35,9 +35,10 @@ DEMO_PAYLOAD = Jsonb({"demo": True})  # stands in for VAPI's raw request, which 
 TABLES_THAT_MUST_BE_EMPTY = ("applicants", "calls", "outbox", "audit_log")
 
 
-def _call(hours_ago, summary, lines, sync=None, callback_in_hours=None):
+def _call(hours_ago, summary, lines, sync=None, callback_in_hours=None, **extra):
+    """extra: vapi_id and has_recording for the two sample calls that play real audio."""
     return {"hours_ago": hours_ago, "summary": summary, "lines": lines, "sync": sync,
-            "callback_in_hours": callback_in_hours}
+            "callback_in_hours": callback_in_hours, **extra}
 
 
 def _person(name, phone, city, state, zip_code, experience, readiness, temperature, calls,
@@ -107,17 +108,18 @@ PEOPLE = [
                    _intake("Jasmine Cole", "Nashville, Tennessee", "Four years reefer", "Next month",
                            "Any time next week"), SENT)],
             follow_up="called", note="Check in again in three weeks.", follow_up_hours_ago=100),
+    # A real sample call with audio: the full intake, from the owner's own test call (all details fictional).
+    _person("Carlos Rivera", "+15595550127", "Fresno", "CA", "93706", "6+ years", "within 7 days", "MEDIUM",
+            [_call(22, demo_samples.INTAKE_SUMMARY, demo_samples.INTAKE_LINES, SENT, callback_in_hours=26,
+                   vapi_id="demo-sample-intake", has_recording=True)]),
     _person("Owen Price", "+15035550158", "Portland", "OR", "97217", "8 years, dry van", "in 3 days", "HOT",
             [_call(1, "Dry van driver, eight years, can start in three days.",
                    _intake("Owen Price", "Portland, Oregon", "Eight years dry van", "In three days",
                            "In two hours"), SENT, callback_in_hours=2)]),
 ]
 
-# Someone who called but never reached the intake questions: kept, flagged, with no applicant.
-NO_INTAKE = _call(7, "Caller asked about dispatcher jobs, not a driver. Hung up before the questions.",
-                  [("agent", "Thanks for calling Frontline CDL Staffing. Are you a CDL driver looking for work?"),
-                   ("driver", "No, I'm asking about dispatcher openings."),
-                   ("agent", "This line is for drivers, but I can note your call for the team.")])
+# The caller who hung up before giving a name: kept, flagged, with no applicant. A real sample call with audio.
+NO_INTAKE = _call(7, demo_samples.HANGUP_SUMMARY, demo_samples.HANGUP_LINES, vapi_id="demo-sample-hangup", has_recording=True)
 NO_INTAKE_CALLER = "+12535550199"
 
 SYNC_BY_KEY = {demo_roster.SENT: SENT, demo_roster.WAITING: WAITING, demo_roster.FAILED: FAILED}
@@ -163,8 +165,9 @@ def _require_empty(conn: psycopg.Connection) -> None:
 
 
 def _transcript(lines) -> Jsonb:
-    return Jsonb([{"speaker": speaker, "text": text, "start": round(index * 4.5, 1)}
-                  for index, (speaker, text) in enumerate(lines)])
+    """Lines are (speaker, text), given an even 4.5 second step, or (speaker, text, start) with the real time."""
+    return Jsonb([{"speaker": line[0], "text": line[1], "start": line[2] if len(line) > 2 else round(index * 4.5, 1)}
+                  for index, line in enumerate(lines)])
 
 
 def _insert_call(conn, now, number, applicant_id, call, caller) -> int:
@@ -172,11 +175,11 @@ def _insert_call(conn, now, number, applicant_id, call, caller) -> int:
     callback = None if call["callback_in_hours"] is None else now + timedelta(hours=call["callback_in_hours"])
     return conn.execute(
         "INSERT INTO calls (vapi_call_id, applicant_id, preferred_callback_at, raw_payload, needs_review, "
-        "review_reason, summary, transcript, report_received_at, caller_number, created_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-        (f"demo-call-{number}", applicant_id, callback, DEMO_PAYLOAD, applicant_id is None,
+        "review_reason, summary, transcript, report_received_at, caller_number, created_at, has_recording) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+        (call.get("vapi_id") or f"demo-call-{number}", applicant_id, callback, DEMO_PAYLOAD, applicant_id is None,
          None if applicant_id else call.get("reason", "no_intake"), call["summary"], _transcript(call["lines"]),
-         created + timedelta(minutes=2), caller, created)).fetchone()[0]
+         created + timedelta(minutes=2), caller, created, call.get("has_recording", False))).fetchone()[0]
 
 
 def _insert_sync(conn, now, call_id, applicant_id, sync) -> None:

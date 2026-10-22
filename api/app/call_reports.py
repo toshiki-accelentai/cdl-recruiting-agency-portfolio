@@ -8,7 +8,7 @@ GET  /api/calls/{id}/recording   logged-in recruiters. Redirects to a fresh 30-m
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from psycopg.types.json import Jsonb
 
 from app import recordings
@@ -120,6 +120,12 @@ def get_recording(call_id: int, _user: dict = Depends(current_user)):
         row = conn.execute("SELECT vapi_call_id, has_recording FROM calls WHERE id = %s", (call_id,)).fetchone()
     if row is None or not row[1]:
         raise HTTPException(status_code=404, detail="no recording for this call")
+    demo_folder = recordings.demo_recordings_dir()
+    if demo_folder is not None:  # the demo server: a local sample file, never VAPI
+        path = recordings.demo_recording_file(demo_folder, row[0])
+        if path is None:
+            raise HTTPException(status_code=404, detail="no recording for this call")
+        return FileResponse(path, media_type="audio/wav", headers=NO_STORE)
     try:
         url = recordings.signed_recording_url(row[0])
     except ValueError:

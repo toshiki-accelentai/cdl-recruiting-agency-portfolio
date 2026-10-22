@@ -45,7 +45,7 @@ The organisation number is an identifier, not a secret. It goes in an env settin
 2b. Sample recordings (owner decided 2026-10-20): one or two demo calls play a real-sounding recording. The demo
    server never asks VAPI: with `DEMO_RECORDINGS_DIR` set, `GET /api/calls/{id}/recording` serves a local file named in
    the seed (fixed names only, never a path from the request). The file comes from one fictional call the owner places to
-   the real agent (fictional name, number and city; name starts with "Demo"), downloaded once from the VAPI dashboard.
+   the real agent (a normal, realistic fictional name, number and city; the owner decided 2026-10-22 against any "Demo" label in the name), downloaded once from the VAPI dashboard.
    The file stays out of git (`.gitignore`) and is copied to a server volume. That one call is a real action: it also
    writes one row to the real database and one candidate to the owner's Zoho; delete or keep them, owner's call.
 3. Nightly reset `app.demo_reset`: empty the demo tables and re-seed, also `DEMO_MODE=1` only.

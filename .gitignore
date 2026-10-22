@@ -12,3 +12,6 @@ __pycache__/
 
 # Passwords written by `python -m app.users_cli` (never commit)
 *.password
+
+# Sample call recordings for the demo (large audio, copied to the demo server, never committed)
+demo-recordings/
