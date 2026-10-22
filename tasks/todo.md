@@ -431,6 +431,13 @@ diagnose). Order is strict: A → B → C → apply.
       `src.before-20261022-115238`, `compose.yaml.before-20261022-115238`. Verified: live source identical to the release
       commit, both containers healthy, 0 errors in logs, surface check all passed. 378 API tests, 2 JS tests on the release
       worktree. Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
+      **LOGO DEPLOYED 2026-10-22 13:28 Vancouver (approved by the owner), release commit `c4d43da`** (= `67e9a40`): the
+      approved Frontline CDL logo (SVG, outlined) replaces the placeholder F tile on login, sidebar, collapsed sidebar and tab
+      icon; logo files are fingerprinted like the CSS/JS. Rollback copies: `src.before-20261022-132718`,
+      `compose.yaml.before-20261022-132718`. Verified: live `app/` identical to the release worktree (40/40 files by SHA-256),
+      both containers healthy, 0 errors in logs, API key check 401/401/422, public logo files 200 with immutable cache and
+      fingerprints equal to the local files, old F tile gone, signed-in sidebar shows the new symbol. 390 API tests, 1 JS test
+      on the release worktree. Real actions: 1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
