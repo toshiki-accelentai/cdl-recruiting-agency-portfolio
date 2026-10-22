@@ -22,7 +22,7 @@ NO_STORE = {"Cache-Control": "no-store"}  # a page must never be shown from cach
 IMMUTABLE = "public, max-age=31536000, immutable"
 REVALIDATE = "no-cache"  # "may keep it, but ask first": answered 304 when unchanged
 FINGERPRINT_LENGTH = 10
-ASSET_REFERENCE = re.compile(r'(/static/([A-Za-z0-9_.-]+\.(?:css|js)))(?=")')
+ASSET_REFERENCE = re.compile(r'(/static/([A-Za-z0-9_.-]+\.(?:css|js|svg|png)))(?=")')
 
 _fingerprints: dict[tuple[str, int, int], str] = {}
 

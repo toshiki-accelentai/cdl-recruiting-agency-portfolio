@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 433 433" width="433" height="433" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">Frontline CDL symbol</title>
+  <g id="01-symbol" inkscape:groupmode="layer" inkscape:label="F symbol" fill="#4C30EA" transform="translate(-139 -137)">
+    <path id="upper-arm" d="M209 340 L231 288 C248 248 273 218 310 218 H548 C535 255 524 280 493 294 C477 303 461 304 437 304 H366 C308 304 263 324 209 340 Z"/>
+    <path id="stem-and-middle-arm" d="M163 489 L208 401 C236 356 281 332 335 329 C383 326.33 436 332 497 321 C484 353 471 378 444 390 C432 395.33 422 396 408 396 H355 C329 396 313 408 300 428 L263 489 Z"/>
+  </g>
+</svg>

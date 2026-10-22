@@ -98,6 +98,61 @@ def test_open_in_the_applicant_table_is_a_button_without_an_underline():
         assert "underline" not in rule(css("workspace.css"), selector), selector
 
 
+LOGO = "frontline-cdl-logo.svg"
+MARK = "frontline-cdl-mark.svg"
+
+
+@pytest.mark.parametrize("name", (LOGO, MARK))
+def test_logo_svgs_are_self_contained_vectors(name):
+    """Approved logo handoff 2026-10-22: outlined paths only, so no font, image, script or outside file is needed."""
+    svg = (STATIC / name).read_text(encoding="utf-8")
+    assert re.search(r'<svg[^>]*viewBox="0 0 \d+ \d+"', svg)
+    for banned in ("<image", "<text", "<script", "<style", "<filter", "href=", "url(", "@import"):
+        assert banned not in svg, f"{name} contains {banned}"
+    assert svg.count("<path") >= 2
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_every_page_shows_the_approved_logo(name):
+    html = (STATIC / name).read_text(encoding="utf-8")
+    logo = re.search(r'<img class="brand-logo" src="/static/' + re.escape(LOGO) + r'" width="1894" height="319" alt="Frontline CDL">', html)
+    assert logo, f"{name} lacks the full logo with its real size and alt text"
+    assert 'class="brand-mark"' not in html, f"{name} still has the placeholder F tile"
+
+
+@pytest.mark.parametrize("name", ("todo.html", "applicant.html"))
+def test_the_collapsed_sidebar_swaps_to_the_symbol(name):
+    html = (STATIC / name).read_text(encoding="utf-8")
+    assert re.search(r'<img class="brand-symbol" src="/static/' + re.escape(MARK) + r'" width="433" height="433" alt="Frontline CDL">', html)
+    workspace = css("workspace.css")
+    assert "brand-mark" not in workspace
+    assert "display: none" in rule(workspace, ".brand-symbol")  # hidden while the full logo fits
+    narrow = re.search(r"@media \(max-width: 1024px\) \{(.*?)\n\}", workspace, re.DOTALL).group(1)
+    assert re.search(r"\.brand-logo[^{]*\{[^}]*display:\s*none", narrow)
+    assert re.search(r"\.brand-symbol\s*\{[^}]*display:\s*block", narrow)
+
+
+def test_only_the_sidebar_logo_collapses_the_login_logo_never_hides():
+    """Found in the browser check: an unscoped '.brand-logo { display: none }' at 1024px blanked the login logo."""
+    narrow = re.search(r"@media \(max-width: 1024px\) \{(.*?)\n\}", css("workspace.css"), re.DOTALL).group(1)
+    for selector in re.findall(r"([^{}]*)\{[^}]*display:\s*none", narrow):
+        if "brand-logo" in selector:
+            assert ".sidebar .brand-logo" in selector, selector
+
+
+def test_logo_keeps_its_aspect_ratio_and_never_overflows():
+    for selector in (".brand-logo", ".brand-symbol"):
+        declarations = rule(css("workspace.css"), selector)
+        assert "height: auto" in declarations and "max-width: 100%" in declarations, selector
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_the_tab_icon_is_the_approved_symbol(name):
+    html = (STATIC / name).read_text(encoding="utf-8")
+    assert f'rel="icon" type="image/svg+xml" href="/static/{MARK}"' in html
+    assert 'href="data:' not in html, f"{name} still has the old inline placeholder icon"
+
+
 def test_call_activity_search_sits_in_the_filter_toolbar():
     """Owner review 2026-10-22: the search box was stuck to the panel edge on a row of its own."""
     script = (STATIC / "sections.js").read_text(encoding="utf-8")

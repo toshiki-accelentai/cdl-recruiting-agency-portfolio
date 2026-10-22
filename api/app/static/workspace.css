@@ -114,8 +114,9 @@ h1, h2 { text-wrap: balance; }
 
 /* ---- shell: sidebar and top bar ---------------------------------------------------------- */
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 24; width: var(--sidebar); display: flex; flex-direction: column; padding: 20px 14px; background: var(--surface); border-right: 1px solid var(--line); }
-.sidebar .brand { display: flex; align-items: center; gap: 11px; min-height: 44px; padding: 0 8px; color: var(--ink); font-size: var(--fs-read); font-weight: 700; letter-spacing: -.02em; text-decoration: none; }
-.brand-mark { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: linear-gradient(145deg, #7b5af0, #5c3bce); color: #fff; font-size: 17px; font-weight: 750; box-shadow: 0 4px 10px -3px rgb(92 59 206 / .5), inset 0 1px 0 rgb(255 255 255 / .2); }
+.sidebar .brand { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; min-height: 44px; padding: 0 8px; color: var(--ink); text-decoration: none; }
+.brand-logo { display: block; width: 184px; max-width: 100%; height: auto; }
+.brand-symbol { display: none; width: 36px; max-width: 100%; height: auto; }
 .brand-text small, .auth-brand small { display: block; margin-top: 1px; color: var(--ink-3); font-size: var(--fs-caption); font-weight: 500; letter-spacing: 0; }
 .side-nav { display: grid; gap: 2px; margin-top: 28px; }
 .nav-link { position: relative; display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: var(--r-md); color: var(--ink-2); font-size: var(--fs-body); font-weight: 500; text-decoration: none; transition: background-color 160ms var(--ease), color 160ms var(--ease); }
@@ -402,7 +403,8 @@ h1, h2 { text-wrap: balance; }
 body.auth-body { min-height: 100dvh; margin: 0; background: radial-gradient(1200px 600px at 50% -10%, #ece6fd 0%, rgb(236 230 253 / 0) 60%), var(--bg); }
 .auth-main { display: grid; min-height: 100dvh; place-items: center; align-content: center; gap: 20px; padding: 32px 16px; }
 .auth-card { width: min(100%, 400px); padding: 32px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-md); animation: view-in 320ms var(--ease) both; }
-.auth-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 28px; font-size: var(--fs-read); font-weight: 700; letter-spacing: -.02em; }
+.auth-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 28px; }
+.auth-brand .brand-logo { width: 210px; }
 .auth-card h1 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 .auth-lede { margin-top: 6px; color: var(--ink-3); font-size: var(--fs-body); }
 .auth-body .form { margin-top: 24px; gap: 16px; }
@@ -437,8 +439,9 @@ body.auth-body { min-height: 100dvh; margin: 0; background: radial-gradient(1200
 @media (max-width: 1024px) {
   :root { --sidebar: 72px; }
   .sidebar { align-items: center; padding: 20px 12px; }
-  .brand-text { display: none; }
-  .sidebar .brand { padding: 0; }
+  .brand-text, .sidebar .brand-logo { display: none; }
+  .brand-symbol { display: block; }
+  .sidebar .brand { align-items: center; padding: 0; }
   .nav-link { justify-content: center; width: 48px; padding: 0; }
   .nav-link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .nav-link .icon { width: 20px; height: 20px; }

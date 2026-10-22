@@ -14,8 +14,9 @@ from app import pages
 from tests.test_calls_api import web  # noqa: F401  (web is a pytest fixture)
 
 STATIC = Path(__file__).resolve().parents[1] / "app" / "static"
-VERSIONED = re.compile(r'(?:href|src)="(/static/[A-Za-z0-9_.-]+\.(?:css|js))\?v=([0-9a-f]{10})"')
-ANY_ASSET = re.compile(r'(?:href|src)="(/static/[^"]+\.(?:css|js))(\?[^"]*)?"')
+VERSIONED = re.compile(r'(?:href|src)="(/static/[A-Za-z0-9_.-]+\.(?:css|js|svg|png))\?v=([0-9a-f]{10})"')
+ANY_ASSET = re.compile(r'(?:href|src)="(/static/[^"]+\.(?:css|js|svg|png))(\?[^"]*)?"')
+LOGO_FILES = {"/static/frontline-cdl-logo.svg", "/static/frontline-cdl-mark.svg", "/static/frontline-cdl-mark.png"}
 
 
 @pytest.fixture
@@ -34,21 +35,24 @@ def test_the_login_page_uses_fingerprinted_asset_urls(anon):
     html = anon.get("/login").text
     found = dict(VERSIONED.findall(html))
     assert found == {"/static/app.css": fingerprint("app.css"), "/static/workspace.css": fingerprint("workspace.css"),
-                     "/static/login.js": fingerprint("login.js")}
+                     "/static/login.js": fingerprint("login.js"),
+                     "/static/frontline-cdl-logo.svg": fingerprint("frontline-cdl-logo.svg"),
+                     "/static/frontline-cdl-mark.svg": fingerprint("frontline-cdl-mark.svg"),
+                     "/static/frontline-cdl-mark.png": fingerprint("frontline-cdl-mark.png")}
 
 
 def test_the_todo_page_uses_fingerprinted_asset_urls(web):
     found = dict(VERSIONED.findall(web.get("/").text))
     assert set(found) == {"/static/app.css", "/static/common.js", "/static/todo.js",
                           "/static/workspace.css", "/static/workspace.js", "/static/sections.js",
-                          "/static/metrics.js", "/static/analytics.js"}
+                          "/static/metrics.js", "/static/analytics.js"} | LOGO_FILES
     assert all(found[name] == fingerprint(name.rsplit("/", 1)[1]) for name in found)
 
 
 def test_the_applicant_page_uses_fingerprinted_asset_urls(web):
     found = dict(VERSIONED.findall(web.get("/applicants/1").text))
     assert set(found) == {"/static/app.css", "/static/common.js", "/static/applicant.js",
-                          "/static/workspace.css", "/static/workspace.js"}
+                          "/static/workspace.css", "/static/workspace.js"} | LOGO_FILES
 
 
 @pytest.mark.parametrize("path", ["/login", "/", "/applicants/1"])
