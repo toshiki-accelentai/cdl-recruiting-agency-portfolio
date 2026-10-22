@@ -420,6 +420,12 @@ diagnose). Order is strict: A → B → C → apply.
       `src.before-20261021-161114`, `compose.yaml.before-20261021-161114`. Verified: live source identical to the release
       commit, both containers up, 0 errors in logs, public-surface check all passed, new static files served. Real actions:
       1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes. Not verified: signed-in browser look (owner).
+      **UI POLISH DEPLOYED 2026-10-21 17:00 Vancouver (approved by the owner), release commit `aba6190`** (= `0b000d6` on
+      `feat/python-api` on top of `8b57652`): Inter font, purple palette, nothing under 12px, SVG icons, motion, centered
+      sign-in. Rollback copies: `src.before-20261021-170026`, `compose.yaml.before-20261021-170026`. Verified: live source
+      identical to the release commit, both containers healthy, 0 errors in logs, surface check all passed, new files served
+      (Manrope gone, 404). 376 API tests, 2 JS tests on the release worktree. Real actions: 1 deploy run, 0 migrations, 0 calls,
+      0 Zoho writes. Not verified: signed-in look on cdl-demo.accelentai.com (owner).
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
