@@ -260,8 +260,10 @@ h1, h2 { text-wrap: balance; }
 .callback-cell.muted, .last-call-cell { color: var(--ink-3); font-size: var(--fs-meta); white-space: nowrap; }
 .table-substatus { display: block; margin-top: 4px; color: var(--medium-text); font-size: var(--fs-caption); }
 .open-cell { text-align: right; }
-.table-open { color: var(--accent-text); font-size: var(--fs-meta); font-weight: 600; text-decoration: none; }
-.table-open:hover { text-decoration: underline; text-underline-offset: 3px; }
+.app-body .table-open { min-height: 32px; gap: 4px; padding: 0 8px 0 12px; color: var(--accent-text); font-size: var(--fs-meta); }
+.app-body .table-open:hover { border-color: var(--accent-tint-2); background: var(--accent-tint); color: var(--accent-text); }
+.table-open .icon { width: 15px; height: 15px; transition: transform 180ms var(--ease); }
+.table-open:hover .icon { transform: translateX(2px); }
 .table-empty { padding: 40px 18px !important; color: var(--ink-3) !important; text-align: center; }
 .directory-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 8px 16px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: var(--fs-meta); }
 .directory-footer .btn { min-height: 34px; font-size: var(--fs-meta); }

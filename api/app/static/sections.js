@@ -78,7 +78,7 @@
           ? el("span", { cls: "callback-cell", text: Desk.whenText(latest.preferred_callback_at) })
           : el("span", { cls: "callback-cell muted", text: "No time given" });
         var callDate = el("span", { cls: "last-call-cell", text: Desk.agoText(latest.created_at), attrs: { title: Desk.whenText(latest.created_at) } });
-        var link = el("a", { cls: "table-open", text: "Open", attrs: { href: "/applicants/" + person.id, "aria-label": "Open applicant " + name } });
+        var link = el("a", { cls: "btn btn-sm table-open", attrs: { href: "/applicants/" + person.id, "aria-label": "Open applicant " + name } }, el("span", { text: "Open" }), Desk.icon("arrow"));
         var nameCell = el("td", { cls: "applicant-cell" }, el("span", { cls: "person-avatar", attrs: { "aria-hidden": "true" }, text: initials(name) }), el("span", {}, el("a", { cls: "table-person-name", text: name, attrs: { href: "/applicants/" + person.id } }), el("small", { text: place }), person.phone ? el("small", { cls: "mono", text: Desk.phoneText(person.phone) }) : null));
         var status = el("td", {}, statusChip(person));
         if (latest.needs_review) status.appendChild(el("span", { cls: "table-substatus", text: "Call needs review" }));
@@ -254,7 +254,7 @@
   var activitySearch = el("input", { cls: "input activity-search-input", attrs: { type: "search", placeholder: "Search this page", "aria-label": "Search calls on this page" } });
   activitySearch.addEventListener("input", function () { activity.query = activitySearch.value.toLocaleLowerCase().trim(); renderActivity(); });
   var activitySearchWrap = el("label", { cls: "search-field activity-search" }, Desk.icon("search", "search-icon"), activitySearch);
-  $("activity-scope").parentNode.insertBefore(activitySearchWrap, $("activity-scope"));
+  document.querySelector(".activity-toolbar").appendChild(activitySearchWrap);
 
   window.addEventListener("desk:route", function (event) {
     if (event.detail.route === "applicants" && !directory.calls.length && !directory.loading) loadDirectory(false);

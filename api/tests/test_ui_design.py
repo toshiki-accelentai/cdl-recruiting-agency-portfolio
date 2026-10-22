@@ -87,3 +87,18 @@ def test_no_small_caps_labels_above_every_heading(name):
 
 def test_motion_stops_for_people_who_ask_for_less():
     assert "prefers-reduced-motion" in css("workspace.css")
+
+
+def test_open_in_the_applicant_table_is_a_button_without_an_underline():
+    """Owner review 2026-10-22: 'Open' looked like link text and underlined on hover."""
+    script = (STATIC / "sections.js").read_text(encoding="utf-8")
+    assert re.search(r'cls: "btn btn-sm table-open"', script)
+    for selector in (".app-body .table-open", ".app-body .table-open:hover"):
+        assert rule(css("workspace.css"), selector), f"no rule for {selector}"
+        assert "underline" not in rule(css("workspace.css"), selector), selector
+
+
+def test_call_activity_search_sits_in_the_filter_toolbar():
+    """Owner review 2026-10-22: the search box was stuck to the panel edge on a row of its own."""
+    script = (STATIC / "sections.js").read_text(encoding="utf-8")
+    assert 'querySelector(".activity-toolbar").appendChild(activitySearchWrap)' in script
