@@ -8,6 +8,7 @@ Login required (any role). Never returns raw_payload.
 from fastapi import APIRouter, Depends
 
 from app.auth import current_user
+from app.exposure import for_user
 from app.dashboard import SELECT_CALLS, to_item
 from app.db import db_connection
 from app.schemas import BUSINESS_TZ
@@ -46,7 +47,7 @@ def to_call_back_item(row: tuple) -> dict:
         "applicant": {
             "id": applicant_id, "name": name, "phone": phone, "callback_phone": callback_phone,
             "city": city, "state": state, "zip_code": zip_code, "experience": experience,
-            "readiness": readiness, "temperature": temperature, "zoho_candidate_id": zoho_id,
+            "readiness": readiness, "temperature": temperature, "zoho_candidate_id": zoho_id, "has_zoho_record": zoho_id is not None,
             "follow_up": {"status": follow_up_status, "note": follow_up_note,
                           "updated_at": follow_up_updated_at, "new_call_since": new_call_since},
         },
@@ -58,14 +59,14 @@ def to_call_back_item(row: tuple) -> dict:
 
 
 @router.get("/todo")
-def todo():
+def todo(user: dict = Depends(current_user)):
     tz = BUSINESS_TZ.key
     with db_connection() as conn:
         attention = [to_item(r) for r in conn.execute(ATTENTION).fetchall()]
         call_back = [to_call_back_item(r) for r in conn.execute(CALL_BACK).fetchall()]
         calls_today = conn.execute(CALLS_TODAY, (tz, tz)).fetchone()[0]
         sync_problems = conn.execute(SYNC_PROBLEMS).fetchone()[0]
-    return {
+    return for_user(user, {
         "attention": attention,
         "call_back": call_back,
         "summary": {
@@ -74,4 +75,4 @@ def todo():
             "to_call": len(call_back),
             "sync_problems": sync_problems,
         },
-    }
+    })

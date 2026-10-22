@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import current_user
+from app.exposure import for_user
 from app.db import db_connection
 
 router = APIRouter(prefix="/api", dependencies=[Depends(current_user)])
@@ -66,7 +67,7 @@ def to_item(row: tuple) -> dict:
         "applicant": None if applicant_id is None else {
             "id": applicant_id, "name": name, "phone": phone, "city": city, "state": state,
             "zip_code": zip_code, "experience": experience, "readiness": readiness,
-            "temperature": temperature, "zoho_candidate_id": zoho_id,
+            "temperature": temperature, "zoho_candidate_id": zoho_id, "has_zoho_record": zoho_id is not None,
             "follow_up": {"status": follow_up_status, "note": follow_up_note,
                           "updated_at": follow_up_updated_at, "new_call_since": new_call_since},
         },
@@ -85,6 +86,7 @@ def list_calls(
     follow_up: Literal["to_call", "called", "no_answer", "done"] | None = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    user: dict = Depends(current_user),
 ):
     params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up,
               "limit": limit, "offset": offset}
@@ -97,13 +99,13 @@ def list_calls(
             SELECT_CALLS + FILTERS + f"ORDER BY {ORDER_BY[sort]} LIMIT %(limit)s OFFSET %(offset)s",
             params,
         ).fetchall()
-    return {"items": [to_item(r) for r in rows], "total": total, "limit": limit, "offset": offset}
+    return for_user(user, {"items": [to_item(r) for r in rows], "total": total, "limit": limit, "offset": offset})
 
 
 @router.get("/calls/{call_id}")
-def get_call(call_id: int):
+def get_call(call_id: int, user: dict = Depends(current_user)):
     with db_connection() as conn:
         row = conn.execute(SELECT_CALLS + "WHERE c.id = %s", (call_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="call not found")
-    return to_item(row)
+    return for_user(user, to_item(row))

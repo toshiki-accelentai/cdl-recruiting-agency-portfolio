@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 
-from app.auth import require_role
+from app.auth import require_writer
 from app.db import db_connection
 
 router = APIRouter(prefix="/api")
@@ -31,7 +31,7 @@ class FollowUpUpdate(BaseModel):
 
 @router.patch("/applicants/{applicant_id}/follow-up")
 def update_follow_up(applicant_id: int, update: FollowUpUpdate,
-                     user: Annotated[dict, Depends(require_role("recruiter", "admin"))]):
+                     user: Annotated[dict, Depends(require_writer)]):
     wanted = {"follow_up_status": update.status, "follow_up_note": update.note}
     with db_connection() as conn:
         with conn.transaction():

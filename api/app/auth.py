@@ -14,7 +14,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from app.config import session_cookie_secure, session_secret
 from app.db import db_connection
-from app.throttle import client_ip, login_throttle
+from app.throttle import client_ip, login_throttle, write_throttle
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,17 @@ def current_user(request: Request) -> dict:
     if row is None or row[3] != data["v"]:
         raise HTTPException(status_code=401, detail="not logged in")
     return {"id": row[0], "username": row[1], "role": row[2]}
+
+
+def require_writer(user: Annotated[dict, Depends(current_user)]) -> dict:
+    """Dependency for the write endpoints: a recruiter or admin who is not writing too fast (else 429)."""
+    if user["role"] not in ("recruiter", "admin"):
+        raise HTTPException(status_code=403, detail="not allowed")
+    wait = write_throttle.hit(user["id"])
+    if wait:
+        raise HTTPException(status_code=429, detail="too many changes too fast; wait a moment",
+                            headers={"Retry-After": str(wait)})
+    return user
 
 
 def require_role(*roles: str):

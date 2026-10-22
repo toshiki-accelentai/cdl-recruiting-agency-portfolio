@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import TEST_API_KEY, TEST_URL
-from tests.test_calls_api import add_call, web  # noqa: F401  (web is a pytest fixture)
+from tests.test_calls_api import add_call, admin_web, web  # noqa: F401  (web and admin_web are pytest fixtures)
 
 
 def sql(statement, params=()):
@@ -59,9 +59,9 @@ def test_needs_review_call_without_a_person_is_in_attention_not_call_back(web):
     assert r.json()["call_back"] == []
 
 
-def test_failed_zoho_save_is_in_attention(web):
+def test_failed_zoho_save_is_in_attention(admin_web):
     failed = add_call(name="Marcus", phone="+13125550148", outbox={"status": "failed", "last_error": "401"})
-    r = web.get("/api/todo")
+    r = admin_web.get("/api/todo")
     assert attention_ids(r) == [failed]
     assert r.json()["attention"][0]["sync"]["last_error"] == "401"
 

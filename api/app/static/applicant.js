@@ -444,7 +444,7 @@
     var box = el("div", { cls: "profile" },
       el("div", { cls: "pf" }, el("span", { cls: "k", text: "Status" }), el("span", { cls: "v", text: statusText })),
       el("div", { cls: "pf" }, el("span", { cls: "k", text: "Candidate" }),
-        el("span", { cls: "v mono" + (person.zoho_candidate_id ? "" : " faint"), text: person.zoho_candidate_id || "Not created yet" })));
+        el("span", { cls: "v mono" + (person.has_zoho_record ? "" : " faint"), text: person.zoho_candidate_id || (person.has_zoho_record ? "Created" : "Not created yet") })));
     return el("section", { cls: "side-section" }, el("div", { cls: "side-head" }, el("h2", { text: "Zoho" })), box);
   }
 

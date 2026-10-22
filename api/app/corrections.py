@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator, model_validator
 
-from app.auth import require_role
+from app.auth import require_writer
+from app.exposure import for_user
 from app.dashboard import SELECT_CALLS, to_item
 from app.db import db_connection
 from app.helpers import classify_temperature, normalize_phone
@@ -134,7 +135,7 @@ def _refresh_review_flag(conn, call_id: int, applicant_id: int) -> None:
 
 @router.patch("/calls/{call_id}")
 def correct_call(call_id: int, correction: CallCorrection,
-                 user: Annotated[dict, Depends(require_role("recruiter", "admin"))]):
+                 user: Annotated[dict, Depends(require_writer)]):
     fields = correction.model_dump(exclude_none=True)
     attached_to_existing = False
     with db_connection() as conn:
@@ -152,4 +153,4 @@ def correct_call(call_id: int, correction: CallCorrection,
             if flagged:
                 _refresh_review_flag(conn, call_id, applicant_id)
         item = to_item(conn.execute(SELECT_CALLS + "WHERE c.id = %s", (call_id,)).fetchone())
-    return {**item, "attached_to_existing": attached_to_existing}
+    return for_user(user, {**item, "attached_to_existing": attached_to_existing})

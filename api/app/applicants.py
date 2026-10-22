@@ -5,6 +5,7 @@ Login required (any role). Never returns raw_payload.
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import current_user
+from app.exposure import for_user
 from app.dashboard import SELECT_CALLS, to_item
 from app.db import db_connection
 
@@ -39,7 +40,7 @@ def to_applicant(row: tuple) -> dict:
     return {
         "id": applicant_id, "name": name, "phone": phone, "callback_phone": callback_phone,
         "city": city, "state": state, "zip_code": zip_code, "experience": experience,
-        "readiness": readiness, "temperature": temperature, "zoho_candidate_id": zoho_id,
+        "readiness": readiness, "temperature": temperature, "zoho_candidate_id": zoho_id, "has_zoho_record": zoho_id is not None,
         "follow_up": {"status": follow_up_status, "note": follow_up_note,
                       "updated_at": follow_up_updated_at, "new_call_since": new_call_since},
     }
@@ -57,7 +58,7 @@ def without_applicant(call: dict) -> dict:
 
 
 @router.get("/applicants/{applicant_id}")
-def get_applicant(applicant_id: int):
+def get_applicant(applicant_id: int, user: dict = Depends(current_user)):
     with db_connection() as conn:
         row = conn.execute(APPLICANT, (applicant_id,)).fetchone()
         if row is None:
@@ -67,9 +68,9 @@ def get_applicant(applicant_id: int):
             (applicant_id,)).fetchall()
         transcripts = dict(conn.execute(TRANSCRIPTS, (applicant_id,)).fetchall())
         history = conn.execute(HISTORY, (applicant_id,)).fetchall()
-    return {
+    return for_user(user, {
         "applicant": to_applicant(row),
         "calls": [{**without_applicant(item), "transcript": transcripts.get(item["id"])}
                   for item in (to_item(r) for r in calls)],
         "history": [to_history_item(r) for r in history],
-    }
+    })

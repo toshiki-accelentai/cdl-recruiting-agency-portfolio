@@ -32,9 +32,10 @@ def test_database():
 
 @pytest.fixture(autouse=True)
 def fresh_login_throttle():
-    """The login limit lives in memory; every test starts with a clean slate."""
+    """The login and write limits live in memory; every test starts with a clean slate."""
     from app import throttle
     throttle.login_throttle.reset()
+    throttle.write_throttle.reset()
 
 
 @pytest.fixture

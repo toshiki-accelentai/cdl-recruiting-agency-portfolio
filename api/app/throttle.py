@@ -96,3 +96,37 @@ class LoginThrottle:
 
 
 login_throttle = LoginThrottle()
+
+
+MAX_WRITES = 30  # a person clicking "Called" or fixing a field does not come near this
+WRITE_WINDOW_SECONDS = 60
+
+
+class WriteThrottle:
+    """A speed limit for a logged-in user's writes: at most `max_writes` in any `window_seconds`, per user.
+
+    Reads are never limited. State is in memory (one API process), like the login throttle.
+    """
+
+    def __init__(self, clock=time.monotonic, max_writes=MAX_WRITES, window_seconds=WRITE_WINDOW_SECONDS):
+        self._clock = clock
+        self._max = max_writes
+        self._window = window_seconds
+        self._by_user: dict[int, deque] = {}
+
+    def hit(self, user_id: int) -> int:
+        """Count one write attempt. Returns 0 if allowed, else the seconds to wait (a refused attempt is not counted)."""
+        now = self._clock()
+        times = self._by_user.setdefault(user_id, deque(maxlen=self._max))
+        while times and times[0] <= now - self._window:
+            times.popleft()
+        if len(times) >= self._max:
+            return max(1, math.ceil(times[0] + self._window - now))
+        times.append(now)
+        return 0
+
+    def reset(self) -> None:
+        self._by_user.clear()
+
+
+write_throttle = WriteThrottle()

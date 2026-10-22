@@ -20,6 +20,18 @@ def web(clean_tables):
     return client
 
 
+@pytest.fixture
+def admin_web(clean_tables):
+    """A logged-in admin's browser: the only role that sees the worker's error text and the Zoho id."""
+    from app.auth import create_user
+    from app.main import app
+    with psycopg.connect(TEST_URL, autocommit=True) as conn:
+        create_user(conn, "owner", PASSWORD, "admin")
+    client = TestClient(app)
+    assert client.post("/login", data={"username": "owner", "password": PASSWORD}).status_code == 200
+    return client
+
+
 def add_call(name="Test Driver", phone="+12065550101", temperature="WARM", minutes_ago=0,
              needs_review=False, review_reason=None, outbox=None, vapi_id=None):
     """Insert one call (and its applicant/outbox) straight into the database; returns the call id.
@@ -106,10 +118,10 @@ def test_unknown_sort_is_rejected(web):
     assert web.get("/api/calls?sort=banana").status_code == 422
 
 
-def test_item_shape_includes_applicant_and_zoho_sync_state(web):
+def test_item_shape_includes_applicant_and_zoho_sync_state(admin_web):
     call_id = add_call("Jane Roe", "+12065550199", temperature="HOT", needs_review=False,
                        outbox={"status": "pending", "attempts": 3, "last_error": "zoho down"})
-    item = web.get("/api/calls").json()["items"][0]
+    item = admin_web.get("/api/calls").json()["items"][0]
     assert item["id"] == call_id
     assert item["needs_review"] is False
     assert item["applicant"]["name"] == "Jane Roe"

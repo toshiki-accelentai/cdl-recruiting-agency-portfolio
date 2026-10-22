@@ -6,7 +6,7 @@ import psycopg
 from fastapi.testclient import TestClient
 
 from tests.conftest import TEST_API_KEY, TEST_URL
-from tests.test_calls_api import add_call, web  # noqa: F401  (web is a pytest fixture)
+from tests.test_calls_api import add_call, admin_web, web  # noqa: F401  (web and admin_web are pytest fixtures)
 
 
 def applicant_id(phone):
@@ -30,12 +30,12 @@ def test_unknown_applicant_is_404(web):
 
 # --- the profile ----------------------------------------------------------------------------
 
-def test_profile_fields(web):
+def test_profile_fields(admin_web):
     add_call(name="Dana Brooks", phone="+12145550167", temperature="HOT")
     with psycopg.connect(TEST_URL, autocommit=True) as conn:
         conn.execute("UPDATE applicants SET callback_phone = '+16727274656', zoho_candidate_id = 'Z123', "
                      "follow_up_note = 'After 6 PM' WHERE phone_e164 = '+12145550167'")
-    body = web.get(f"/api/applicants/{applicant_id('+12145550167')}").json()
+    body = admin_web.get(f"/api/applicants/{applicant_id('+12145550167')}").json()
     person = body["applicant"]
     assert person["name"] == "Dana Brooks" and person["phone"] == "+12145550167"
     assert person["callback_phone"] == "+16727274656" and person["zoho_candidate_id"] == "Z123"
@@ -56,11 +56,11 @@ def test_new_call_marker_after_a_follow_up(web):
 
 # --- the calls ------------------------------------------------------------------------------
 
-def test_calls_are_newest_first_with_sync_state_and_no_raw_payload(web):
+def test_calls_are_newest_first_with_sync_state_and_no_raw_payload(admin_web):
     old = add_call(phone="+12145550167", minutes_ago=3000, outbox={"status": "sent", "attempts": 1})
     new = add_call(phone="+12145550167", minutes_ago=5, outbox={"status": "failed", "attempts": 5, "last_error": "401"},
                    needs_review=True, review_reason="missing_name")
-    response = web.get(f"/api/applicants/{applicant_id('+12145550167')}")
+    response = admin_web.get(f"/api/applicants/{applicant_id('+12145550167')}")
     calls = response.json()["calls"]
     assert [c["id"] for c in calls] == [new, old]
     assert calls[0]["sync"]["status"] == "failed" and calls[0]["sync"]["last_error"] == "401"
