@@ -426,6 +426,11 @@ diagnose). Order is strict: A → B → C → apply.
       identical to the release commit, both containers healthy, 0 errors in logs, surface check all passed, new files served
       (Manrope gone, 404). 376 API tests, 2 JS tests on the release worktree. Real actions: 1 deploy run, 0 migrations, 0 calls,
       0 Zoho writes. Not verified: signed-in look on cdl-demo.accelentai.com (owner).
+      **UI FIX DEPLOYED 2026-10-22 11:52 Vancouver (approved by the owner), release commit `9077cda`** (= `121d741`): Open in
+      the Applicants table is a real button with no underline; the Call activity search sits in the filter row. Rollback copies:
+      `src.before-20261022-115238`, `compose.yaml.before-20261022-115238`. Verified: live source identical to the release
+      commit, both containers healthy, 0 errors in logs, surface check all passed. 378 API tests, 2 JS tests on the release
+      worktree. Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
