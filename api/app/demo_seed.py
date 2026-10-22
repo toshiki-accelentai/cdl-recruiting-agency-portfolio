@@ -6,6 +6,7 @@ Two guards, so it can never write into the real database: DEMO_MODE must be exac
 empty (no applicants, calls, outbox rows or change history). Every name, number and city is made up; phone numbers
 use 555-0100 to 555-0199, which US numbering keeps for fiction. Times are relative to now, so the demo always looks
 like this week. No recordings yet (step 2b) and no Zoho ids (the demo never talks to Zoho).
+The 8 featured people below are hand-written; the rest of the roster is the table in demo_roster.py.
 """
 import logging
 import os
@@ -16,6 +17,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.config import database_url
+from app import demo_roster
 from app.db import connect_with_retry
 
 logger = logging.getLogger(__name__)
@@ -118,6 +120,36 @@ NO_INTAKE = _call(7, "Caller asked about dispatcher jobs, not a driver. Hung up 
                    ("agent", "This line is for drivers, but I can note your call for the team.")])
 NO_INTAKE_CALLER = "+12535550199"
 
+SYNC_BY_KEY = {demo_roster.SENT: SENT, demo_roster.WAITING: WAITING, demo_roster.FAILED: FAILED}
+
+
+def _roster_person(index, row):
+    (name, phone, city, state, zip_code, years, equipment, ready, temperature, hours_ago, callback_in,
+     follow_up, note, sync_key, earlier_hours) = row
+    first = name.split()[0]
+    sync = SYNC_BY_KEY[sync_key]
+    latest = _call(hours_ago, f"{first} has {years} of {equipment} driving, based in {city}, {state}. Ready to start {ready}.",
+                   _intake(name, f"{city}, {demo_roster.STATE_NAMES[state]}", f"{years} of {equipment}", ready.capitalize(),
+                           demo_roster.CALLBACK_WORDS[index % len(demo_roster.CALLBACK_WORDS)]),
+                   sync, callback_in_hours=callback_in)
+    calls = [latest]
+    if earlier_hours:
+        calls.insert(0, _call(earlier_hours, f"{first} called to ask about {equipment} work near {city}.",
+                              _intake(name, f"{city}, {demo_roster.STATE_NAMES[state]}", f"{years} of {equipment}", "Not sure yet",
+                                      "Any weekday afternoon"), SENT))
+        latest["summary"] = f"{first} called again with an update: ready to start {ready}."
+        latest["lines"] = [("agent", "Thanks for calling Frontline CDL Staffing."),
+                           ("driver", f"I called earlier this week. I can start {ready} now."),
+                           ("agent", "Got it, I'll pass that on. A recruiter will call you back.")]
+    return _person(name, phone, city, state, zip_code, f"{years}, {equipment}", ready, temperature, calls,
+                   follow_up=follow_up, note=note,
+                   follow_up_hours_ago=None if follow_up == "to_call" else max(1, hours_ago - 10))
+
+
+PEOPLE += [_roster_person(i, row) for i, row in enumerate(demo_roster.ROSTER)]
+EXTRA_UNSAVED = [(_call(hours, summary, lines) | {"reason": reason}, caller)
+                 for hours, caller, reason, summary, lines in demo_roster.UNSAVED_CALLS]
+
 
 def require_demo_mode() -> None:
     if os.environ.get("DEMO_MODE") != "1":
@@ -143,7 +175,7 @@ def _insert_call(conn, now, number, applicant_id, call, caller) -> int:
         "review_reason, summary, transcript, report_received_at, caller_number, created_at) "
         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (f"demo-call-{number}", applicant_id, callback, DEMO_PAYLOAD, applicant_id is None,
-         None if applicant_id else "no_intake", call["summary"], _transcript(call["lines"]),
+         None if applicant_id else call.get("reason", "no_intake"), call["summary"], _transcript(call["lines"]),
          created + timedelta(minutes=2), caller, created)).fetchone()[0]
 
 
@@ -178,6 +210,8 @@ def write_demo_rows(conn: psycopg.Connection, now: datetime | None = None) -> No
     for person in PEOPLE:
         _insert_person(conn, now, person, numbers)
     _insert_call(conn, now, next(numbers), None, NO_INTAKE, NO_INTAKE_CALLER)
+    for call, caller in EXTRA_UNSAVED:
+        _insert_call(conn, now, next(numbers), None, call, caller)
 
 
 def seed(conn: psycopg.Connection, now: datetime | None = None) -> None:

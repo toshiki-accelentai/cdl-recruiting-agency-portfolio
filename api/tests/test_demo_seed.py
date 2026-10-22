@@ -60,10 +60,29 @@ def test_refuses_a_database_that_already_has_data(clean_tables, demo_mode):
 
 # --- the data ----------------------------------------------------------------------------------
 
-def test_seeds_about_eight_people_across_every_temperature(clean_tables, demo_mode):
+def test_seeds_a_full_looking_roster_across_every_temperature(clean_tables, demo_mode):
     run_seed()
-    assert 8 <= count("SELECT count(*) FROM applicants") <= 12
+    assert 30 <= count("SELECT count(*) FROM applicants") <= 45
     assert count("SELECT count(DISTINCT temperature) FROM applicants") == 4
+    assert count("SELECT min(n) FROM (SELECT count(*) n FROM applicants GROUP BY temperature) t") >= 3
+
+
+def test_names_and_phones_are_all_different(clean_tables, demo_mode):
+    run_seed()
+    assert count("SELECT count(*) - count(DISTINCT name) FROM applicants") == 0
+    assert count("SELECT count(*) - count(DISTINCT phone_e164) FROM applicants") == 0
+    assert count("SELECT count(*) FROM applicants WHERE name ILIKE 'demo %'") == 0  # 'Demo ...' is the real sample call
+
+
+def test_the_roster_has_variety_in_when_and_how_people_called(clean_tables, demo_mode):
+    run_seed()
+    assert count("SELECT count(DISTINCT created_at::date) FROM calls") >= 8
+    assert count("SELECT count(*) FROM applicants a WHERE (SELECT count(*) FROM calls c "
+                 "WHERE c.applicant_id = a.id) >= 2") >= 3
+    assert count("SELECT count(*) FROM calls WHERE preferred_callback_at < now()") >= 2  # overdue callbacks
+    assert count("SELECT count(DISTINCT review_reason) FROM calls WHERE needs_review") >= 2
+    assert count("SELECT count(*) FROM calls WHERE needs_review") >= 3
+    assert count("SELECT count(DISTINCT state) FROM applicants") >= 15
 
 
 def test_every_phone_number_is_fictional(clean_tables, demo_mode):
