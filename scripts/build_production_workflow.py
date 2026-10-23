@@ -158,7 +158,7 @@ def build() -> dict:
         webhook("Route Caller Webhook", "cdl/assistant-request", 0, -600),
         code("Normalize Route Request", """
 const message = $json.body?.message ?? $json.message ?? {};
-const phone = normalizePhone(message.call?.customer?.number ?? message.customer?.number ?? '');
+const phone = pickPhone(message.call?.customer?.number, message.customer?.number);
 return [{ json: { phone, valid: Boolean(phone) } }];
 """, 240, -600),
         zoho_request("Find Candidate for Routing", {

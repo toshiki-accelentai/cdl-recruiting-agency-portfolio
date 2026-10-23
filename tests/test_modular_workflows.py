@@ -311,6 +311,12 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("validateCallback(args.preferredCallbackTime)", code)
         self.assertIn("callbackStartUtc: callback.startUtc ?? null", code)
 
+    def test_routing_reads_the_caller_number_from_either_place_even_when_one_is_empty(self):
+        routing = {n["name"]: n for n in self.workflows["routing"]["nodes"]}
+        code = routing["Normalize Route Request"]["parameters"]["jsCode"]
+        self.assertIn("pickPhone(message.call?.customer?.number, message.customer?.number)", code)
+        self.assertNotIn("normalizePhone(message.call?.customer?.number ??", code)
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [
