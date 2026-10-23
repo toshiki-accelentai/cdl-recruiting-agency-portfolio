@@ -157,3 +157,8 @@ def test_call_activity_search_sits_in_the_filter_toolbar():
     """Owner review 2026-10-22: the search box was stuck to the panel edge on a row of its own."""
     script = (STATIC / "sections.js").read_text(encoding="utf-8")
     assert 'querySelector(".activity-toolbar").appendChild(activitySearchWrap)' in script
+
+
+def test_the_zoho_row_works_without_the_raw_id():
+    """A recruiter gets no Zoho id from the API (security finding 4); the page must still say whether a record exists."""
+    assert "has_zoho_record" in (STATIC / "applicant.js").read_text(encoding="utf-8")
