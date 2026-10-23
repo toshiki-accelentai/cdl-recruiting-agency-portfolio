@@ -11,6 +11,7 @@ from app.api_key import require_api_key, require_internal_caller
 from app.applicants import router as applicants_router
 from app.auth import router as auth_router
 from app.call_reports import router as call_reports_router
+from app.caller_lookup import router as caller_lookup_router
 from app.config import api_shared_secret, demo_config_problem
 from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
@@ -51,6 +52,7 @@ app.include_router(follow_up_router)
 app.include_router(todo_router)
 app.include_router(applicants_router)
 app.include_router(call_reports_router)
+app.include_router(caller_lookup_router)
 app.include_router(pages_router)
 app.mount("/static", static_files, name="static")
 
