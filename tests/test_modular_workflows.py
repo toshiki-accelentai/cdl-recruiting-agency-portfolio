@@ -301,6 +301,29 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("].join('\\n');", intake["Resolve Candidate Result"]["parameters"]["jsCode"])
         self.assertIn("].filter(Boolean).join('\\n\\n')", post_call["Build Post Call Note"]["parameters"]["jsCode"])
 
+    def test_intake_uses_phone_fallback_and_location_validation(self):
+        intake = {n["name"]: n for n in self.workflows["intake"]["nodes"]}
+        code = intake["Normalize Intake"]["parameters"]["jsCode"]
+        self.assertIn("pickPhone(args.phoneNumber, message.call?.customer?.number)", code)
+        self.assertIn("errors.push(...validateLocation(location))", code)
+        self.assertNotIn("normalizePhone(args.phoneNumber ??", code)
+        # The live node also rejects bad callback times; the builder must not drop that.
+        self.assertIn("validateCallback(args.preferredCallbackTime)", code)
+        self.assertIn("callbackStartUtc: callback.startUtc ?? null", code)
+
+    def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
+        helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
+        embedding = [
+            (w["name"], n["name"]) for w in self.workflows.values() for n in w["nodes"]
+            if "function classifyTemperature" in n.get("parameters", {}).get("jsCode", "")
+        ]
+        self.assertEqual(len(embedding), 4, embedding)
+        for workflow in self.workflows.values():
+            for node in workflow["nodes"]:
+                js = node.get("parameters", {}).get("jsCode", "")
+                if "function classifyTemperature" in js:
+                    self.assertTrue(js.startswith(helpers), f"{workflow['name']} / {node['name']} has stale helpers")
+
     def test_every_emitted_code_node_has_valid_javascript_syntax(self):
         for workflow in self.workflows.values():
             for node in workflow["nodes"]:

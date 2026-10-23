@@ -16,40 +16,120 @@ function normalizePhone(value) {
   return `+${digits}`;
 }
 
+// A spoken number that is empty or garbled must not hide a usable caller ID.
+function pickPhone(...candidates) {
+  for (const candidate of candidates) {
+    const phone = normalizePhone(candidate);
+    if (phone) return phone;
+  }
+  return null;
+}
+
+const NAME_SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv']);
+const SURNAME_PARTICLES = new Set(['de', 'del', 'della', 'la', 'le', 'da', 'di', 'du', 'van', 'von', 'der', 'den', 'st', 'st.']);
+
 function splitName(value) {
   const parts = clean(value).split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { firstName: '', lastName: 'Unknown' };
-  if (parts.length === 1) return { firstName: '', lastName: parts[0] };
-  return { firstName: parts.slice(0, -1).join(' '), lastName: parts.at(-1) };
+
+  // The last name runs from its first particle ("De La") to the end, suffix ("Jr.") included.
+  let end = parts.length;
+  while (end > 1 && NAME_SUFFIXES.has(parts[end - 1].toLowerCase())) end -= 1;
+  let start = end - 1;
+  while (start > 1 && SURNAME_PARTICLES.has(parts[start - 1].toLowerCase())) start -= 1;
+  return { firstName: parts.slice(0, start).join(' '), lastName: parts.slice(start).join(' ') };
 }
 
+const NUMBER_WORDS = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+  nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+  sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+};
+
+// Turns "five years", "a year", "3 to 5 years" into digits so one set of patterns can read them.
+function digitizeNumbers(text) {
+  return text
+    .replace(new RegExp(`\\b(${Object.keys(NUMBER_WORDS).join('|')})\\b(?=[\\s-]*(?:years?|yrs?|months?|days?|weeks?)\\b)`, 'g'),
+      (word) => String(NUMBER_WORDS[word]))
+    .replace(/(\d)\s*to\s*(\d)/g, '$1-$2');
+}
+
+function rangeOrSingle(text, unit) {
+  const range = text.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*-\\s*(\\d+(?:\\.\\d+)?)\\s*${unit}`));
+  if (range) return (Number(range[1]) + Number(range[2])) / 2;
+  const single = text.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*\\+?\\s*${unit}`));
+  return single ? Number(single[1]) : null;
+}
+
+// Years of CDL experience, or null when the text cannot be read (null is not the same as 0).
 function parseExperienceYears(value) {
-  const text = clean(value).toLowerCase().replace(/[–—]/g, '-');
-  if (!text || /no experience|just got|new cdl/.test(text)) return 0;
-  if (/under\s*6\s*months?/.test(text)) return 0.25;
+  const text = digitizeNumbers(clean(value).toLowerCase().replace(/[–—]/g, '-'));
+  if (/no experience|just got|new cdl/.test(text)) return 0;
+  if (/(?:under|less than)\s*6\s*months?/.test(text)) return 0.25;
 
-  const monthRange = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*months?/);
-  if (monthRange) return Number(((Number(monthRange[1]) + Number(monthRange[2])) / 24).toFixed(2));
-  const months = text.match(/(\d+(?:\.\d+)?)\s*months?/);
-  if (months) return Number((Number(months[1]) / 12).toFixed(2));
-
-  const yearRange = text.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*years?/);
-  if (yearRange) return Number(((Number(yearRange[1]) + Number(yearRange[2])) / 2).toFixed(2));
-  const years = text.match(/(\d+(?:\.\d+)?)\s*\+?\s*years?/);
-  return years ? Number(years[1]) : 0;
+  const years = rangeOrSingle(text, '(?:years?|yrs?)\\b');
+  const months = rangeOrSingle(text, 'months?\\b');
+  if (years === null && months === null) return null;
+  return Number(((years ?? 0) + (months ?? 0) / 12).toFixed(2));
 }
 
+// The VAPI tool restricts `readiness` to these four answers (see tool.logApplicantInfo.desired.json);
+// the voice agent does the judging of "tomorrow", "this week", etc., the code only maps the answer.
+const TEMPERATURE_BY_READINESS = {
+  'within 3 days': 'HOT',
+  'within 7 days': 'MEDIUM',
+  'within 14 days': 'WARM',
+  'later': 'COLD',
+};
+
+// UNKNOWN means "not one of the four answers", so a recruiter can look; it is not the same as COLD.
 function classifyTemperature(value) {
-  const text = clean(value).toLowerCase();
-  if (/3\s*days?|immediately|right away/.test(text)) return 'HOT';
-  if (/7\s*days?|one\s*week/.test(text)) return 'MEDIUM';
-  if (/14\s*days?|two\s*weeks?/.test(text)) return 'WARM';
-  return 'COLD';
+  const key = clean(value).toLowerCase().replace(/_/g, ' ');
+  return TEMPERATURE_BY_READINESS[key] ?? 'UNKNOWN';
+}
+
+const US_STATES = {
+  AL: 'alabama', AK: 'alaska', AZ: 'arizona', AR: 'arkansas', CA: 'california', CO: 'colorado',
+  CT: 'connecticut', DE: 'delaware', DC: 'district of columbia', FL: 'florida', GA: 'georgia',
+  HI: 'hawaii', ID: 'idaho', IL: 'illinois', IN: 'indiana', IA: 'iowa', KS: 'kansas',
+  KY: 'kentucky', LA: 'louisiana', ME: 'maine', MD: 'maryland', MA: 'massachusetts',
+  MI: 'michigan', MN: 'minnesota', MS: 'mississippi', MO: 'missouri', MT: 'montana',
+  NE: 'nebraska', NV: 'nevada', NH: 'new hampshire', NJ: 'new jersey', NM: 'new mexico',
+  NY: 'new york', NC: 'north carolina', ND: 'north dakota', OH: 'ohio', OK: 'oklahoma',
+  OR: 'oregon', PA: 'pennsylvania', RI: 'rhode island', SC: 'south carolina', SD: 'south dakota',
+  TN: 'tennessee', TX: 'texas', UT: 'utah', VT: 'vermont', VA: 'virginia', WA: 'washington',
+  WV: 'west virginia', WI: 'wisconsin', WY: 'wyoming',
+};
+
+// "Texas" and "tx" both become "TX". Anything unknown stays as typed so validateLocation can reject it.
+function normalizeState(value) {
+  const text = clean(value);
+  const code = text.toUpperCase();
+  if (code in US_STATES) return code;
+  const byName = Object.entries(US_STATES).find(([, name]) => name === text.toLowerCase());
+  return byName ? byName[0] : code;
+}
+
+// "98101" and "98101-1234" both become "98101". Anything else stays as typed so validateLocation can reject it.
+function normalizeZip(value) {
+  const text = clean(value).replace(/\s+/g, '');
+  const match = text.match(/^(\d{5})(?:-\d{4})?$/);
+  return match ? match[1] : text;
+}
+
+function validateLocation({ city, state, zipCode }) {
+  const errors = [];
+  if (!city) errors.push('missing_city');
+  if (!state) errors.push('missing_state');
+  else if (!(state in US_STATES)) errors.push('invalid_state');
+  if (!zipCode) errors.push('missing_zip_code');
+  else if (!/^\d{5}$/.test(zipCode)) errors.push('invalid_zip_code');
+  return errors;
 }
 
 function parseLocation(args = {}) {
   let city = clean(args.city);
-  let state = clean(args.state).toUpperCase();
+  let state = clean(args.state);
   let zipCode = clean(args.zipCode || args.zip || args.postalCode);
   const legacy = clean(args.driverLocation);
 
@@ -63,7 +143,7 @@ function parseLocation(args = {}) {
       city = legacy;
     }
   }
-  return { city, state, zipCode };
+  return { city, state: normalizeState(state), zipCode: normalizeZip(zipCode) };
 }
 
 function zonedParts(date, timeZone = BUSINESS_TIMEZONE) {
@@ -177,10 +257,12 @@ function validateCallback(value, now = new Date(), timeZone = BUSINESS_TIMEZONE)
 const exported = {
   BUSINESS_TIMEZONE,
   normalizePhone,
+  pickPhone,
   splitName,
   parseExperienceYears,
   classifyTemperature,
   parseLocation,
+  validateLocation,
   validateCallback,
 };
 

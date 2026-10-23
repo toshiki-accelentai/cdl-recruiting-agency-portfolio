@@ -16,7 +16,7 @@
         "readiness": {
           "type": "string",
           "enum": ["within 3 days", "within 7 days", "within 14 days", "later"],
-          "description": "When the caller can start work."
+          "description": "When the caller can start work. Pick the closest answer: 'within 3 days' for today, tomorrow, right now, or any start up to 3 days away; 'within 7 days' for this week, next week, or any start up to one week away; 'within 14 days' for any start up to two weeks away; 'later' for more than two weeks away. If the answer is unclear or conditional, ask one short follow-up question before choosing."
         },
         "experience": {
           "type": "string",

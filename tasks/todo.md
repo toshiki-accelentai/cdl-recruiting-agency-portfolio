@@ -438,6 +438,15 @@ diagnose). Order is strict: A → B → C → apply.
       both containers healthy, 0 errors in logs, API key check 401/401/422, public logo files 200 with immutable cache and
       fingerprints equal to the local files, old F tile gone, signed-in sidebar shows the new symbol. 390 API tests, 1 JS test
       on the release worktree. Real actions: 1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes.
+      **READINESS + INTAKE HELPERS DEPLOYED 2026-10-22 (approved by the owner), not yet committed:** new helpers in the four
+      helper-embedding n8n Code nodes (Validate Callback, Normalize Route Request, Normalize Intake, Normalize Post Call),
+      changed through the n8n API with a code-only swap; each live node matched the previous generated code (Normalize Intake
+      plus its hand-edited callback validation, now copied into `build_production_workflow.py`) before the swap, and all four
+      workflows stayed active. Live VAPI `logApplicantInfo` `readiness` description updated (tool v7, webhook `server`
+      restored after a PATCH dropped it). Rollback copies of the four workflows are in the session scratchpad.
+      Verified: 40 Python tests, JS tests, live code fetched back and run on 9 inputs (phone fallback, ZIP, state, callback),
+      7 phrases x 3 simulated chats. Real actions: 4 n8n workflow updates, 2 VAPI tool updates, 0 phone calls, 0 Zoho writes,
+      0 n8n executions.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call

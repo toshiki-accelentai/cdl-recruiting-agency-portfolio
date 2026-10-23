@@ -99,3 +99,9 @@ One line each. Say it out loud in your own words before moving on.
 | **Type scale** | A short, fixed list of text sizes (here 12 to 28px) that every screen picks from, instead of a new size per element. | UI redesign |
 | **SVG sprite** | One hidden block of icon drawings in the page; each icon on screen just points to one of them by name. | UI redesign |
 | **Reduced motion** | An operating-system setting for people who get dizzy from animation; the app turns its movement off when it is on. | UI redesign |
+| **Enum (fixed answers)** | A list of the only allowed answers, like a multiple-choice question. The voice agent must pick one, so the code never has to guess from free text. | Readiness categories |
+| **Tool mock** | A fake reply put in place of a real tool during a test, so no real record or booking is made. | Simulated calls |
+| **Simulation** | A test where an AI plays the caller and talks to the agent, so you can try many calls without phoning anyone. | Simulated calls |
+| **PATCH** | A request that changes part of a saved object. Anything you leave out may be deleted, so you send what must stay and check the whole object afterwards. | VAPI tool update |
+| **Regression** | Something that worked before breaks after a change. Losing the tool's webhook address was one. | VAPI tool update |
+| **Drift** | The live system no longer matches the saved source, usually after a hand edit. The check before deploy found it in Normalize Intake. | n8n code swap |

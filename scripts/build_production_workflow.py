@@ -197,31 +197,64 @@ return [{{ json: {{
 const message = $json.body?.message ?? {};
 const toolCall = message.toolCalls?.[0];
 const args = toolCall?.function?.arguments ?? {};
-const callId = message.call?.id ?? $json.headers?.['x-call-id'] ?? '';
-const phone = normalizePhone(args.phoneNumber ?? message.call?.customer?.number ?? '');
+
+const callId =
+  message.call?.id ??
+  $json.headers?.['x-call-id'] ??
+  '';
+
+const phone = pickPhone(args.phoneNumber, message.call?.customer?.number);
+
 const names = splitName(args.name);
 const location = parseLocation(args);
+
+// Validate the preferred callback time
+const callback = validateCallback(args.preferredCallbackTime);
+
 const errors = [];
+
 if (!toolCall?.id) errors.push('missing_tool_call_id');
 if (!callId) errors.push('missing_call_id');
 if (!phone) errors.push('invalid_phone');
 if (!names.lastName || names.lastName === 'Unknown') errors.push('missing_name');
-if (!location.city) errors.push('missing_city');
-if (!location.state) errors.push('missing_state');
-if (!location.zipCode) errors.push('missing_zip_code');
-if (!args.preferredCallbackTime) errors.push('missing_callback_time');
-return [{ json: {
-  valid: errors.length === 0, validationErrors: errors,
-  toolCallId: toolCall?.id ?? '', callId, phone,
-  firstName: names.firstName, lastName: names.lastName,
-  ...location,
-  experienceText: clean(args.experience),
-  experienceYears: parseExperienceYears(args.experience),
-  readiness: clean(args.readiness),
-  temperature: classifyTemperature(args.readiness),
-  preferredCallbackTime: clean(args.preferredCallbackTime),
-} }];
-""", 240, 0),
+errors.push(...validateLocation(location));
+
+// Add callback validation error
+if (!callback.valid) {
+  errors.push(callback.reason);
+}
+
+return [{
+  json: {
+    valid: errors.length === 0,
+    validationErrors: errors,
+
+    toolCallId: toolCall?.id ?? '',
+    callId,
+    phone,
+
+    firstName: names.firstName,
+    lastName: names.lastName,
+
+    ...location,
+
+    experienceText: clean(args.experience),
+    experienceYears: parseExperienceYears(args.experience),
+
+    readiness: clean(args.readiness),
+    temperature: classifyTemperature(args.readiness),
+
+    preferredCallbackTime: clean(args.preferredCallbackTime),
+
+    callbackValid: callback.valid,
+    callbackValidationReason: callback.reason,
+    callbackTimeZone: callback.timeZone,
+
+    callbackStartUtc: callback.startUtc ?? null,
+    callbackEndUtc: callback.endUtc ?? null,
+    callbackLocalDate: callback.localDate ?? null,
+  }
+}];""", 240, 0),
         condition("Intake Valid?", "={{ $json.valid }}", 500, 0),
         respond(
             "Respond Invalid Intake",
