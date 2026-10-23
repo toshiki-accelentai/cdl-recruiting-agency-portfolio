@@ -12,6 +12,25 @@ def session_secret() -> str:
     return os.environ.get("SESSION_SECRET", "")
 
 
+MIN_SESSION_SECRET_LENGTH = 32  # shorter than this is treated as "not configured"
+
+
+def instance_name() -> str:
+    """Which deployment this is ("demo", "real"). Part of what the cookie is signed with, so a cookie made by one
+    instance is worthless on another even if they were given the same secret by mistake. Empty = the default."""
+    return os.environ.get("INSTANCE_NAME", "")
+
+
+def demo_config_problem() -> str | None:
+    """Why this server must not start as a demo, or None. The demo never holds the n8n key or the VAPI key."""
+    if os.environ.get("DEMO_MODE") != "1":
+        return None
+    held = [name for name in ("API_SHARED_SECRET", "VAPI_PRIVATE_KEY") if os.environ.get(name)]
+    if held:
+        return "DEMO_MODE=1 but " + " and ".join(held) + " is set: the demo must not hold real keys"
+    return None
+
+
 def session_cookie_secure() -> bool:
     """Secure cookies are sent over HTTPS only. On by default; local HTTP dev sets it to 0."""
     return os.environ.get("SESSION_COOKIE_SECURE", "1") != "0"

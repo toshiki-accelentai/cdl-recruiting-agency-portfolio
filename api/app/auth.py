@@ -12,7 +12,7 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from app.config import session_cookie_secure, session_secret
+from app.config import MIN_SESSION_SECRET_LENGTH, instance_name, session_cookie_secure, session_secret
 from app.db import db_connection
 from app.throttle import client_ip, login_throttle, write_throttle
 
@@ -43,11 +43,19 @@ def change_password(conn: psycopg.Connection, username: str, new_password: str) 
     )
 
 
-def check_password(conn: psycopg.Connection, username: str, password: str) -> dict | None:
-    row = conn.execute(
+def fetch_login_row(conn: psycopg.Connection, username: str):
+    return conn.execute(
         "SELECT id, username, role, session_version, password_hash FROM users WHERE username = %s",
         (username,),
     ).fetchone()
+
+
+def check_password(conn: psycopg.Connection, username: str, password: str) -> dict | None:
+    return verify_login(fetch_login_row(conn, username), password)
+
+
+def verify_login(row, password: str) -> dict | None:
+    """The slow part (argon2). It needs no database connection, so login does it after handing the connection back."""
     stored = row[4] if row else DUMMY_HASH
     try:
         hasher.verify(stored, password)
@@ -60,9 +68,12 @@ def check_password(conn: psycopg.Connection, username: str, password: str) -> di
 
 def _serializer() -> URLSafeTimedSerializer:
     secret = session_secret()
-    if not secret:
+    if len(secret) < MIN_SESSION_SECRET_LENGTH:
+        if secret:
+            logger.error("SESSION_SECRET is shorter than %d characters: logins are refused", MIN_SESSION_SECRET_LENGTH)
         raise HTTPException(status_code=503, detail="session secret not configured")
-    return URLSafeTimedSerializer(secret, salt=COOKIE_SALT)
+    instance = instance_name()
+    return URLSafeTimedSerializer(secret, salt=COOKIE_SALT + (":" + instance if instance else ""))
 
 
 def current_user(request: Request) -> dict:
@@ -83,11 +94,11 @@ def current_user(request: Request) -> dict:
     return {"id": row[0], "username": row[1], "role": row[2]}
 
 
-def require_writer(user: Annotated[dict, Depends(current_user)]) -> dict:
+def require_writer(request: Request, user: Annotated[dict, Depends(current_user)]) -> dict:
     """Dependency for the write endpoints: a recruiter or admin who is not writing too fast (else 429)."""
     if user["role"] not in ("recruiter", "admin"):
         raise HTTPException(status_code=403, detail="not allowed")
-    wait = write_throttle.hit(user["id"])
+    wait = write_throttle.hit((user["id"], client_ip(request)))  # per person AND address: a shared demo login is not shared quota
     if wait:
         raise HTTPException(status_code=429, detail="too many changes too fast; wait a moment",
                             headers={"Retry-After": str(wait)})
@@ -113,7 +124,8 @@ def login(request: Request, response: Response, username: Annotated[str, Form()]
         raise HTTPException(status_code=429, detail="too many sign-in attempts, try again later",
                             headers={"Retry-After": str(wait)})
     with db_connection() as conn:
-        user = check_password(conn, username, password)
+        row = fetch_login_row(conn, username)
+    user = verify_login(row, password)  # outside the block: the connection is already back in the pool
     if user is None:
         login_throttle.record_failure(address, username)
         logger.warning("login failed")  # never log the username or password typed

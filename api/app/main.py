@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import Depends, FastAPI, Response
+from fastapi.responses import JSONResponse
+from psycopg_pool import PoolTimeout
 from psycopg.types.json import Jsonb
 
 from app.api_key import require_api_key, require_internal_caller
 from app.applicants import router as applicants_router
 from app.auth import router as auth_router
 from app.call_reports import router as call_reports_router
-from app.config import api_shared_secret
+from app.config import api_shared_secret, demo_config_problem
 from app.corrections import router as corrections_router
 from app.dashboard import router as dashboard_router
 from app.db import close_pools, db_connection
@@ -26,11 +28,22 @@ logger = logging.getLogger(__name__)
 # docs_url, redoc_url and openapi_url are off: they list every endpoint, and this API is about to be public.
 @asynccontextmanager
 async def lifespan(_app):
+    problem = demo_config_problem()
+    if problem:
+        raise RuntimeError(problem)  # a demo server must never start holding the n8n key or the VAPI key
     yield
     close_pools()  # hand the database connections back politely when the container stops
 
 
 app = FastAPI(title="Frontline CDL intake API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+
+
+@app.exception_handler(PoolTimeout)
+async def pool_timeout(_request, _exc):
+    """Every pooled connection was busy for the whole wait: say "try again", not a bare 500."""
+    return JSONResponse({"detail": "busy, try again in a moment"}, status_code=503, headers={"Retry-After": "2"})
+
+
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(corrections_router)

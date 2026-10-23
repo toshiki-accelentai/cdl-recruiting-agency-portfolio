@@ -5,7 +5,8 @@
 
 Matches by the LAST FOUR DIGITS of the applicant's phone or callback phone, or of a call's caller number. Deletes the
 matching applicants, their calls (and unlinked calls from that caller number), the sync-queue rows and change history
-that point at them. Never touches logins. Refuses a suffix that matches more than MAX_APPLICANTS people.
+that point at them. Never touches logins. Refuses a suffix that matches more than MAX_APPLICANTS people or MAX_CALLS calls.
+The result lists the names it matched, so a dry run shows who would go.
 It does NOT touch Zoho or VAPI: the candidate in Zoho and the call log and recording in VAPI stay until you remove them there.
 """
 import os
@@ -15,6 +16,7 @@ import sys
 import psycopg
 
 MAX_APPLICANTS = 3
+MAX_CALLS = 20
 
 
 def run(conn, last4, apply=False):
@@ -28,6 +30,9 @@ def run(conn, last4, apply=False):
             raise ValueError(f"{len(applicants)} applicants end in {last4}; refusing (limit {MAX_APPLICANTS})")
         calls = [r[0] for r in conn.execute(
             "SELECT id FROM calls WHERE applicant_id = ANY(%s) OR caller_number LIKE %s", (applicants, pattern))]
+        if len(calls) > MAX_CALLS:
+            raise ValueError(f"{len(calls)} calls match {last4}; refusing (limit {MAX_CALLS})")
+        names = [r[0] for r in conn.execute("SELECT name FROM applicants WHERE id = ANY(%s) ORDER BY id", (applicants,))]
         outbox = [r[0] for r in conn.execute(
             "SELECT id FROM outbox WHERE call_id = ANY(%s) OR applicant_id = ANY(%s)", (calls, applicants))]
         audit = [r[0] for r in conn.execute(
@@ -37,9 +42,8 @@ def run(conn, last4, apply=False):
             conn.execute("DELETE FROM audit_log WHERE id = ANY(%s)", (audit,))
             conn.execute("DELETE FROM calls WHERE id = ANY(%s)", (calls,))
             conn.execute("DELETE FROM applicants WHERE id = ANY(%s)", (applicants,))
-        names = [r[0] for r in conn.execute("SELECT name FROM applicants WHERE id = ANY(%s)", (applicants,))] if not apply else []
     return {"applicants": len(applicants), "calls": len(calls), "outbox": len(outbox), "audit_log": len(audit),
-            "applied": apply}
+            "applied": apply, "people": names}
 
 
 def main(argv):

@@ -51,7 +51,8 @@ def seed_two_people():
 def test_a_dry_run_reports_and_deletes_nothing(clean_tables):
     seed_two_people()
     result = run("4656")
-    assert result == {"applicants": 1, "calls": 3, "outbox": 2, "audit_log": 1, "applied": False}
+    assert result == {"applicants": 1, "calls": 3, "outbox": 2, "audit_log": 1, "applied": False,
+                      "people": ["John Smith"]}
     assert count("SELECT count(*) FROM applicants") == 2
     assert count("SELECT count(*) FROM calls") == 4
 
@@ -70,7 +71,8 @@ def test_apply_removes_that_person_and_nothing_else(clean_tables):
 
 def test_nothing_matching_is_not_an_error(clean_tables):
     seed_two_people()
-    assert run("9999", apply=True) == {"applicants": 0, "calls": 0, "outbox": 0, "audit_log": 0, "applied": True}
+    assert run("9999", apply=True) == {"applicants": 0, "calls": 0, "outbox": 0, "audit_log": 0, "applied": True,
+                                    "people": []}
     assert count("SELECT count(*) FROM applicants") == 2
 
 
@@ -86,3 +88,15 @@ def test_refuses_a_suffix_that_matches_too_many_people(clean_tables):
     with pytest.raises(ValueError):
         run("0999", apply=True)
     assert count("SELECT count(*) FROM applicants") == 4
+
+
+def test_refuses_when_too_many_calls_match_even_if_no_person_does(clean_tables):
+    """The first version capped people only; unlinked calls from one number were uncapped."""
+    limit = tool().MAX_CALLS
+    with psycopg.connect(TEST_URL, autocommit=True) as conn:
+        for i in range(limit + 1):
+            conn.execute("INSERT INTO calls (vapi_call_id, raw_payload, caller_number) VALUES (%s, '{}', %s)",
+                         (f"stranger-{i}", MINE))
+    with pytest.raises(ValueError):
+        run("4656", apply=True)
+    assert count("SELECT count(*) FROM calls") == limit + 1

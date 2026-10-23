@@ -103,7 +103,7 @@ WRITE_WINDOW_SECONDS = 60
 
 
 class WriteThrottle:
-    """A speed limit for a logged-in user's writes: at most `max_writes` in any `window_seconds`, per user.
+    """A speed limit for a logged-in user's writes: at most `max_writes` in any `window_seconds`, per key (user and address).
 
     Reads are never limited. State is in memory (one API process), like the login throttle.
     """
@@ -112,12 +112,12 @@ class WriteThrottle:
         self._clock = clock
         self._max = max_writes
         self._window = window_seconds
-        self._by_user: dict[int, deque] = {}
+        self._by_user: dict = {}
 
-    def hit(self, user_id: int) -> int:
+    def hit(self, key) -> int:
         """Count one write attempt. Returns 0 if allowed, else the seconds to wait (a refused attempt is not counted)."""
         now = self._clock()
-        times = self._by_user.setdefault(user_id, deque(maxlen=self._max))
+        times = self._by_user.setdefault(key, deque(maxlen=self._max))
         while times and times[0] <= now - self._window:
             times.popleft()
         if len(times) >= self._max:
