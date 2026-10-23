@@ -14,6 +14,7 @@ class FakeZoho:
 
     def __init__(self):
         self.fail_with = None  # a ZohoError or any Exception, raised by every call
+        self.note_fails_with = None  # raised by add_note only: the candidate is created, the note is not
         self.candidates = []
         self.known_ids = []  # the known_id passed with each upsert, in order
         self.notes = []
@@ -26,8 +27,8 @@ class FakeZoho:
         return known_id or f"zoho-{phone}"
 
     def add_note(self, candidate_id, title, content):
-        if self.fail_with:
-            raise self.fail_with
+        if self.fail_with or self.note_fails_with:
+            raise self.fail_with or self.note_fails_with
         self.notes.append((candidate_id, title, content))
 
 
@@ -215,3 +216,37 @@ def test_an_empty_old_value_reads_as_empty_in_the_note(web, db, conn, zoho):
     web.patch(f"/api/calls/{call_id}", json={"zip_code": "33601"})
     worker.process_one(conn, zoho)
     assert "zip_code: (empty) → 33601" in zoho.notes[-1][2]
+
+
+# --- the candidate id survives a failed note (review finding F1) --------------------------------
+
+def test_a_failed_note_still_stores_the_candidate_id_so_the_retry_makes_no_duplicate(
+        client, payload, db, conn, zoho):
+    """Zoho created the candidate, then the note call failed. Without the stored id the retry would search by
+    phone, and Zoho's search can lag, so a second candidate could be created for the same driver."""
+    post_call(client, payload, "call-1")
+    zoho.note_fails_with = ZohoError("retry", "Zoho HTTP 503 on the note")
+    assert worker.process_one(conn, zoho) == "retry"
+    stored_id = db.execute("SELECT zoho_candidate_id FROM applicants").fetchone()[0]
+    assert stored_id == "zoho-+12065550142"  # kept, even though the row is still pending
+
+    zoho.note_fails_with = None
+    make_due(db)
+    assert worker.process_one(conn, zoho) == "sent"
+    assert zoho.known_ids == [None, stored_id]  # the retry reuses the id instead of searching again
+    assert len(zoho.candidates) == 2 and len({c[0] for c in zoho.candidates}) == 1
+    assert outbox(db) == [("sent", 2, None)]
+
+
+def test_a_permanent_note_failure_also_keeps_the_candidate_id(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    zoho.note_fails_with = ZohoError("fail", "Zoho 400: INVALID_DATA")
+    assert worker.process_one(conn, zoho) == "failed"
+    assert db.execute("SELECT zoho_candidate_id FROM applicants").fetchone()[0] == "zoho-+12065550142"
+
+
+def test_a_failed_candidate_write_stores_nothing(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    zoho.fail_with = ZohoError("retry", "Zoho HTTP 503")
+    assert worker.process_one(conn, zoho) == "retry"
+    assert db.execute("SELECT zoho_candidate_id FROM applicants").fetchone()[0] is None

@@ -104,6 +104,10 @@ def _claim_and_send(conn: psycopg.Connection, zoho):
         try:
             candidate_id = zoho.upsert_candidate(phone, candidate_fields(applicant),
                                                  known_id=known_zoho_id)
+            # Stored before the note, so a failed note cannot lose it: without it the retry would search Zoho by
+            # phone again, and that index can lag, which would create a second candidate for the same driver.
+            conn.execute("UPDATE applicants SET zoho_candidate_id = %s WHERE id = %s",
+                         (candidate_id, applicant_id))
             if kind_of_row == "correction":
                 zoho.add_note(candidate_id, f"Recruiter correction — {audit_id}",
                               correction_note(changes or {}, username))
@@ -115,8 +119,6 @@ def _claim_and_send(conn: psycopg.Connection, zoho):
         except Exception as exc:  # a bug on our side must never lose or give up on a lead
             kind, error = "retry", f"unexpected {type(exc).__name__}: {exc}"
         else:
-            conn.execute("UPDATE applicants SET zoho_candidate_id = %s WHERE id = %s",
-                         (candidate_id, applicant_id))
             conn.execute("UPDATE outbox SET status = 'sent', attempts = attempts + 1, "
                          "sent_at = now(), last_error = NULL WHERE id = %s", (outbox_id,))
             return "sent", outbox_id, attempts + 1, None, None
