@@ -83,8 +83,8 @@ def _correct_existing(conn, user_id: int, call_id: int, applicant_id: int, field
                 "existing_applicant": {"id": owner[0], "name": owner[1]}})
     sets = {COLUMNS[name]: change["to"] for name, change in changes.items()}
     if "readiness" in changes and "temperature" not in fields:  # an explicit temperature wins
-        new_temperature = classify_temperature(fields["readiness"])
-        if new_temperature != current["temperature"]:
+        new_temperature = classify_temperature(fields["readiness"])  # None = not a known answer: keep the old one
+        if new_temperature and new_temperature != current["temperature"]:
             sets["temperature"] = new_temperature
             changes["temperature"] = {"from": current["temperature"], "to": new_temperature}
     assignments = ", ".join(f"{col} = %({col})s" for col in sets)  # column names come from COLUMNS only
@@ -107,7 +107,7 @@ def _attach_applicant(conn, user_id: int, call_id: int, fields: dict) -> tuple[i
         "temperature) VALUES (%(name)s, %(phone)s, %(city)s, %(state)s, %(zip_code)s, %(experience)s, "
         "%(readiness)s, %(temperature)s) ON CONFLICT (phone_e164) DO NOTHING RETURNING id",
         {"name": "", "city": "", "state": "", "zip_code": "", "experience": "", "readiness": "",
-         "temperature": classify_temperature(fields.get("readiness", "")), **fields}).fetchone()
+         "temperature": classify_temperature(fields.get("readiness", "")) or "COLD", **fields}).fetchone()
     if created:
         applicant_id, created_new = created[0], True
     else:  # the phone already has an applicant: attach to it and leave its data alone

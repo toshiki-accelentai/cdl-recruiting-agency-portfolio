@@ -54,9 +54,11 @@ def candidate_fields(applicant: dict) -> dict:
     fields = {
         "Last_Name": last, "Phone": applicant["phone_e164"], "City": applicant["city"],
         "State": applicant["state"], "Zip_Code": applicant["zip_code"],
-        "Experience_in_Years": parse_experience_years(applicant["experience"]),
         "Source": "Phone Call",
     }
+    years = parse_experience_years(applicant["experience"])
+    if years is not None:  # unreadable text must not become "0 years" in Zoho
+        fields["Experience_in_Years"] = years
     if first:
         fields["First_Name"] = first
     return fields

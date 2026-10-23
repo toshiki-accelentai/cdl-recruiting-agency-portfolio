@@ -87,7 +87,7 @@ def test_state_is_uppercased(web):
 
 def test_correcting_readiness_recomputes_the_temperature(web):
     call_id = add_call(temperature="COLD")
-    resp = patch(web, call_id, readiness="immediately")
+    resp = patch(web, call_id, readiness="within 3 days")
     assert resp.json()["applicant"]["temperature"] == "HOT"
     assert q("SELECT temperature FROM applicants") == [("HOT",)]
 
@@ -103,8 +103,17 @@ def test_a_recruiter_can_set_the_temperature_after_talking_to_the_applicant(web)
 
 def test_an_explicit_temperature_wins_over_the_one_computed_from_readiness(web):
     call_id = add_call(temperature="COLD")
-    resp = patch(web, call_id, readiness="immediately", temperature="WARM")
-    assert resp.json()["applicant"]["temperature"] == "WARM"   # 'immediately' alone would give HOT
+    resp = patch(web, call_id, readiness="within 3 days", temperature="WARM")
+    assert resp.json()["applicant"]["temperature"] == "WARM"   # 'within 3 days' alone would give HOT
+
+
+def test_readiness_the_code_does_not_know_leaves_the_temperature_alone(web):
+    call_id = add_call(temperature="HOT")
+    resp = patch(web, call_id, readiness="tomorrow")
+    applicant = resp.json()["applicant"]
+    assert applicant["readiness"] == "tomorrow" and applicant["temperature"] == "HOT"
+    assert q("SELECT readiness, temperature FROM applicants") == [("tomorrow", "HOT")]
+    assert audit_rows()[0][3] == {"readiness": {"from": "next week", "to": "tomorrow"}}
 
 
 def test_saving_the_same_values_changes_nothing_and_writes_no_audit_or_outbox(web):

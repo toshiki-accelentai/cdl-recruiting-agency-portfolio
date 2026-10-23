@@ -127,14 +127,14 @@ def test_second_call_updates_only_the_fields_it_provides(client, payload, db):
     client.post("/calls", json=payload)
     payload["message"]["call"]["id"] = "second-call"
     a = args(payload)
-    a["readiness"] = "immediately"
+    a["readiness"] = "within 3 days"
     a["zipCode"] = "33606"
     a["city"] = ""          # not provided this time: must NOT wipe "Tampa"
     a["experience"] = ""    # same
     r = client.post("/calls", json=payload)
     assert r.json()["temperature"] == "HOT"
     row = db.execute("SELECT city, zip_code, experience, readiness, temperature FROM applicants").fetchone()
-    assert row == ("Tampa", "33606", "3 years 8 months", "immediately", "HOT")
+    assert row == ("Tampa", "33606", "3 years 8 months", "within 3 days", "HOT")
 
 
 def test_second_call_without_readiness_keeps_temperature(client, payload, db):
@@ -157,11 +157,19 @@ def test_normalize_phone(raw, expected):
 
 
 @pytest.mark.parametrize("raw,expected", [
-    ("immediately", "HOT"), ("within 3 days", "HOT"), ("within 7 days", "MEDIUM"),
-    ("in two weeks", "WARM"), ("next month", "COLD"), ("", "COLD"),
+    # The tool sends the spaced spelling, VAPI's call analysis sends the underscore one.
+    ("within 3 days", "HOT"), ("within_3_days", "HOT"),
+    ("within 7 days", "MEDIUM"), ("within_7_days", "MEDIUM"), (" Within 7 Days ", "MEDIUM"),
+    ("within 14 days", "WARM"), ("within_14_days", "WARM"),
+    ("later", "COLD"),
 ])
 def test_classify_temperature(raw, expected):
     assert classify_temperature(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["tomorrow", "13 days", "immediately", "next month", "unknown", "", None])
+def test_classify_temperature_returns_none_when_it_does_not_know_the_answer(raw):
+    assert classify_temperature(raw) is None
 
 
 # ---- B1: outbox (DB row first, CRM sync after) ----

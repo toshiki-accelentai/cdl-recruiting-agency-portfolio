@@ -96,7 +96,7 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             applicant_id, temperature = conn.execute(UPSERT_APPLICANT, {
                 "name": args.name, "phone": phone, "callback": callback, "city": args.city, "state": args.state.upper(),
                 "zip": args.zipCode, "experience": args.experience, "readiness": args.readiness,
-                "temperature": classify_temperature(args.readiness),
+                "temperature": classify_temperature(args.readiness) or "COLD",  # the column only allows 4 values
             }).fetchone()
         row = conn.execute(
             "INSERT INTO calls (vapi_call_id, applicant_id, preferred_callback_at, raw_payload, "

@@ -215,6 +215,12 @@ def test_candidate_fields_match_the_n8n_mapping():
                       "Experience_in_Years": 2, "Source": "Phone Call"}
 
 
+def test_unreadable_experience_is_left_out_of_the_zoho_fields_not_sent_as_zero():
+    fields = candidate_fields({"name": "Mike Driver", "phone_e164": "+12065550199", "city": "Seattle",
+                               "state": "WA", "zip_code": "98101", "experience": "a long time"})
+    assert "Experience_in_Years" not in fields
+
+
 @pytest.mark.parametrize("raw,first,last", [
     ("John Smith", "John", "Smith"), ("Cher", "", "Cher"), ("", "", "Unknown"), ("  A  B  C ", "A B", "C")])
 def test_split_name(raw, first, last):
@@ -223,6 +229,20 @@ def test_split_name(raw, first, last):
 
 @pytest.mark.parametrize("raw,years", [
     ("3 years 8 months", 3.67), ("2 years", 2), ("8 months", 0.67), ("1-2 years", 1.5),
-    ("2+ years", 2), ("no experience", 0), ("", 0), ("under 6 months", 0.25), ("6-12 months", 0.75)])
+    ("2+ years", 2), ("no experience", 0), ("under 6 months", 0.25), ("6-12 months", 0.75),
+    ("2 years 6 months", 2.5), ("5 yrs", 5), ("five years", 5), ("3 to 5 years", 4),
+    ("a year", 1), ("10+ years", 10)])
 def test_parse_experience_years(raw, years):
     assert parse_experience_years(raw) == years
+
+
+@pytest.mark.parametrize("raw", ["", "a long time", None])
+def test_unreadable_experience_is_none_not_zero(raw):
+    assert parse_experience_years(raw) is None
+
+
+@pytest.mark.parametrize("raw,first,last", [
+    ("Maria De La Cruz", "Maria", "De La Cruz"), ("John Smith Jr.", "John", "Smith Jr."),
+    ("Smith Jr.", "", "Smith Jr.")])
+def test_split_name_keeps_surname_particles_and_suffixes(raw, first, last):
+    assert split_name(raw) == (first, last)
