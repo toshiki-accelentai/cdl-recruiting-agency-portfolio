@@ -51,7 +51,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "oAuth2Api",
         "options": {
-          "timeout": 10000
+          "timeout": 4000
         }
       },
       "id": "7330463a-37d6-5961-8359-337bcfd2c7c1",
@@ -59,8 +59,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        500,
-        0
+        1020,
+        120
       ],
       "credentials": {
         "oAuth2Api": {
@@ -68,24 +68,9 @@
           "name": "Zoho Recruit OAuth"
         }
       },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 1000,
+      "retryOnFail": false,
       "onError": "continueRegularOutput",
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "\nconst route = $('Normalize Route Request').first().json;\nconst candidate = Array.isArray($json.data) ? $json.data[0] : null;\nconst existing = Boolean(route.valid && candidate?.id);\nreturn [{ json: {\n  assistantId: existing ? '542bae1c-51b5-4d83-a3fe-446836b4801d' : '6901a714-a6c5-45a2-9395-455e09e0051b',\n  assistantOverrides: { variableValues: {\n    phoneNumber: route.phone ?? '',\n    name: existing ? [candidate.First_Name, candidate.Last_Name].filter(Boolean).join(' ') : '',\n  } },\n  routing: existing ? 'existing_candidate' : 'new_candidate',\n} }];\n"
-      },
-      "id": "2e822399-32bc-5afc-8bc6-37d5f70877ed",
-      "name": "Build Assistant Response",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        760,
-        0
-      ]
     },
     {
       "parameters": {
@@ -108,7 +93,83 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
       "position": [
-        1020,
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://cdl-api:8000/applicants/lookup",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Normalize Route Request').first().json.phone || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 2000
+        }
+      },
+      "id": "9ed66fcd-019e-517c-b2de-85cdd379f961",
+      "name": "Find Applicant in Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        500,
+        0
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7d958631-72a6-55e0-ab7f-c85df309353c",
+              "leftValue": "={{ $json.found === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cd547927-22e5-5761-ab02-576da6822163",
+      "name": "Found in Database?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst route = $('Normalize Route Request').first().json;\nconst db = $('Find Applicant in Database').first().json ?? {};\nconst fromDatabase = Boolean(route.valid && db.found === true);\nconst candidate = !fromDatabase && Array.isArray($json.data) ? $json.data[0] : null;\nconst fromZoho = Boolean(route.valid && candidate?.id);\nconst existing = fromDatabase || fromZoho;\nreturn [{ json: {\n  assistantId: existing ? '542bae1c-51b5-4d83-a3fe-446836b4801d' : '6901a714-a6c5-45a2-9395-455e09e0051b',\n  assistantOverrides: { variableValues: {\n    phoneNumber: route.phone ?? '',\n    name: fromDatabase ? db.name : fromZoho ? [candidate.First_Name, candidate.Last_Name].filter(Boolean).join(' ') : '',\n  } },\n  routing: fromDatabase ? 'existing_database' : fromZoho ? 'existing_candidate' : 'new_candidate',\n} }];\n"
+      },
+      "id": "2e822399-32bc-5afc-8bc6-37d5f70877ed",
+      "name": "Build Assistant Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
         0
       ]
     }
@@ -129,7 +190,7 @@
       "main": [
         [
           {
-            "node": "Find Candidate for Routing",
+            "node": "Find Applicant in Database",
             "type": "main",
             "index": 0
           }
@@ -152,6 +213,35 @@
         [
           {
             "node": "Respond Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Applicant in Database": {
+      "main": [
+        [
+          {
+            "node": "Found in Database?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found in Database?": {
+      "main": [
+        [
+          {
+            "node": "Build Assistant Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Candidate for Routing",
             "type": "main",
             "index": 0
           }

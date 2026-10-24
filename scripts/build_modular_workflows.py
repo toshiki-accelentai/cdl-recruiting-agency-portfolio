@@ -8,9 +8,11 @@ from copy import deepcopy
 from pathlib import Path
 
 try:
-    from .build_production_workflow import build as build_monolith, code, connect, node, stable_id
+    from .build_production_workflow import (
+        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, node, stable_id)
 except ImportError:
-    from build_production_workflow import build as build_monolith, code, connect, node, stable_id
+    from build_production_workflow import (
+        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, node, stable_id)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,6 +20,10 @@ OUT_DIR = ROOT / "config" / "n8n" / "production" / "modular"
 BOOKING_PLACEHOLDER = "BOOKING_WORKFLOW_ID_REQUIRED"
 # Python intake API on hermes-vps, reachable only over the private n8n_app Docker network.
 INTAKE_API_URL = "http://cdl-api:8000/calls"
+LOOKUP_API_URL = "http://cdl-api:8000/applicants/lookup"
+# VAPI fails the call if assistant-request is not answered within 7.5 s (fixed). Database + Zoho must fit inside it.
+ROUTING_DATABASE_TIMEOUT_MS = 2000
+ROUTING_ZOHO_TIMEOUT_MS = 4000
 
 FILES = {
     "routing": "cdl-01-assistant-routing.json",
@@ -116,9 +122,62 @@ def build_booking(source: dict) -> dict:
 
 
 def build_routing(source: dict) -> dict:
+    """Database first, Zoho only when the database does not know the caller (owner decision 2026-10-23:
+    an existing caller is anyone who has talked to us, even before the worker copied them to Zoho)."""
     workflow = subset(source, ROUTING, "CDL 01 - Assistant Routing", "routing")
     for item in workflow["nodes"]:
         item["position"][1] += 600
+        if item["name"] == "Find Candidate for Routing":
+            item["parameters"]["options"]["timeout"] = ROUTING_ZOHO_TIMEOUT_MS
+            item["retryOnFail"] = False  # 3 tries x 4 s would blow the 7.5 s budget; a miss just means "new caller"
+            item.pop("maxTries", None)
+            item.pop("waitBetweenTries", None)
+            item["position"] = [1020, 120]
+        if item["name"] == "Build Assistant Response": item["position"] = [1280, 0]
+        if item["name"] == "Respond Route": item["position"] = [1540, 0]
+    # The API key is an instance-local n8n "Header Auth" credential, attached at deploy time.
+    lookup = node(
+        "Find Applicant in Database",
+        "n8n-nodes-base.httpRequest",
+        {
+            "method": "GET",
+            "url": LOOKUP_API_URL,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "sendQuery": True,
+            "queryParameters": {"parameters": [
+                {"name": "phone", "value": "={{ $('Normalize Route Request').first().json.phone || '' }}"},
+            ]},
+            "options": {"timeout": ROUTING_DATABASE_TIMEOUT_MS},
+        },
+        500, 0, 4.4,
+        alwaysOutputData=True,
+        onError="continueRegularOutput",  # API down or 422 -> fall through to Zoho, never fail the call
+    )
+    found = condition("Found in Database?", "={{ $json.found === true }}", 760, 0)
+    respond = code("Build Assistant Response", f"""
+const route = $('Normalize Route Request').first().json;
+const db = $('Find Applicant in Database').first().json ?? {{}};
+const fromDatabase = Boolean(route.valid && db.found === true);
+const candidate = !fromDatabase && Array.isArray($json.data) ? $json.data[0] : null;
+const fromZoho = Boolean(route.valid && candidate?.id);
+const existing = fromDatabase || fromZoho;
+return [{{ json: {{
+  assistantId: existing ? '{EXISTING_ASSISTANT_ID}' : '{NEW_ASSISTANT_ID}',
+  assistantOverrides: {{ variableValues: {{
+    phoneNumber: route.phone ?? '',
+    name: fromDatabase ? db.name : fromZoho ? [candidate.First_Name, candidate.Last_Name].filter(Boolean).join(' ') : '',
+  }} }},
+  routing: fromDatabase ? 'existing_database' : fromZoho ? 'existing_candidate' : 'new_candidate',
+}} }}];
+""", 1280, 0, helpers=False)
+    workflow["nodes"] = [n for n in workflow["nodes"] if n["name"] != "Build Assistant Response"] + [lookup, found, respond]
+    connections = workflow["connections"]
+    connections["Normalize Route Request"] = {"main": [[]]}
+    connect(connections, "Normalize Route Request", "Find Applicant in Database")
+    connect(connections, "Find Applicant in Database", "Found in Database?")
+    connect(connections, "Found in Database?", "Build Assistant Response", 0)
+    connect(connections, "Found in Database?", "Find Candidate for Routing", 1)
     return workflow
 
 

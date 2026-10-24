@@ -317,6 +317,62 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("pickPhone(message.call?.customer?.number, message.customer?.number)", code)
         self.assertNotIn("normalizePhone(message.call?.customer?.number ??", code)
 
+    def test_routing_asks_the_database_first_and_zoho_only_when_the_database_does_not_know(self):
+        wf = self.workflows["routing"]
+        nodes = {n["name"]: n for n in wf["nodes"]}
+        edges = {src: [[t["node"] for t in out] for out in v["main"]] for src, v in wf["connections"].items()}
+        self.assertEqual(edges["Normalize Route Request"], [["Find Applicant in Database"]])
+        self.assertEqual(edges["Find Applicant in Database"], [["Found in Database?"]])
+        self.assertEqual(edges["Found in Database?"], [["Build Assistant Response"], ["Find Candidate for Routing"]])
+        self.assertEqual(edges["Find Candidate for Routing"], [["Build Assistant Response"]])
+        lookup = nodes["Find Applicant in Database"]
+        self.assertEqual(lookup["parameters"]["url"], "http://cdl-api:8000/applicants/lookup")
+        self.assertEqual(lookup["parameters"]["genericAuthType"], "httpHeaderAuth")
+        self.assertEqual(lookup.get("onError"), "continueRegularOutput")  # API down -> still route via Zoho
+        self.assertTrue(lookup.get("alwaysOutputData"))
+
+    def test_routing_timeouts_fit_inside_vapis_7_5_second_limit(self):
+        nodes = {n["name"]: n for n in self.workflows["routing"]["nodes"]}
+        database = nodes["Find Applicant in Database"]["parameters"]["options"]["timeout"]
+        zoho = nodes["Find Candidate for Routing"]["parameters"]["options"]["timeout"]
+        self.assertEqual((database, zoho), (2000, 4000))
+        self.assertFalse(nodes["Find Applicant in Database"].get("retryOnFail"))
+        self.assertFalse(nodes["Find Candidate for Routing"].get("retryOnFail"))
+        self.assertLess(database + zoho, 7500)
+
+    def run_build_assistant_response(self, route, database, zoho):
+        code = {n["name"]: n for n in self.workflows["routing"]["nodes"]}["Build Assistant Response"]["parameters"]["jsCode"]
+        runner = (
+            "const [code, route, db, zoho] = process.argv.slice(1).map((v, i) => i ? JSON.parse(v) : v);"
+            "const outputs = {'Normalize Route Request': route, 'Find Applicant in Database': db};"
+            "const $ = (name) => ({ first: () => ({ json: outputs[name] }) });"
+            "console.log(JSON.stringify(new Function('$', '$json', code)($, zoho ?? db)[0].json));"
+        )
+        result = subprocess.run(["node", "-e", runner, code, json.dumps(route), json.dumps(database), json.dumps(zoho)],
+                                capture_output=True, text=True, check=True)
+        return json.loads(result.stdout)
+
+    def test_a_caller_found_in_the_database_is_existing_and_greeted_with_the_database_name(self):
+        out = self.run_build_assistant_response(
+            {"phone": "+12065550101", "valid": True}, {"found": True, "name": "Maria De La Cruz"}, None)
+        self.assertEqual(out["routing"], "existing_database")
+        self.assertEqual(out["assistantOverrides"]["variableValues"]["name"], "Maria De La Cruz")
+        self.assertEqual(out["assistantId"], "542bae1c-51b5-4d83-a3fe-446836b4801d")
+
+    def test_a_caller_only_in_zoho_is_still_existing(self):
+        out = self.run_build_assistant_response(
+            {"phone": "+12065550101", "valid": True}, {"found": False, "name": ""},
+            {"data": [{"id": "9", "First_Name": "Jo", "Last_Name": "Diaz"}]})
+        self.assertEqual(out["routing"], "existing_candidate")
+        self.assertEqual(out["assistantOverrides"]["variableValues"]["name"], "Jo Diaz")
+
+    def test_a_caller_in_neither_place_or_when_both_lookups_fail_is_new(self):
+        for database, zoho in (({"found": False, "name": ""}, {}), ({"error": "timeout"}, {"error": "timeout"})):
+            out = self.run_build_assistant_response({"phone": "+12065550101", "valid": True}, database, zoho)
+            self.assertEqual(out["routing"], "new_candidate")
+            self.assertEqual(out["assistantId"], "6901a714-a6c5-45a2-9395-455e09e0051b")
+            self.assertEqual(out["assistantOverrides"]["variableValues"]["name"], "")
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [
