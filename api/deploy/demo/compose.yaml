@@ -1,0 +1,71 @@
+# The PUBLIC DEMO server (C4). Runs on hermes-vps in /opt/cdl-demo, next to (not inside) /opt/cdl-api and /opt/n8n.
+#
+# What makes it safe to hand out a link to:
+#  - its own Postgres container, no published port, reachable only from the API container;
+#  - no worker, no Zoho keys, no VAPI key, no n8n shared secret (the API refuses to start in DEMO_MODE if it holds one);
+#  - no network that reaches the real API, n8n or the real database: only `demo_edge`, shared with Caddy;
+#  - both networks are `internal`: the demo containers cannot make outbound connections at all;
+#  - fictional data only (app.demo_seed), reset every night (app.demo_reset, see demo-reset.timer).
+#
+# Secrets live only in /opt/cdl-demo/.env.demo (chmod 600). Setup, deploy and rollback: docs/DEMO-DEPLOY.md.
+name: cdl-demo
+
+services:
+  demo-db:
+    image: postgres:16.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    networks: [demo_private]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  demo-api:
+    build: ${DEMO_SRC:-./src}
+    restart: unless-stopped
+    depends_on:
+      demo-db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@demo-db:5432/${POSTGRES_DB}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-1}
+      DEMO_MODE: "1"
+      INSTANCE_NAME: demo
+      DEMO_RECORDINGS_DIR: /recordings
+    # Deliberately NO env_file: nothing from /opt/cdl-api (API_SHARED_SECRET, VAPI_PRIVATE_KEY, Zoho) can leak in.
+    volumes:
+      - ./recordings:/recordings:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      demo_private: {}
+      demo_edge:
+        aliases: [demo-api]  # the name Caddy proxies to
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+networks:
+  demo_private:
+    internal: true
+  demo_edge:
+    external: true   # created once on the server; only Caddy and demo-api are on it
+    name: demo_edge

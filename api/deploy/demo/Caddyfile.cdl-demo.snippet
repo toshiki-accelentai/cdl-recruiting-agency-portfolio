@@ -1,0 +1,72 @@
+# Caddy blocks for BOTH hostnames (decision 9, docs/C4-PLAN.md). They replace the current `cdl-demo.accelentai.com`
+# block in /opt/n8n/Caddyfile. Caddy must be on the `demo_edge` network (docs/DEMO-DEPLOY.md, live step 3).
+
+# --- the PUBLIC DEMO: fictional data, own database, no Zoho/VAPI keys ---------------------------------------
+cdl-demo.accelentai.com {
+    encode zstd gzip
+
+    # Endpoints only n8n may call, and the API docs: not reachable from the internet at all.
+    @internal path /calls /calls/* /call-reports /call-reports/* /docs /docs/* /redoc /openapi.json
+    respond @internal 404
+
+    # Login and visitor edits are small; nothing here needs a big body (review finding N3).
+    request_body {
+        max_size 64KB
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # The demo plays its audio from its own origin ('self'), never from a cloud bucket.
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        -Server
+    }
+
+    log {
+        output file /var/log/caddy/cdl-demo.log {
+            roll_size 10MiB
+            roll_keep 3
+            roll_keep_for 168h
+        }
+        format json
+    }
+
+    reverse_proxy demo-api:8000
+}
+
+# --- the REAL dashboard (owner only, the real database and Zoho) --------------------------------------------
+cdl-admin.accelentai.com {
+    encode zstd gzip
+
+    @internal path /calls /calls/* /call-reports /call-reports/* /docs /docs/* /redoc /openapi.json
+    respond @internal 404
+
+    request_body {
+        max_size 64KB
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # The real instance plays recordings from VAPI's signed links on Cloudflare R2.
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' https://*.r2.cloudflarestorage.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        -Server
+    }
+
+    log {
+        output file /var/log/caddy/cdl-admin.log {
+            roll_size 10MiB
+            roll_keep 3
+            roll_keep_for 168h
+        }
+        format json
+    }
+
+    reverse_proxy cdl-api:8000
+}

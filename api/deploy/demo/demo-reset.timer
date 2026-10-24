@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly reset of the public demo at 03:00 Vancouver time
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Vancouver
+Persistent=true
+
+[Install]
+WantedBy=timers.target

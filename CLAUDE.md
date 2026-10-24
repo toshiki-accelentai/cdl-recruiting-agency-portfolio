@@ -80,6 +80,40 @@ No automated test harness exists yet. Until one does, a change is only "done"
 when a real test call has been placed and the resulting Zoho/Airtable record
 inspected — not when the workflow saves without error.
 
+## API tests: one pytest at a time (every session, every tool)
+
+The API tests share ONE test database (`cdl_test` on `api-db-1`), and each pytest session DROPS and recreates it.
+A second pytest running at the same time kills the first one's connections, and both report failures that are not
+real bugs (this gave a fake "52 failed, 25 errors" on 2026-10-21).
+
+**Before running pytest, check that no other pytest is running. Run it through the guard:**
+
+```bash
+py -3.11 scripts/run_api_tests.py                       # whole suite; refuses if another pytest is alive
+py -3.11 scripts/run_api_tests.py tests/test_worker.py -q
+```
+
+If it prints "Another pytest is already running", wait for that process (it shows the pid) and retry. Never
+start a second run, and never trust a red result from a run that overlapped another one: re-run it alone first.
+Needs Docker Desktop and the `api-db-1` container running.
+
+## Two sessions in one working tree: commit and deploy rules
+
+Claude (or Codex) may run in a second session on the same checkout, for example while the n8n code nodes are
+being fixed here and the matching API parsing is fixed there. Editing and committing in parallel is fine if:
+
+- **Commit only your own files**, by name: `git add path/to/file ...`. Never `git add -A`, `git add .` or
+  `git commit -a`: that would sweep in the other session's half-finished edits.
+- **Never run the API deploy script while either session has uncommitted changes.** `scripts/deploy_api_to_vps.ps1`
+  packages the whole `api/app` folder from the working tree, so it would ship the other session's unfinished work.
+  Deploy from a clean release worktree (a separate checkout of exactly the commit being released), never from the
+  shared working tree. The release is checked first: live source vs git, full tests, a list of the files that change.
+- **n8n and API changes that depend on each other go live together, as one approved step** (for example n8n
+  code-node parsing and the matching API parsing). Do not deploy one side alone and leave the other behind.
+- Every deploy, VAPI patch or n8n publish needs the owner's explicit approval first; report real actions
+  separately from test counts.
+- Run the API tests only through `scripts/run_api_tests.py` (see the section above).
+
 ## Learning routine
 
 The owner is learning through this project (publish target 2026-10-31, schedule in

@@ -1,0 +1,9 @@
+[Unit]
+Description=Reset the public demo: empty the fictional data and seed it again
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/cdl-demo
+# app.demo_reset refuses unless DEMO_MODE=1 (the container sets it) and every row is demo data.
+ExecStart=/usr/bin/docker compose --env-file .env.demo exec -T demo-api python -m app.demo_reset
