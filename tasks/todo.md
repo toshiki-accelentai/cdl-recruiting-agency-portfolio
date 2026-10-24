@@ -447,6 +447,18 @@ diagnose). Order is strict: A → B → C → apply.
       Verified: 40 Python tests, JS tests, live code fetched back and run on 9 inputs (phone fallback, ZIP, state, callback),
       7 phrases x 3 simulated chats. Real actions: 4 n8n workflow updates, 2 VAPI tool updates, 0 phone calls, 0 Zoho writes,
       0 n8n executions.
+- [x] **DATABASE-FIRST CALLER LOOKUP DEPLOYED 2026-10-24 (approved by the owner).** Owner decision: an "existing" caller is anyone
+      who has talked to us, even before the worker copied them to Zoho. API released from worktree `cdl-release-lookup`
+      (branch `release/lookup-20261024` = live `c4d43da` + commits `b6aacfa`, `897f7df`; the main.py import conflict was resolved
+      by keeping the release's config import). New `GET /applicants/lookup` (n8n only, API key, answers only found + name).
+      CDL 01 now: database lookup (2 s, continues on error) -> Zoho search (4 s, retries off) -> new caller. Retries are off because
+      VAPI fails the call if assistant-request is not answered within 7.5 s (fixed). Rollback copies: `src.before-20261024-124818`,
+      `compose.yaml.before-20261024-124818` on the server; CDL 01 JSON in the session scratchpad. Verified: live `app/` identical to the
+      release worktree (41/41 files by SHA-256), containers healthy, lookup answers on the server (found / not found / 422 / 401 / 404
+      through the proxy header), 420 API tests on the release worktree, 46 workflow tests, 3 production routing checks (known caller
+      `existing_database` 1.1 s, unknown `new_candidate` 3.1 s, no number `new_candidate` 1.4 s). NOT verified: API stopped ->
+      Zoho fallback on live, a real phone call, the lookup through the real public URL. Real actions: 1 API deploy, 1 n8n workflow
+      update, 3 routing webhook calls, 0 phone calls, 0 database writes, 0 Zoho writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
