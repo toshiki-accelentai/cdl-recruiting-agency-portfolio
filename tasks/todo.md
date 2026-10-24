@@ -459,6 +459,17 @@ diagnose). Order is strict: A → B → C → apply.
       `existing_database` 1.1 s, unknown `new_candidate` 3.1 s, no number `new_candidate` 1.4 s). NOT verified: API stopped ->
       Zoho fallback on live, a real phone call, the lookup through the real public URL. Real actions: 1 API deploy, 1 n8n workflow
       update, 3 routing webhook calls, 0 phone calls, 0 database writes, 0 Zoho writes.
+- [x] **BOOKING MESSAGES DEPLOYED 2026-10-24 (approved by the owner).** A slot another call owns now returns `slot_taken`
+      (it used to be `slot_unavailable`, so the agent said "outside business hours" for a taken time). Both VAPI prompts got a
+      `slot_taken` rule and one short line per callback reason (weekend, holiday, past time, outside hours, unreadable); new-lead also
+      got the older "Never say a call is scheduled until the tool has confirmed it" line. Prompts pushed with
+      `deploy_vapi_prompt_only.py` (new-lead v15, existing-lead v13, model still gpt-5) and published by the owner in the dashboard.
+      CDL 03: pass-through `Return Booking Result` removed (14 nodes); `Confirm Restored Slot` kept (If-Match restore race -> "time taken").
+      Swapped on live after a drift check (names, all code nodes, connections matched); still active, Google credentials kept; rollback
+      copy in the session scratchpad. Verified: 48 workflow tests, live Build Booked Result run on 4 cases (own event booked, other owner
+      slot_taken x2, create failed manual_followup), prompts read back equal to the files. NOT verified: a real call hearing the new
+      lines, a real two-caller race. Real actions: 2 VAPI prompt updates, 1 owner publish, 1 n8n workflow update, 0 phone calls,
+      0 calendar writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
