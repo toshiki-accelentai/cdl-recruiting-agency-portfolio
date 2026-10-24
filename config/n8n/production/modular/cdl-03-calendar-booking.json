@@ -353,7 +353,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst context = $('Assess Availability').first().json;\nconst eventMatches = Boolean(!$json.error && $json.id === context.eventId && $json.status !== 'cancelled');\nconst eventOwner = $json.extendedProperties?.private?.vapiCallId;\nconst ownedByCall = eventMatches && eventOwner === context.callId;\nconst slotUnavailable = context.bookingReason === 'slot_unavailable' || (eventMatches && !ownedByCall);\nreturn [{ json: {\n  ...context,\n  status: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_unavailable' : 'manual_followup'),\n  booked: ownedByCall,\n  calendarUrl: ownedByCall ? ($json.htmlLink ?? '') : '',\n  calendarEventId: ownedByCall ? ($json.id ?? '') : '',\n  bookingReason: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_race_lost' : 'calendar_create_failed'),\n  callerMessage: ownedByCall\n    ? `Your recruiter callback is confirmed for ${context.preferredCallbackTime}.`\n    : (slotUnavailable\n      ? 'That callback time is already taken. Please choose another time.'\n      : 'Your application was saved, but the calendar could not be confirmed. A recruiter will follow up manually.'),\n} }];\n"
+        "jsCode": "\nconst context = $('Assess Availability').first().json;\nconst eventMatches = Boolean(!$json.error && $json.id === context.eventId && $json.status !== 'cancelled');\nconst eventOwner = $json.extendedProperties?.private?.vapiCallId;\nconst ownedByCall = eventMatches && eventOwner === context.callId;\nconst slotUnavailable = context.bookingReason === 'slot_unavailable' || (eventMatches && !ownedByCall);\nreturn [{ json: {\n  ...context,\n  status: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_taken' : 'manual_followup'),\n  booked: ownedByCall,\n  calendarUrl: ownedByCall ? ($json.htmlLink ?? '') : '',\n  calendarEventId: ownedByCall ? ($json.id ?? '') : '',\n  bookingReason: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_race_lost' : 'calendar_create_failed'),\n  callerMessage: ownedByCall\n    ? `Your recruiter callback is confirmed for ${context.preferredCallbackTime}.`\n    : (slotUnavailable\n      ? 'That callback time is already taken. Please choose another time.'\n      : 'Your application was saved, but the calendar could not be confirmed. A recruiter will follow up manually.'),\n} }];\n"
       },
       "id": "8596fa4f-1f71-5042-8089-878c5a22550a",
       "name": "Build Booked Result",
@@ -362,19 +362,6 @@
       "position": [
         3100,
         -100
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "return $input.all();"
-      },
-      "id": "5467cf15-a100-5038-90cd-76bfa0cd2290",
-      "name": "Return Booking Result",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3360,
-        0
       ]
     }
   ],
@@ -526,28 +513,6 @@
         [
           {
             "node": "Validate Callback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Booked Result": {
-      "main": [
-        [
-          {
-            "node": "Return Booking Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Non-Booking Result": {
-      "main": [
-        [
-          {
-            "node": "Return Booking Result",
             "type": "main",
             "index": 0
           }

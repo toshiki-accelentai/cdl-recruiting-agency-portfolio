@@ -373,6 +373,35 @@ class ModularWorkflowTests(unittest.TestCase):
             self.assertEqual(out["assistantId"], "6901a714-a6c5-45a2-9395-455e09e0051b")
             self.assertEqual(out["assistantOverrides"]["variableValues"]["name"], "")
 
+    def test_booking_ends_at_the_two_result_nodes_without_a_pass_through_node(self):
+        wf = self.workflows["booking"]
+        names = {n["name"] for n in wf["nodes"]}
+        self.assertNotIn("Return Booking Result", names)
+        self.assertNotIn("Build Booked Result", wf["connections"])
+        self.assertNotIn("Build Non-Booking Result", wf["connections"])
+        # Kept on purpose: after a conditional (If-Match) restore loses a race, the read-back shows the
+        # other caller owns the slot, so this caller hears "time taken" instead of "manual follow-up".
+        self.assertIn("Confirm Restored Slot", names)
+
+    def booked_result(self, context, event):
+        code = {n["name"]: n for n in self.workflows["booking"]["nodes"]}["Build Booked Result"]["parameters"]["jsCode"]
+        runner = ("const [code, ctx, ev] = process.argv.slice(1).map((v, i) => i ? JSON.parse(v) : v);"
+                  "const $ = () => ({ first: () => ({ json: ctx }) });"
+                  "console.log(JSON.stringify(new Function('$', '$json', code)($, ev)[0].json));")
+        out = subprocess.run(["node", "-e", runner, code, json.dumps(context), json.dumps(event)],
+                             capture_output=True, text=True, check=True).stdout
+        return json.loads(out)
+
+    def test_a_slot_someone_else_holds_is_slot_taken_not_outside_business_hours(self):
+        ctx = {"eventId": "cdlslot1", "callId": "call-A", "bookingReason": "slot_unavailable"}
+        theirs = {"id": "cdlslot1", "status": "confirmed", "extendedProperties": {"private": {"vapiCallId": "call-B"}}}
+        mine = {"id": "cdlslot1", "status": "confirmed", "htmlLink": "h", "extendedProperties": {"private": {"vapiCallId": "call-A"}}}
+        self.assertEqual(self.booked_result(ctx, theirs)["status"], "slot_taken")
+        self.assertEqual(self.booked_result({**ctx, "bookingReason": "available"}, theirs)["status"], "slot_taken")
+        self.assertEqual(self.booked_result(ctx, mine)["status"], "booked")  # a retry of the same call
+        failed = self.booked_result({**ctx, "bookingReason": "available"}, {"error": {"message": "x"}})
+        self.assertEqual(failed["status"], "manual_followup")
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [

@@ -99,13 +99,6 @@ def build_booking(source: dict) -> dict:
         0,
         1.1,
     )
-    terminal = code(
-        "Return Booking Result",
-        "return $input.all();",
-        3360,
-        0,
-        helpers=False,
-    )
     for item in workflow["nodes"]:
         item["position"][0] -= 2080
         item["position"][1] += 80
@@ -114,10 +107,9 @@ def build_booking(source: dict) -> dict:
                 "const intake = $('Resolve Candidate Result').first().json;",
                 "const intake = $input.first().json;",
             )
-    workflow["nodes"] = [trigger, *workflow["nodes"], terminal]
+    # The sub-workflow returns the output of whichever result node ran last; no pass-through end node needed.
+    workflow["nodes"] = [trigger, *workflow["nodes"]]
     connect(workflow["connections"], "Booking Input", "Validate Callback")
-    connect(workflow["connections"], "Build Booked Result", "Return Booking Result")
-    connect(workflow["connections"], "Build Non-Booking Result", "Return Booking Result")
     return workflow
 
 

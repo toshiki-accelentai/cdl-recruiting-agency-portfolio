@@ -426,7 +426,7 @@ const ownedByCall = eventMatches && eventOwner === context.callId;
 const slotUnavailable = context.bookingReason === 'slot_unavailable' || (eventMatches && !ownedByCall);
 return [{ json: {
   ...context,
-  status: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_unavailable' : 'manual_followup'),
+  status: ownedByCall ? 'booked' : (slotUnavailable ? 'slot_taken' : 'manual_followup'),
   booked: ownedByCall,
   calendarUrl: ownedByCall ? ($json.htmlLink ?? '') : '',
   calendarEventId: ownedByCall ? ($json.id ?? '') : '',
