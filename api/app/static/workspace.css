@@ -433,7 +433,7 @@ body.auth-body { min-height: 100dvh; margin: 0; background: radial-gradient(1200
   .row .c-when { grid-area: when; display: flex; align-items: baseline; gap: 8px; }
   .row .c-act { grid-area: act; }
   .row .when-value { margin-top: 0; }
-  .directory-toolbar { align-items: flex-start; flex-direction: column; }
+  .directory-toolbar { align-items: stretch; flex-direction: column; }
   .directory-toolbar .search-field { width: 100%; }
   .analytics-head { align-items: flex-start; flex-direction: column; }
   .analytics-chart-grid { grid-template-columns: minmax(0, 1fr); }

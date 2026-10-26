@@ -162,3 +162,11 @@ def test_call_activity_search_sits_in_the_filter_toolbar():
 def test_the_zoho_row_works_without_the_raw_id():
     """A recruiter gets no Zoho id from the API (security finding 4); the page must still say whether a record exists."""
     assert "has_zoho_record" in (STATIC / "applicant.js").read_text(encoding="utf-8")
+
+
+def test_the_applicants_toolbar_stacks_full_width_so_the_tabs_scroll_instead_of_pushing_the_page_wide():
+    """Owner review 2026-10-26: on a phone the Applicants filters ran off the right edge (page 426px wide on a 375px phone).
+    A column that centers or left-aligns its children sizes them to their content; the nowrap tab row then set the width."""
+    narrow = re.search(r"@media \(max-width: 1180px\) \{(.*?)\n\}", css("workspace.css"), re.DOTALL).group(1)
+    toolbar = re.search(r"\.directory-toolbar\s*\{([^}]*)\}", narrow).group(1)
+    assert "flex-direction: column" in toolbar and "align-items: stretch" in toolbar
