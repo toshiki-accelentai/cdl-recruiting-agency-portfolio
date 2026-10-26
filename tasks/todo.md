@@ -480,6 +480,20 @@ diagnose). Order is strict: A → B → C → apply.
       lookup endpoint (found / not found / 422 / 401 / 404 through the proxy header), 427 API tests on the release worktree.
       NOT verified: a real call where the first time is rejected and a second accepted (Zoho note with the new time).
       Real actions: 1 API deploy, 0 n8n changes, 0 VAPI changes, 0 phone calls, 0 Zoho writes.
+- [x] **API RELEASE `b545f0b` DEPLOYED 2026-10-26 12:57 Vancouver (approved by the owner)**, branch `release/all-20261026`, worktree
+      `cdl-release-all`, on top of the callback release `c03b246` the other session deployed at 12:46 (live was verified identical to it
+      first, 56/56 files). Ships: security batch 1 (admin-only error text and Zoho id, per-user write limit, login/secret hardening,
+      503 when the pool is busy), worker stores the Zoho id before the note, stricter intake parsing, Overview tiles that open a
+      filtered list (`/api/calls?day=today`, `#applicants?status=needs_contact`), phone layout fixes, demo modules (inactive: no
+      `DEMO_MODE`), non-root container (uid 10001, `exec uvicorn`), python-multipart >= 0.0.18. No migrations, compose and `.env.api`
+      unchanged (same keys and value fingerprints as the server's), `INSTANCE_NAME` left unset on purpose (setting it later logs
+      everyone out once). Rollback copies: `src.before-20261026-125703`, `compose.yaml.before-20261026-125703`. Verified: live `app/`
+      identical to the release worktree (62/62 files by SHA-256), compose identical, both containers healthy, 0 error lines in logs,
+      container runs as uid 10001, public-surface check all 19 passed, real host serves `route_filters.js` (same hash) and the new
+      `workspace.css` fingerprint, `/api/todo` 401, demo and n8n still 200. 523 API tests, 3 JS tests on the worktree. Real actions:
+      1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes, 0 database writes. NOT verified: signed-in look at the real dashboard
+      (owner), a real call through the worker after the restart. Leftover: orphan container `cdl-api-db-1` (old local db service,
+      untouched). The real `demo` recruiter login still exists in the real users table.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
