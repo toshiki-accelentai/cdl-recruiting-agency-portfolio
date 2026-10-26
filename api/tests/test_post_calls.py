@@ -112,6 +112,36 @@ def test_replay_does_not_modify_the_applicant(client, payload, db):
     assert db.execute("SELECT city FROM applicants").fetchone()[0] == "Tampa"
 
 
+def stored_callback_is(db, value):
+    return db.execute("SELECT preferred_callback_at = %s::timestamptz FROM calls", (value,)).fetchone()[0]
+
+
+def test_a_new_callback_time_in_the_same_call_replaces_the_stored_time(client, payload, db):
+    """The caller's first time was rejected (weekend, taken slot) and they picked another: keep the latest."""
+    client.post("/calls", json=payload)
+    args(payload)["preferredCallbackTime"] = "2026-09-28T11:00:00"
+    second = client.post("/calls", json=payload)
+    assert second.status_code == 200 and second.json()["duplicate"] is True
+    assert stored_callback_is(db, "2026-09-28T11:00:00-07:00")  # naive times mean Vancouver (PDT)
+    assert db.execute("SELECT count(*) FROM calls").fetchone()[0] == 1
+
+
+def test_a_new_callback_time_changes_only_the_time_not_the_applicant_or_the_outbox(client, payload, db):
+    client.post("/calls", json=payload)
+    args(payload)["preferredCallbackTime"] = "2026-09-28T11:00:00"
+    args(payload)["city"] = "Miami"  # still a replay for everything except the callback time
+    client.post("/calls", json=payload)
+    assert db.execute("SELECT city FROM applicants").fetchone()[0] == "Tampa"
+    assert db.execute("SELECT count(*) FROM outbox").fetchone()[0] == 1
+
+
+def test_a_replay_without_a_callback_time_keeps_the_stored_time(client, payload, db):
+    client.post("/calls", json=payload)
+    args(payload)["preferredCallbackTime"] = ""
+    client.post("/calls", json=payload)
+    assert stored_callback_is(db, "2026-09-25T10:00:00-07:00")
+
+
 def test_same_phone_new_call_reuses_applicant(client, payload, db):
     first = client.post("/calls", json=payload)
     payload["message"]["call"]["id"] = "second-call"

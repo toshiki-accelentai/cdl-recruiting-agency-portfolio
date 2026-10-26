@@ -250,3 +250,44 @@ def test_a_failed_candidate_write_stores_nothing(client, payload, db, conn, zoho
     zoho.fail_with = ZohoError("retry", "Zoho HTTP 503")
     assert worker.process_one(conn, zoho) == "retry"
     assert db.execute("SELECT zoho_candidate_id FROM applicants").fetchone()[0] is None
+
+
+def resend_with_new_time(client, payload, call_id, when):
+    p = copy.deepcopy(payload)
+    p["message"]["call"]["id"] = call_id
+    p["message"]["toolCalls"][0]["function"]["arguments"]["phoneNumber"] = "2065550142"
+    p["message"]["toolCalls"][0]["function"]["arguments"]["preferredCallbackTime"] = when
+    return client.post("/calls", json=p)
+
+
+def test_a_changed_callback_time_after_the_zoho_sync_is_sent_again_with_the_new_time(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    worker.process_one(conn, zoho)                      # the first (rejected) time is now in Zoho
+    assert resend_with_new_time(client, payload, "call-1", "2026-09-28T11:00:00").status_code == 200
+    assert outbox(db) == [("pending", 0, None)]         # queued again, attempts reset
+    assert worker.process_one(conn, zoho) == "sent"
+    assert len(zoho.candidates) == 2 and zoho.known_ids == [None, "zoho-+12065550142"]  # same candidate, no duplicate
+    assert "Requested callback: 2026-09-28T11:00:00-07:00" in zoho.notes[-1][2]
+
+
+def test_a_changed_callback_time_before_the_zoho_sync_just_waits_for_the_one_pending_send(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    resend_with_new_time(client, payload, "call-1", "2026-09-28T11:00:00")
+    assert outbox(db) == [("pending", 0, None)]
+    worker.process_one(conn, zoho)
+    assert len(zoho.notes) == 1 and "2026-09-28T11:00:00-07:00" in zoho.notes[0][2]  # one note, latest time
+
+
+def test_the_same_callback_time_again_does_not_queue_another_zoho_send(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    worker.process_one(conn, zoho)
+    resend_with_new_time(client, payload, "call-1", "2026-09-25T10:00:00")  # same as the fixture's time
+    assert outbox(db) == [("sent", 1, None)]
+
+
+def test_a_failed_sync_is_not_revived_by_a_changed_callback_time(client, payload, db, conn, zoho):
+    post_call(client, payload, "call-1")
+    zoho.fail_with = ZohoError("fail", "bad request")
+    worker.process_one(conn, zoho)
+    resend_with_new_time(client, payload, "call-1", "2026-09-28T11:00:00")
+    assert outbox(db)[0][0] == "failed"

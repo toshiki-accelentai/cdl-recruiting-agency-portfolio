@@ -125,6 +125,21 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
         call_id = row[0]
         if applicant_id is not None:  # nothing to sync for a call with no usable phone
             conn.execute(INSERT_OUTBOX, (call_id, applicant_id))
+    if duplicate and args.preferredCallbackTime is not None:
+        # A replay changes nothing, except the callback time: when the first time was rejected (weekend,
+        # taken slot) the agent calls again in the same call with a new one, and the latest one is real.
+        with conn.transaction():
+            changed = conn.execute(
+                "UPDATE calls SET preferred_callback_at = %s WHERE vapi_call_id = %s "
+                "AND preferred_callback_at IS DISTINCT FROM %s RETURNING id",
+                (args.preferredCallbackTime, vapi_call_id, args.preferredCallbackTime)).fetchone()
+            if changed:
+                # If the first time already reached Zoho, send again: the worker updates the same candidate
+                # (known id, no duplicate) and adds a note with the new time. A send still pending reads the
+                # latest time itself, and a failed one stays failed (it needs a person, not a new time).
+                conn.execute("UPDATE outbox SET status = 'pending', attempts = 0, next_attempt_at = now(), "
+                             "last_error = NULL, sent_at = NULL WHERE call_id = %s AND status = 'sent'",
+                             (changed[0],))
     if duplicate:
         call_id, applicant_id, temperature, needs_review = conn.execute(
             "SELECT c.id, c.applicant_id, a.temperature, c.needs_review FROM calls c "
