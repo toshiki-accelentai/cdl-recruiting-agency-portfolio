@@ -377,7 +377,7 @@ class ModularWorkflowTests(unittest.TestCase):
     def test_the_existing_lead_prompt_sends_the_details_on_file_to_the_save_tool(self):
         prompt = (ROOT / "config" / "vapi" / "prompts" / "existing-lead.md").read_text(encoding="utf-8")
         for key in ("city", "state", "zipCode", "experience", "readiness"):
-            self.assertIn("{{ %s | default: \"\" }}" % key, prompt, key)
+            self.assertIn("{{ %s | default: \"NOT ON FILE\" }}" % key, prompt, key)
         self.assertIn("send the details on file", prompt)
 
     def test_a_caller_only_in_zoho_is_still_existing(self):
