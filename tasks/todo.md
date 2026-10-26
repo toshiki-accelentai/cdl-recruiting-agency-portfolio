@@ -494,6 +494,19 @@ diagnose). Order is strict: A → B → C → apply.
       1 deploy run, 0 migrations, 0 phone calls, 0 Zoho writes, 0 database writes. NOT verified: signed-in look at the real dashboard
       (owner), a real call through the worker after the restart. Leftover: orphan container `cdl-api-db-1` (old local db service,
       untouched). The real `demo` recruiter login still exists in the real users table.
+- [x] **REAL `demo` LOGIN REMOVED 2026-10-26 (approved by the owner)** with the new `scripts/delete_user.py` (dry run first, then
+      `--apply`; refuses admins, wildcards and logins with history; 16 tests, 5 mutation checks). The real instance now has one login,
+      `owner` (record unchanged before and after). Commit `9a6507a`. NOT verified by Claude: the owner sign-in (the owner did it and
+      reported everything fine, including the four tiles).
+- [x] **DEMO SERVER UPDATED to `b545f0b` 2026-10-26 13:19 Vancouver (approved by the owner).** Source copied from `cdl-release-all`
+      (only 7 files differed from the deployed `2a1274d`: dashboard.py, main.py, sections.js, todo.html, workspace.css, workspace.js,
+      route_filters.js), `demo-api` rebuilt alone (database, Caddy, compose, env, recordings untouched). Rollback copy on the server:
+      `/opt/cdl-demo/src.before-20261026-131840`. Verified: live `app/` identical to the release worktree (62/62 files by SHA-256),
+      compose unchanged, `demo-api` healthy, runs as uid 10001 with `DEMO_MODE=1`, 0 error lines in logs, demo data intact
+      (39 applicants, 47 calls, one login `demo`), nightly reset timer still enabled and active (next run 03:00 Vancouver), public
+      surface: login 200, `/api/todo` and `/api/calls?day=today` 401 signed out, `/docs` 404, `route_filters.js` and the
+      `workspace.css` fingerprint match the worktree, real site still 200. Real actions: 1 source copy, 1 container rebuild,
+      0 migrations, 0 database writes, 0 reseeds. NOT verified: the signed-in demo look and the four tiles on the demo (owner).
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
