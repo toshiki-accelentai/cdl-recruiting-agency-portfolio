@@ -60,20 +60,38 @@ if not api_shared_secret():
     logger.warning("API_SHARED_SECRET is not set: POST /calls will answer 503 to every request")
 
 
+# A field a recruiter has corrected (audit_log, action correct_applicant) is kept when the same phone calls again.
+# Fields nobody corrected follow the newest call, and a blank answer never wipes anything. Temperature follows
+# readiness, so a recruiter's change to either one keeps the temperature too. `locked` is a list of field names.
 UPSERT_APPLICANT = """
 INSERT INTO applicants (name, phone_e164, callback_phone, city, state, zip_code, experience, readiness, temperature)
 VALUES (%(name)s, %(phone)s, %(callback)s, %(city)s, %(state)s, %(zip)s, %(experience)s, %(readiness)s, %(temperature)s)
 ON CONFLICT (phone_e164) DO UPDATE SET
-    name        = COALESCE(NULLIF(EXCLUDED.name, ''),        applicants.name),
+    name        = CASE WHEN 'name' = ANY(%(locked)s::text[]) THEN applicants.name
+                       ELSE COALESCE(NULLIF(EXCLUDED.name, ''), applicants.name) END,
     callback_phone = COALESCE(NULLIF(EXCLUDED.callback_phone, ''), applicants.callback_phone),
-    city        = COALESCE(NULLIF(EXCLUDED.city, ''),        applicants.city),
-    state       = COALESCE(NULLIF(EXCLUDED.state, ''),       applicants.state),
-    zip_code    = COALESCE(NULLIF(EXCLUDED.zip_code, ''),    applicants.zip_code),
-    experience  = COALESCE(NULLIF(EXCLUDED.experience, ''),  applicants.experience),
-    readiness   = COALESCE(NULLIF(EXCLUDED.readiness, ''),   applicants.readiness),
-    temperature = CASE WHEN EXCLUDED.readiness <> '' THEN EXCLUDED.temperature
+    city        = CASE WHEN 'city' = ANY(%(locked)s::text[]) THEN applicants.city
+                       ELSE COALESCE(NULLIF(EXCLUDED.city, ''), applicants.city) END,
+    state       = CASE WHEN 'state' = ANY(%(locked)s::text[]) THEN applicants.state
+                       ELSE COALESCE(NULLIF(EXCLUDED.state, ''), applicants.state) END,
+    zip_code    = CASE WHEN 'zip_code' = ANY(%(locked)s::text[]) THEN applicants.zip_code
+                       ELSE COALESCE(NULLIF(EXCLUDED.zip_code, ''), applicants.zip_code) END,
+    experience  = CASE WHEN 'experience' = ANY(%(locked)s::text[]) THEN applicants.experience
+                       ELSE COALESCE(NULLIF(EXCLUDED.experience, ''), applicants.experience) END,
+    readiness   = CASE WHEN 'readiness' = ANY(%(locked)s::text[]) THEN applicants.readiness
+                       ELSE COALESCE(NULLIF(EXCLUDED.readiness, ''), applicants.readiness) END,
+    temperature = CASE WHEN 'temperature' = ANY(%(locked)s::text[]) OR 'readiness' = ANY(%(locked)s::text[])
+                            THEN applicants.temperature
+                       WHEN EXCLUDED.readiness <> '' THEN EXCLUDED.temperature
                        ELSE applicants.temperature END
 RETURNING id, temperature
+"""
+
+# The fields a recruiter changed on the applicant who owns this phone, from the change history.
+CORRECTED_FIELDS = """
+SELECT DISTINCT field FROM audit_log al
+JOIN applicants a ON a.id = al.applicant_id, jsonb_object_keys(al.changes) AS field
+WHERE a.phone_e164 = %s AND al.action = 'correct_applicant'
 """
 
 
@@ -95,10 +113,12 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
     applicant_id = temperature = None
     with conn.transaction():
         if phone is not None:
+            locked = [row[0] for row in conn.execute(CORRECTED_FIELDS, (phone,))]
             applicant_id, temperature = conn.execute(UPSERT_APPLICANT, {
                 "name": args.name, "phone": phone, "callback": callback, "city": args.city, "state": args.state.upper(),
                 "zip": args.zipCode, "experience": args.experience, "readiness": args.readiness,
                 "temperature": classify_temperature(args.readiness) or "COLD",  # the column only allows 4 values
+                "locked": locked,
             }).fetchone()
         row = conn.execute(
             "INSERT INTO calls (vapi_call_id, applicant_id, preferred_callback_at, raw_payload, "
