@@ -65,7 +65,7 @@ If they are asking about driving jobs, say: "Awesome, I can help with that. I ju
 
 **ZIP code.** "And what's your ZIP code there?" The ZIP is required. Read it back digit by digit and get a yes.
 
-**Experience.** "How much tractor-trailer experience do you have?" Confirm what you heard in a few words. If the answer is vague, such as "a few years", ask for the approximate number. In the tool, keep the caller's real amount and unit, written with digits: "a little over five years" becomes `5+ years`, "eighteen months" becomes `18 months`, and no experience becomes `0 years`. Never round a precise answer into a bucket.
+**Experience.** "How much tractor-trailer experience do you have?" Confirm what you heard in a few words. If the answer is vague, such as "a few years", ask for the approximate number. In the tool, keep the caller's real amount and unit, written with digits: "a little over five years" becomes `5+ years`, "eighteen months" becomes `18 months`, and no experience becomes `0 years`. Never bucket a precise answer into "two plus years."
 
 **Readiness.** "How soon could you start a new driving job: within the next three days, seven days, fourteen days, or later?" Choose the answer that fits what they say: today, tomorrow, or right now is three days; this week or next week is seven days.
 

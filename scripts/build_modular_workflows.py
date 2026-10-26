@@ -159,6 +159,12 @@ return [{{ json: {{
   assistantOverrides: {{ variableValues: {{
     phoneNumber: route.phone ?? '',
     name: fromDatabase ? db.name : fromZoho ? [candidate.First_Name, candidate.Last_Name].filter(Boolean).join(' ') : '',
+    // On-file details the save tool requires; only the database has them (a Zoho-only caller is asked instead).
+    city: fromDatabase ? db.city ?? '' : '',
+    state: fromDatabase ? db.state ?? '' : '',
+    zipCode: fromDatabase ? db.zipCode ?? '' : '',
+    experience: fromDatabase ? db.experience ?? '' : '',
+    readiness: fromDatabase ? db.readiness ?? '' : '',
   }} }},
   routing: fromDatabase ? 'existing_database' : fromZoho ? 'existing_candidate' : 'new_candidate',
 }} }}];

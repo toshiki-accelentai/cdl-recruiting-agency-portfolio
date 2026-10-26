@@ -8,8 +8,15 @@ from fastapi.testclient import TestClient
 from tests.conftest import TEST_API_KEY
 
 
-def add_applicant(db, name="Maria De La Cruz", phone="+12065550101"):
-    db.execute("INSERT INTO applicants (name, phone_e164, temperature) VALUES (%s, %s, 'HOT')", (name, phone))
+ON_FILE = {"city": "Dallas", "state": "TX", "zipCode": "75201", "experience": "5 years", "readiness": "within 7 days"}
+BLANK = {key: "" for key in ON_FILE}
+
+
+def add_applicant(db, name="Maria De La Cruz", phone="+12065550101", **details):
+    d = {**BLANK, **details}
+    db.execute("INSERT INTO applicants (name, phone_e164, city, state, zip_code, experience, readiness, temperature) "
+               "VALUES (%s, %s, %s, %s, %s, %s, %s, 'HOT')",
+               (name, phone, d["city"], d["state"], d["zipCode"], d["experience"], d["readiness"]))
 
 
 def lookup(client, phone):
@@ -20,7 +27,18 @@ def test_a_known_caller_is_found_with_their_name(client, db):
     add_applicant(db)
     r = lookup(client, "+12065550101")
     assert r.status_code == 200
-    assert r.json() == {"found": True, "name": "Maria De La Cruz"}
+    assert r.json()["found"] is True and r.json()["name"] == "Maria De La Cruz"
+
+
+def test_a_known_caller_comes_with_the_details_on_file_so_the_agent_can_send_them_to_the_save_tool(client, db):
+    add_applicant(db, **ON_FILE)
+    assert lookup(client, "+12065550101").json() == {"found": True, "name": "Maria De La Cruz", **ON_FILE}
+
+
+def test_details_the_caller_never_gave_come_back_blank_not_missing(client, db):
+    add_applicant(db, city="Dallas")
+    body = lookup(client, "+12065550101").json()
+    assert body["city"] == "Dallas" and body["zipCode"] == "" and body["readiness"] == ""
 
 
 def test_the_number_is_normalised_before_the_search(client, db):
@@ -30,17 +48,18 @@ def test_the_number_is_normalised_before_the_search(client, db):
 
 def test_a_caller_who_is_only_in_the_database_not_yet_in_zoho_is_still_found(client, db):
     add_applicant(db)  # no zoho_candidate_id: the worker has not synced them yet
-    assert lookup(client, "+12065550101").json() == {"found": True, "name": "Maria De La Cruz"}
+    assert lookup(client, "+12065550101").json()["found"] is True
 
 
-def test_an_unknown_caller_is_not_found_and_gets_no_name(client, db):
-    add_applicant(db)
-    assert lookup(client, "+12065559999").json() == {"found": False, "name": ""}
+def test_an_unknown_caller_is_not_found_and_gets_no_name_or_details(client, db):
+    add_applicant(db, **ON_FILE)
+    assert lookup(client, "+12065559999").json() == {"found": False, "name": "", **BLANK}
 
 
-def test_the_answer_carries_nothing_but_found_and_name(client, db):
-    add_applicant(db)
-    assert set(lookup(client, "+12065550101").json()) == {"found", "name"}
+def test_the_answer_carries_only_what_the_save_tool_needs(client, db):
+    """Not the phone, ids, notes, temperature or history: this goes into the call's prompt and VAPI's logs."""
+    add_applicant(db, **ON_FILE)
+    assert set(lookup(client, "+12065550101").json()) == {"found", "name", *ON_FILE}
 
 
 def test_a_number_that_is_not_a_us_number_is_rejected(client, db):

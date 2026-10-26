@@ -359,6 +359,27 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertEqual(out["assistantOverrides"]["variableValues"]["name"], "Maria De La Cruz")
         self.assertEqual(out["assistantId"], "542bae1c-51b5-4d83-a3fe-446836b4801d")
 
+    def test_a_caller_found_in_the_database_hands_the_on_file_details_to_the_agent(self):
+        on_file = {"city": "Dallas", "state": "TX", "zipCode": "75201", "experience": "5 years", "readiness": "within 7 days"}
+        out = self.run_build_assistant_response(
+            {"phone": "+12065550101", "valid": True}, {"found": True, "name": "Maria De La Cruz", **on_file}, None)
+        values = out["assistantOverrides"]["variableValues"]
+        self.assertEqual({k: values[k] for k in on_file}, on_file)
+
+    def test_a_caller_only_in_zoho_has_no_on_file_details_so_the_agent_asks(self):
+        out = self.run_build_assistant_response(
+            {"phone": "+12065550101", "valid": True}, {"found": False, "name": ""},
+            {"data": [{"id": "9", "First_Name": "Jo", "Last_Name": "Diaz"}]})
+        values = out["assistantOverrides"]["variableValues"]
+        for key in ("city", "state", "zipCode", "experience", "readiness"):
+            self.assertEqual(values[key], "", key)
+
+    def test_the_existing_lead_prompt_sends_the_details_on_file_to_the_save_tool(self):
+        prompt = (ROOT / "config" / "vapi" / "prompts" / "existing-lead.md").read_text(encoding="utf-8")
+        for key in ("city", "state", "zipCode", "experience", "readiness"):
+            self.assertIn("{{ %s | default: \"\" }}" % key, prompt, key)
+        self.assertIn("send the details on file", prompt)
+
     def test_a_caller_only_in_zoho_is_still_existing(self):
         out = self.run_build_assistant_response(
             {"phone": "+12065550101", "valid": True}, {"found": False, "name": ""},
