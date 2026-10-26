@@ -470,6 +470,16 @@ diagnose). Order is strict: A → B → C → apply.
       slot_taken x2, create failed manual_followup), prompts read back equal to the files. NOT verified: a real call hearing the new
       lines, a real two-caller race. Real actions: 2 VAPI prompt updates, 1 owner publish, 1 n8n workflow update, 0 phone calls,
       0 calendar writes.
+- [x] **CALLBACK-TIME FIX DEPLOYED 2026-10-26 (approved by the owner).** When the same call saves again with a different callback
+      time (the first was rejected, e.g. weekend or taken slot), the API now keeps the latest time on the call, and if the first send
+      had already reached Zoho its outbox row goes back to pending so the worker updates the same candidate and adds a note with the
+      new time. A pending send reads the latest time itself; a failed one stays failed. Release: worktree `cdl-release-callback`,
+      branch `release/callback-20261026` = previous release `release/lookup-20261024` + `c03b246` (= `84c9a29` on feat/python-api).
+      Rollback copies on the server: `src.before-20261026-124612`, `compose.yaml.before-20261026-124612`. Verified: live `app/`
+      identical to the release (41/41 files by SHA-256; only `app/main.py` changed), containers healthy, key checks 401/401/422,
+      lookup endpoint (found / not found / 422 / 401 / 404 through the proxy header), 427 API tests on the release worktree.
+      NOT verified: a real call where the first time is rejected and a second accepted (Zoho note with the new time).
+      Real actions: 1 API deploy, 0 n8n changes, 0 VAPI changes, 0 phone calls, 0 Zoho writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
