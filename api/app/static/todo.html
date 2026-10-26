@@ -56,10 +56,10 @@
         </section>
 
         <section class="stat-bar panel" id="summary" aria-label="Today in numbers">
-          <a class="stat-tile" href="/#activity"><span class="stat-tile-label">Calls today</span><strong data-stat="calls_today">0</strong></a>
-          <a class="stat-tile" href="/#applicants"><span class="stat-tile-label">Awaiting contact</span><strong data-stat="to_call">0</strong></a>
-          <a class="stat-tile" href="/#applicants"><span class="stat-tile-label">High readiness</span><strong data-stat="hot_waiting">0</strong></a>
-          <a class="stat-tile" href="/#activity" id="stat-sync"><span class="stat-tile-label">Zoho sync issues</span><strong data-stat="sync_problems">0</strong></a>
+          <a class="stat-tile" href="/#activity?day=today"><span class="stat-tile-label">Calls today</span><strong data-stat="calls_today">0</strong></a>
+          <a class="stat-tile" href="/#applicants?status=needs_contact"><span class="stat-tile-label">Awaiting contact</span><strong data-stat="to_call">0</strong></a>
+          <a class="stat-tile" href="/#applicants?status=needs_contact&amp;readiness=hot"><span class="stat-tile-label">High readiness</span><strong data-stat="hot_waiting">0</strong></a>
+          <a class="stat-tile" href="/#activity?sync=failed" id="stat-sync"><span class="stat-tile-label">Zoho sync issues</span><strong data-stat="sync_problems">0</strong></a>
         </section>
 
         <section class="section" id="attention-section" aria-labelledby="attention-title" hidden>
@@ -76,7 +76,7 @@
       <section class="page-view" data-view="applicants" aria-labelledby="applicants-title" hidden>
         <div class="page-head"><div><h1 id="applicants-title">Applicants</h1><p class="page-sub">Everyone who called, with their follow-up status.</p></div><button class="btn btn-icon-text" id="applicants-refresh" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button></div>
         <section class="directory-panel panel" aria-label="Applicant directory">
-          <div class="directory-toolbar"><label class="search-field"><svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">Search loaded applicants</span><input class="input" id="applicant-search" type="search" placeholder="Search name, phone, or location" autocomplete="off"></label><div class="filter-tabs" id="applicant-status-filter" role="group" aria-label="Filter applicants by status"><button type="button" data-status="all" aria-pressed="true">All</button><button type="button" data-status="to_call" aria-pressed="false">To contact</button><button type="button" data-status="called" aria-pressed="false">Called</button><button type="button" data-status="no_answer" aria-pressed="false">No answer</button><button type="button" data-status="done" aria-pressed="false">Done</button></div></div>
+          <div class="directory-toolbar"><label class="search-field"><svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">Search loaded applicants</span><input class="input" id="applicant-search" type="search" placeholder="Search name, phone, or location" autocomplete="off"></label><div class="toolbar-filters"><label class="filter-control compact"><span class="sr-only">Readiness</span><select id="applicant-readiness" class="input"><option value="">Any readiness</option><option value="hot">Hot</option><option value="medium">Medium</option><option value="warm">Warm</option><option value="cold">Cold</option></select></label><div class="filter-tabs" id="applicant-status-filter" role="group" aria-label="Filter applicants by status"><button type="button" data-status="all" aria-pressed="true">All</button><button type="button" data-status="needs_contact" aria-pressed="false" title="Waiting for a first call, or called again since the last update">Needs contact</button><button type="button" data-status="to_call" aria-pressed="false">To contact</button><button type="button" data-status="called" aria-pressed="false">Called</button><button type="button" data-status="no_answer" aria-pressed="false">No answer</button><button type="button" data-status="done" aria-pressed="false">Done</button></div></div></div>
           <p class="data-scope" id="applicant-scope" aria-live="polite">Loading recent applicants…</p>
           <div class="table-scroll"><table class="data-table"><thead><tr><th scope="col">Applicant</th><th scope="col">Readiness</th><th scope="col">Callback</th><th scope="col">Follow-up</th><th scope="col">Last call</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead><tbody id="applicant-rows"><tr><td colspan="6" class="table-empty">Loading applicants…</td></tr></tbody></table></div>
           <div class="directory-footer"><span id="applicant-result-count"></span><button class="btn" id="applicants-more" type="button" hidden>Load older calls</button></div>
@@ -90,6 +90,7 @@
             <label class="filter-control"><span>Review</span><select id="activity-review" class="input"><option value="">All calls</option><option value="true">Needs review</option><option value="false">No review needed</option></select></label>
             <label class="filter-control"><span>Zoho sync</span><select id="activity-sync" class="input"><option value="">Any status</option><option value="pending">Waiting</option><option value="sent">Sent</option><option value="failed">Failed</option></select></label>
             <label class="filter-control"><span>Follow-up</span><select id="activity-follow-up" class="input"><option value="">Any status</option><option value="to_call">To contact</option><option value="called">Called</option><option value="no_answer">No answer</option><option value="done">Done</option></select></label>
+            <label class="filter-control"><span>Day</span><select id="activity-day" class="input"><option value="">Any day</option><option value="today">Today</option></select></label>
             <label class="filter-control"><span>Order</span><select id="activity-sort" class="input"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="needs_review">Review first</option><option value="temperature">Readiness</option></select></label>
           </div>
           <p class="data-scope" id="activity-scope" aria-live="polite">Loading calls…</p>
@@ -159,6 +160,7 @@
 
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <script src="/static/common.js" defer></script>
+  <script src="/static/route_filters.js" defer></script>
   <script src="/static/workspace.js" defer></script>
   <script src="/static/todo.js" defer></script>
   <script src="/static/sections.js" defer></script>

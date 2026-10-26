@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.auth import current_user
 from app.exposure import for_user
 from app.db import db_connection
+from app.schemas import BUSINESS_TZ
 
 router = APIRouter(prefix="/api", dependencies=[Depends(current_user)])
 
@@ -46,6 +47,8 @@ FILTERS = """
 WHERE (CAST(%(needs_review)s AS boolean) IS NULL OR c.needs_review = CAST(%(needs_review)s AS boolean))
   AND (CAST(%(sync)s AS text) IS NULL OR o.status = CAST(%(sync)s AS text))
   AND (CAST(%(follow_up)s AS text) IS NULL OR a.follow_up_status = CAST(%(follow_up)s AS text))
+  AND (CAST(%(day)s AS text) IS NULL
+       OR c.created_at >= date_trunc('day', now() AT TIME ZONE %(tz)s) AT TIME ZONE %(tz)s)
 """
 
 
@@ -84,12 +87,13 @@ def list_calls(
     needs_review: bool | None = None,
     sync: Literal["pending", "sent", "failed"] | None = None,
     follow_up: Literal["to_call", "called", "no_answer", "done"] | None = None,
+    day: Literal["today"] | None = None,  # calls of the business day so far, the same rule as "calls today" on the Overview
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     user: dict = Depends(current_user),
 ):
-    params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up,
-              "limit": limit, "offset": offset}
+    params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up, "day": day,
+              "tz": BUSINESS_TZ.key, "limit": limit, "offset": offset}
     with db_connection() as conn:
         total = conn.execute(
             "SELECT count(*) FROM calls c LEFT JOIN applicants a ON a.id = c.applicant_id "

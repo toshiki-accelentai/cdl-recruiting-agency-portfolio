@@ -24,7 +24,9 @@
     if (views.length) {
       views.forEach(function (view) { view.hidden = view.getAttribute("data-view") !== route; });
       document.title = labels[route] + " | Frontline CDL";
-      window.dispatchEvent(new CustomEvent("desk:route", { detail: { route: route } }));
+      // The filters carried by the address, for example #applicants?status=to_call (empty when the link has none).
+      var parsed = window.routeFilters ? window.routeFilters.parse(window.location.hash) : { route: route, params: {} };
+      window.dispatchEvent(new CustomEvent("desk:route", { detail: { route: route, params: parsed.route === route ? parsed.params : {} } }));
     }
   }
 

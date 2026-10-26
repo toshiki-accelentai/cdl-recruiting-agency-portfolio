@@ -238,6 +238,8 @@ h1, h2 { text-wrap: balance; }
 .search-field { position: relative; display: block; width: min(100%, 320px); }
 .search-icon { position: absolute; left: 11px; top: 50%; z-index: 1; width: 17px; height: 17px; color: var(--ink-3); transform: translateY(-50%); pointer-events: none; }
 .search-field .input { min-height: 38px; padding: 0 12px 0 36px; border-color: var(--line-strong); border-radius: var(--r-md); background: var(--surface); font-size: var(--fs-body); }
+.toolbar-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.filter-control.compact { min-width: 150px; }
 .filter-tabs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: var(--r-md); background: var(--surface-2); }
 .filter-tabs button { min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink-2); font-size: var(--fs-meta); font-weight: 600; cursor: pointer; transition: background-color 150ms var(--ease), color 150ms var(--ease), box-shadow 150ms var(--ease); }
 .filter-tabs button:hover { color: var(--ink); }

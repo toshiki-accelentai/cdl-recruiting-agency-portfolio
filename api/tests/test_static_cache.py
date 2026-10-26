@@ -45,7 +45,7 @@ def test_the_todo_page_uses_fingerprinted_asset_urls(web):
     found = dict(VERSIONED.findall(web.get("/").text))
     assert set(found) == {"/static/app.css", "/static/common.js", "/static/todo.js",
                           "/static/workspace.css", "/static/workspace.js", "/static/sections.js",
-                          "/static/metrics.js", "/static/analytics.js"} | LOGO_FILES
+                          "/static/metrics.js", "/static/analytics.js", "/static/route_filters.js"} | LOGO_FILES
     assert all(found[name] == fingerprint(name.rsplit("/", 1)[1]) for name in found)
 
 

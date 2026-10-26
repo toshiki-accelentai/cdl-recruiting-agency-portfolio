@@ -4,7 +4,7 @@
   var Desk = window.Desk;
   var $ = Desk.$, el = Desk.el;
   var PAGE_SIZE = 50;
-  var directory = { calls: [], offset: 0, total: 0, loading: false, complete: false, status: "all", query: "", request: 0 };
+  var directory = { calls: [], offset: 0, total: 0, loading: false, complete: false, status: "all", readiness: "", query: "", request: 0 };
   var activity = { offset: 0, total: 0, loading: false, reload: false, request: 0, items: [], query: "" };
   var FOLLOW_UP = { to_call: "To contact", called: "Called", no_answer: "No answer", done: "Done" };
   var REASON = {
@@ -42,7 +42,12 @@
     });
     var query = directory.query.trim().toLocaleLowerCase();
     return rows.filter(function (row) {
-      if (directory.status !== "all" && followUpStatus(row.person) !== directory.status) return false;
+      if (directory.status === "needs_contact") {
+        // the same rule as the Overview list: still to call, or called again since the last follow-up update
+        var follow = row.person.follow_up || {};
+        if (!(follow.status === "to_call" || follow.new_call_since)) return false;
+      } else if (directory.status !== "all" && followUpStatus(row.person) !== directory.status) return false;
+      if (directory.readiness && String(row.person.temperature || "").toLowerCase() !== directory.readiness) return false;
       if (!query) return true;
       var person = row.person;
       var searchable = [person.name, person.phone, person.city, person.state, person.zip_code, person.readiness,
@@ -89,7 +94,7 @@
       ? "All " + directory.total + " calls are loaded. Each applicant is grouped by their most recent call."
       : "Showing applicants from the " + directory.offset + " newest of " + directory.total + " calls. Search covers loaded calls only.";
     $("applicant-scope").textContent = directory.loading ? "Loading calls… " + scope : scope;
-    $("applicant-result-count").textContent = rows.length + (rows.length === 1 ? " applicant" : " applicants") + (directory.query || directory.status !== "all" ? " match" : " shown");
+    $("applicant-result-count").textContent = rows.length + (rows.length === 1 ? " applicant" : " applicants") + (directory.query || directory.status !== "all" || directory.readiness ? " match" : " shown");
     $("applicants-more").hidden = directory.complete || directory.loading || directory.offset >= directory.total;
     $("applicants-more").disabled = directory.loading;
     $("applicants-refresh").disabled = directory.loading;
@@ -130,6 +135,7 @@
 
   function activityParams() {
     var params = new URLSearchParams({ sort: $("activity-sort").value, limit: String(PAGE_SIZE), offset: String(activity.offset) });
+    if ($("activity-day").value) params.set("day", $("activity-day").value);
     ["review", "sync", "follow-up"].forEach(function (key) {
       var id = key === "follow-up" ? "activity-follow-up" : "activity-" + key;
       var value = $(id).value;
@@ -244,7 +250,9 @@
   $("applicants-refresh").addEventListener("click", function () { loadDirectory(true); });
   $("applicants-more").addEventListener("click", function () { loadDirectory(false); });
 
-  ["activity-review", "activity-sync", "activity-follow-up", "activity-sort"].forEach(function (id) {
+  $("applicant-readiness").addEventListener("change", function (event) { directory.readiness = event.target.value; renderDirectory(); });
+
+  ["activity-review", "activity-sync", "activity-follow-up", "activity-day", "activity-sort"].forEach(function (id) {
     $(id).addEventListener("change", function () { loadActivity(true); });
   });
   $("activity-refresh").addEventListener("click", function () { loadActivity(false); });
@@ -256,11 +264,45 @@
   var activitySearchWrap = el("label", { cls: "search-field activity-search" }, Desk.icon("search", "search-icon"), activitySearch);
   document.querySelector(".activity-toolbar").appendChild(activitySearchWrap);
 
-  window.addEventListener("desk:route", function (event) {
-    if (event.detail.route === "applicants" && !directory.calls.length && !directory.loading) loadDirectory(false);
-    if (event.detail.route === "activity" && !activity.items.length && !activity.loading) loadActivity(true);
-  });
+  // The address is the source of truth for a page's filters: a link such as #applicants?status=to_call sets them,
+  // and a plain link (no filters) puts them back to "everything".
+  function applyApplicantFilters(params) {
+    directory.status = params.status || "all";
+    directory.readiness = params.readiness || "";
+    $("applicant-readiness").value = directory.readiness;
+    $("applicant-status-filter").querySelectorAll("button").forEach(function (item) {
+      item.setAttribute("aria-pressed", String(item.getAttribute("data-status") === directory.status));
+    });
+  }
 
-  if (Desk.currentRoute === "applicants") loadDirectory(false);
-  if (Desk.currentRoute === "activity") loadActivity(true);
+  function applyActivityFilters(params) {
+    var wanted = { "activity-review": params.review || "", "activity-sync": params.sync || "",
+                   "activity-follow-up": params.follow_up || "", "activity-day": params.day || "" };
+    var changed = false;
+    Object.keys(wanted).forEach(function (id) {
+      if ($(id).value !== wanted[id]) { $(id).value = wanted[id]; changed = true; }
+    });
+    return changed;
+  }
+
+  function showRoute(route, params) {
+    if (route === "applicants") {
+      applyApplicantFilters(params);
+      if (!directory.calls.length && !directory.loading) loadDirectory(false);
+      else renderDirectory();
+    }
+    if (route === "activity") {
+      var changed = applyActivityFilters(params);
+      if (changed || (!activity.items.length && !activity.loading)) {
+        if (activity.loading) { activity.offset = 0; activity.reload = true; }
+        else loadActivity(true);
+      }
+    }
+  }
+
+  window.addEventListener("desk:route", function (event) { showRoute(event.detail.route, event.detail.params || {}); });
+
+  // The first route event fired before this script loaded, so apply the address once now.
+  var firstRoute = window.routeFilters ? window.routeFilters.parse(window.location.hash) : { route: Desk.currentRoute, params: {} };
+  showRoute(Desk.currentRoute, firstRoute.route === Desk.currentRoute ? firstRoute.params : {});
 })();

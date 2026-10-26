@@ -49,7 +49,7 @@ def test_pages_are_never_cached(anon, web):
 def test_stylesheet_and_scripts_are_served(anon):
     for path in ("/static/app.css", "/static/login.js", "/static/todo.js", "/static/applicant.js",
                  "/static/common.js", "/static/workspace.css", "/static/workspace.js", "/static/sections.js",
-                 "/static/metrics.js", "/static/analytics.js"):
+                 "/static/metrics.js", "/static/analytics.js", "/static/route_filters.js"):
         r = anon.get(path)
         assert r.status_code == 200, path
 
