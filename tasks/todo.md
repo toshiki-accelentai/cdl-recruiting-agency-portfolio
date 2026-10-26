@@ -507,6 +507,24 @@ diagnose). Order is strict: A → B → C → apply.
       surface: login 200, `/api/todo` and `/api/calls?day=today` 401 signed out, `/docs` 404, `route_filters.js` and the
       `workspace.css` fingerprint match the worktree, real site still 200. Real actions: 1 source copy, 1 container rebuild,
       0 migrations, 0 database writes, 0 reseeds. NOT verified: the signed-in demo look and the four tiles on the demo (owner).
+- [x] **RETURNING-CALLER DETAILS DEPLOYED 2026-10-26 (approved by the owner; prompts published by the owner).** A returning caller who only
+      reschedules was asked for city/state/ZIP: the Existing Lead agent never had them, the save tool requires them, and n8n rejects
+      blanks (this bug predated the 10/26 changes). Now `GET /applicants/lookup` also returns `city, state, zipCode, experience,
+      readiness` (blank when never given; still no phone, ids, notes, temperature or history); CDL 01 passes them to the assistant as
+      variables (Zoho-only callers get blanks); the Existing Lead prompt lists them under "Caller on file" as `NOT ON FILE` when blank,
+      sends them to the save tool unchanged, and asks for any missing one before saving. "Never bucket" experience restored in both
+      prompts (an earlier rewrite had dropped it). API released from worktree `cdl-release-details` (branch `release/details-20261026`
+      = live `release/all-20261026` `b545f0b` + `de94b46`; only `app/caller_lookup.py` changed on the server). Rollback copies:
+      `src.before-20261026-141120`, `compose.yaml.before-20261026-141120` on the server; CDL 01 JSON `rollback_cdl01b_...` in the session
+      scratchpad; prompts v17/v15 in VAPI history. Verified: live `app/` identical to the release (47/47 files by SHA-256), containers
+      healthy, key checks 401/401/422, lookup answers (details match the row, 422/401/404 guards), CDL 01 drift check clean and live code
+      run on 3 cases, one production routing call for a database caller (`existing_database`, 5 details match, 1.2 s), prompts read back
+      equal to the files, 525 API tests on the release worktree, 51 workflow/contract tests, mocked voice simulations of Existing Lead on a
+      draft (caller on file: never asked for location; ZIP missing: asked only for ZIP; one run per case, so stability is not proven).
+      NOT verified: a real call as a returning caller after Publish; a Zoho-only caller (all details NOT ON FILE) was not simulated.
+      Real actions: 1 API deploy, 1 n8n workflow update, 2 VAPI prompt updates, 2 owner Publishes, 1 production routing call (read-only),
+      0 phone calls, 0 database writes, 0 Zoho writes. Found on the way: live had moved to `release/all-20261026` (another session's
+      combined deploy), so releases must always start from what the server runs; a second pytest run gives fake red (use the guard).
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
