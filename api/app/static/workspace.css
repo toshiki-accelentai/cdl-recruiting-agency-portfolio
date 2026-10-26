@@ -512,7 +512,11 @@ body.auth-body { min-height: 100dvh; margin: 0; background: radial-gradient(1200
   .app-body .detail-head .seg { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
   .app-body .detail-head .seg button { min-height: 42px; padding: 0 4px; }
   .app-body .pf { grid-template-columns: 92px minmax(0, 1fr); }
-  .app-body .profile .input, .app-body .textarea { min-height: 44px; font-size: 16px; }
+  .app-body .profile .input { min-height: 44px; font-size: 16px; }
+  .app-body .textarea { min-height: 96px; font-size: 16px; }
+  .app-body .who .btn, .app-body .btn-sm, .app-body .directory-footer .btn, .app-body .player .btn { min-height: 44px; }
+  .app-body .phone { padding: 12px 4px; margin: -12px -4px; }
+  .volume-plot:not(.is-dense) .volume-day:nth-child(even) .volume-day-label { visibility: hidden; }
   .app-body .toasts { left: 12px; right: 12px; bottom: 76px; }
   .auth-card { padding: 24px 20px; }
 }

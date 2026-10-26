@@ -170,3 +170,41 @@ def test_the_applicants_toolbar_stacks_full_width_so_the_tabs_scroll_instead_of_
     narrow = re.search(r"@media \(max-width: 1180px\) \{(.*?)\n\}", css("workspace.css"), re.DOTALL).group(1)
     toolbar = re.search(r"\.directory-toolbar\s*\{([^}]*)\}", narrow).group(1)
     assert "flex-direction: column" in toolbar and "align-items: stretch" in toolbar
+
+
+# --- phone polish (owner review 2026-10-26: found by looking at the pages at 375px) -------------------------
+
+def phone_rules():
+    return re.search(r"@media \(max-width: 760px\) \{(.*?)\n\}", css("workspace.css"), re.DOTALL).group(1)
+
+
+def phone_declarations(selector):
+    """The declarations of the phone rule whose selector list contains `selector` (alone or grouped with others)."""
+    for selectors, declarations in re.findall(r"(?:^|\n)\s*([^{}\n]+)\{([^}]*)\}", phone_rules()):
+        if selector in [part.strip() for part in selectors.split(",")]:
+            return declarations
+    return ""
+
+
+def test_the_follow_up_note_box_stays_tall_enough_on_a_phone():
+    """The phone rule gave every input a 44px minimum, and the note box lost its 88px: the hint text was cut off."""
+    assert int(re.search(r"min-height:\s*(\d+)px", phone_declarations(".app-body .textarea")).group(1)) >= 88
+
+
+def test_the_chart_shows_every_other_date_on_a_phone_so_labels_do_not_touch():
+    """Seven dates such as 'Oct 20' do not fit side by side in 375px. Keep first, last and every second one."""
+    rules = phone_rules()
+    assert re.search(r"\.volume-plot:not\(\.is-dense\) \.volume-day:nth-child\(even\) \.volume-day-label\s*\{[^}]*visibility:\s*hidden", rules)
+
+
+def test_phone_numbers_have_a_thumb_sized_touch_area_without_changing_the_layout():
+    declarations = phone_declarations(".app-body .phone")
+    padding = re.search(r"padding:\s*(\d+)px", declarations)
+    margin = re.search(r"margin:\s*-(\d+)px", declarations)
+    assert padding and margin and padding.group(1) == margin.group(1) and int(padding.group(1)) >= 10, declarations
+
+
+@pytest.mark.parametrize("selector", (".app-body .who .btn", ".app-body .btn-sm", ".app-body .directory-footer .btn"))
+def test_small_buttons_are_44px_tall_on_a_phone(selector):
+    declarations = phone_declarations(selector)
+    assert re.search(r"min-height:\s*44px", declarations), f"{selector}: {declarations!r}"
