@@ -525,6 +525,23 @@ diagnose). Order is strict: A → B → C → apply.
       Real actions: 1 API deploy, 1 n8n workflow update, 2 VAPI prompt updates, 2 owner Publishes, 1 production routing call (read-only),
       0 phone calls, 0 database writes, 0 Zoho writes. Found on the way: live had moved to `release/all-20261026` (another session's
       combined deploy), so releases must always start from what the server runs; a second pytest run gives fake red (use the guard).
+- [x] **CALLBACK REPLACEMENT, RECRUITER EMAILS, CANCEL REQUEST, EXISTING LEAD PROMPT DEPLOYED 2026-10-27 (approved by the owner).**
+      Owner decisions: one upcoming callback per phone number; the two client-build Gmail emails (booked, manual action) come back;
+      NO cancel tool, on purpose (a cancel loses a lead): the agent offers a move first, then notes the request, and the recruiters
+      get a "cancel request" email. Live changes, in this order, each saved as a rollback copy first and read back after:
+      CDL 03 (+6 nodes: after a confirmed booking, cancel the caller's other upcoming `cdlslot` events tagged with the same phone;
+      5 s, no retries, never fails the booking); CDL 02 (+2 nodes: Gmail "Accelent AI" to toshiki@accelentai.com, after the caller has the
+      answer; the tool answer carries `replacedPrevious`); CDL 04 (+2 nodes: cancel-request email, plus `callIntent`/`fullName` in
+      Normalize Post Call); both assistants' call analysis gained the `cancel_request` option (merge, nothing else changed); Existing Lead
+      prompt (moving vs cancelling, "moved" only when `replacedPrevious` >= 1). Verified: drift checks clean before each step, patched
+      workflows validated (names, connections, JS syntax, credentials), read-back equal to the plan, 76 workflow/contract tests, and a
+      mocked chat simulation on the live Existing Lead assistant (new prompt v18; offered a move first, said it noted the cancel, never
+      said "cancelled"; 0 n8n runs). VAPI goes live on API changes with no dashboard Publish (checked: a simulation ran the new prompt
+      right after the PATCH); the old Aug-12 dashboard draft must never be published. NOT verified: a real booking that replaces an
+      earlier callback and sends the email, a real cancel request producing the cancel email, how reliably the AI labels
+      `cancel_request`, n8n's own time zone data. Events booked before this release have no phone tag, so they are not replaced.
+      Real actions: 3 n8n workflow updates, 2 VAPI call-analysis updates, 2 VAPI prompt updates, 1 mocked simulation (4 items created and
+      deleted), 0 phone calls, 0 emails, 0 calendar writes, 0 database writes, 0 Zoho writes.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call

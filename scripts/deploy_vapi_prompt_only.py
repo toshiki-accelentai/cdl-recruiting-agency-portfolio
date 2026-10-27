@@ -6,10 +6,11 @@ deploy_vapi.py also manages the model and temperature, and desired.json has drif
 model. This script sends back the live `model` object with just the system message replaced.
 Dry-run by default; --apply patches. Optional: --only new-lead | existing-lead.
 
-IMPORTANT (verified 2026-10-09): a PATCH only creates a new assistant *version*. Live calls keep
-using the last PUBLISHED version, so after --apply someone must press Publish in the VAPI
-dashboard (no publish API is documented). Reload the dashboard first and check the prompt shows
-the new text: publishing a stale draft overwrites this script's change (that happened once).
+Going live: the owner reports that VAPI publishes a change made through the API by itself, with no
+Publish click, and this was checked on 2026-10-27: after a PATCH (Existing Lead v18) a simulation on the live
+assistant ran the new prompt. (A note from 2026-10-09 said a click was needed; that no longer holds.)
+Do NOT press Publish on an old dashboard draft afterwards: GET /assistant/{id}/draft can still hold a stale
+draft (Existing Lead has one from 2026-08-12), and publishing it would overwrite this script's change.
 """
 from __future__ import annotations
 
