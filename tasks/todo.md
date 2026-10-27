@@ -542,6 +542,10 @@ diagnose). Order is strict: A → B → C → apply.
       `cancel_request`, n8n's own time zone data. Events booked before this release have no phone tag, so they are not replaced.
       Real actions: 3 n8n workflow updates, 2 VAPI call-analysis updates, 2 VAPI prompt updates, 1 mocked simulation (4 items created and
       deleted), 0 phone calls, 0 emails, 0 calendar writes, 0 database writes, 0 Zoho writes.
+      FIRST REAL TEST CALL (owner, 2026-10-27): the move / moved / cancel conversation, the calendar replacement and the dashboard all
+      looked right. No recruiter email arrived: the owner found that the Gmail credential in n8n was set but not published (an owner-side
+      n8n fix, not investigated further). So the recruiter emails (booked, moved, cancel request) are NOT yet verified end to end; after the
+      credential is published, one more test call would confirm them.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
