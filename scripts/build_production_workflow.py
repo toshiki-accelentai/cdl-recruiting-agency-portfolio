@@ -506,6 +506,8 @@ const summary = clean(message.analysis?.summary ?? message.summary).slice(0, 200
 const structuredData = message.analysis?.structuredData ?? {};
 const readiness = clean(structuredData.readiness).replace(/_/g, ' ');
 const experience = clean(structuredData.experience);
+const callIntent = clean(structuredData.callIntent);
+const fullName = clean(structuredData.fullName);
 const city = clean(structuredData.city);
 const state = clean(structuredData.state).toUpperCase();
 const zipCode = clean(structuredData.zipCode ?? structuredData.zip ?? structuredData.postalCode);
@@ -525,7 +527,7 @@ return [{ json: {
   phone, callId, candidateId, valid: Boolean(callId && (phone || candidateId)), transcript, summary,
   endedReason: clean(message.endedReason), durationSeconds: Number(message.durationSeconds ?? 0),
   cost: Number(message.cost ?? costBreakdown.total ?? 0), costBreakdown,
-  readiness, temperature, experience, city, state, zipCode,
+  readiness, temperature, experience, callIntent, fullName, city, state, zipCode,
 } }];
 """, 500, 600),
         zoho_request("Find Candidate for Post Call", {

@@ -417,6 +417,57 @@ def add_recruiter_emails(workflow: dict, credential_id: str, credential_name: st
     connect(connections, "Build Recruiter Email", "Email Recruiters")
     return patched
 
+
+_BUILD_CANCEL_EMAIL_JS = r"""
+// Owner decision 2026-10-27: no cancel tool. A caller who still wants to cancel after being offered a move is only
+// noted by the agent, so the recruiters are told here and decide. Sent only for calls labelled cancel_request.
+const c = $input.first().json;
+if (c.callIntent !== 'cancel_request') return [];
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const oneLine = (v) => String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
+const name = oneLine(c.fullName) || 'Unknown caller';
+const where = [c.city, c.state].filter(Boolean).join(', ') || 'not provided';
+const rows = [['Name', name], ['Phone', c.phone], ['Location', where], ['VAPI call', c.callId]]
+  .map(([k, v]) => `<b>${k}:</b> ${esc(v)}<br>`).join('\n');
+return [{ json: {
+  subject: `⚠️ Callback cancel request – ${name}`,
+  html: `<p>Hi Team,</p><p>This driver said they want to cancel their callback, after the assistant offered to move it.</p>\n${rows}<br>
+<p><b>What the call said:</b><br>${esc(c.summary) || 'No summary available.'}</p>
+<p>Their calendar event was <b>not removed</b>. Please confirm with the driver, and remove the event if they confirm.</p>
+Details:<br><a href="__DASHBOARD__">__DASHBOARD__</a><br><br>Thank you,<br>Recruiting Automation System`,
+} }];
+""".replace("__DASHBOARD__", DASHBOARD_URL)
+
+
+def add_cancel_request_email(workflow: dict, credential_id: str, credential_name: str) -> dict:
+    """Return a copy of a Post-Call workflow that emails the recruiters about a cancel request.
+
+    Hangs off 'Normalize Post Call' as a side branch, so it does not need the Zoho lookup (a caller who is only in
+    our database still gets reported) and cannot slow or break the note path. Idempotent; touches no other node.
+    """
+    patched = deepcopy(workflow)
+    if any(n["name"] == "Email Recruiters About Cancel" for n in patched["nodes"]):
+        return patched
+    anchor = next((n for n in patched["nodes"] if n["name"] == "Normalize Post Call"), None)
+    if anchor is None:
+        raise ValueError("workflow has no 'Normalize Post Call' node")
+    x, y = anchor["position"]
+    build = code("Build Cancel Request Email", _BUILD_CANCEL_EMAIL_JS, x + 260, y + 260, helpers=False)
+    gmail = node(
+        "Email Recruiters About Cancel",
+        "n8n-nodes-base.gmail",
+        {"sendTo": RECRUITER_EMAIL, "subject": "={{ $json.subject }}", "emailType": "html",
+         "message": "={{ $json.html }}", "options": {"appendAttribution": False}},
+        x + 520, y + 260, 2.1,
+        credentials={"gmailOAuth2": {"id": credential_id, "name": credential_name}},
+        onError="continueRegularOutput",
+    )
+    patched["nodes"].extend([build, gmail])
+    connections = patched["connections"]
+    connections["Normalize Post Call"]["main"][0].append({"node": "Build Cancel Request Email", "type": "main", "index": 0})
+    connect(connections, "Build Cancel Request Email", "Email Recruiters About Cancel")
+    return patched
+
 ZOHO_WRITER_NODES = frozenset({
     "Find Candidate for Intake", "Build Candidate Write Request", "Write Candidate",
     "Resolve Candidate Result", "Candidate Saved?", "Respond Candidate Failure",

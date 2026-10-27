@@ -66,7 +66,8 @@
             "preferredCallbackTime": { "type": "string", "description": "ISO 8601 local time if given, else empty string" },
             "callIntent": {
               "type": "string",
-              "enum": ["new_application", "reschedule", "status_check", "other"]
+              "enum": ["new_application", "reschedule", "status_check", "cancel_request", "other"],
+              "description": "cancel_request: the caller said they want to cancel an existing callback and did not pick a new time. reschedule: the caller moved their callback to a new time."
             },
             "bookingConfirmed": { "type": "boolean", "description": "True only if the tool confirmed a booking" }
           },

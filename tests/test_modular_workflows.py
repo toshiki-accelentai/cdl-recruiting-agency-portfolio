@@ -609,6 +609,66 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("### Moving a callback", prompt)
         self.assertIn("### Wants to cancel", prompt)
 
+    # --- a cancel request reaches the recruiters (no cancel tool, on purpose: owner decision 2026-10-27) ---------
+
+    def test_the_call_analysis_can_label_a_call_as_a_cancel_request(self):
+        desired = json.loads((ROOT / "config" / "vapi" / "desired.json").read_text(encoding="utf-8"))
+        intent = desired["shared"]["analysisPlan"]["structuredDataPlan"]["schema"]["properties"]["callIntent"]
+        self.assertEqual(intent["enum"], ["new_application", "reschedule", "status_check", "cancel_request", "other"])
+        self.assertIn("did not pick a new time", intent["description"])
+
+    def test_post_call_normalizing_carries_the_call_intent_and_the_name(self):
+        code = {n["name"]: n for n in self.workflows["post_call"]["nodes"]}["Normalize Post Call"]["parameters"]["jsCode"]
+        self.assertIn("callIntent", code)
+        self.assertIn("fullName", code)
+
+    def with_cancel_email(self, workflow=None):
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import add_cancel_request_email
+        return add_cancel_request_email(copy.deepcopy(workflow or self.workflows["post_call"]), "cred-123", "Gmail Accelent AI")
+
+    def test_the_cancel_request_email_hangs_off_normalizing_so_zoho_is_not_needed(self):
+        wf = self.with_cancel_email()
+        targets = [t["node"] for t in wf["connections"]["Normalize Post Call"]["main"][0]]
+        self.assertIn("Build Cancel Request Email", targets)
+        self.assertIn("Find Candidate for Post Call", targets)  # the existing path is untouched
+        self.assertEqual([t["node"] for t in wf["connections"]["Build Cancel Request Email"]["main"][0]],
+                         ["Email Recruiters About Cancel"])
+        gmail = {n["name"]: n for n in wf["nodes"]}["Email Recruiters About Cancel"]
+        self.assertEqual(gmail["parameters"]["sendTo"], "toshiki@accelentai.com")
+        self.assertEqual(gmail["credentials"], {"gmailOAuth2": {"id": "cred-123", "name": "Gmail Accelent AI"}})
+        self.assertEqual(gmail.get("onError"), "continueRegularOutput")
+
+    def test_the_cancel_email_patch_is_idempotent_and_touches_nothing_else(self):
+        before = self.workflows["post_call"]
+        once, twice = self.with_cancel_email(), self.with_cancel_email(self.with_cancel_email())
+        self.assertEqual(len(once["nodes"]), len(before["nodes"]) + 2)
+        self.assertEqual(once, twice)
+
+    def cancel_email(self, item):
+        code = {n["name"]: n for n in self.with_cancel_email()["nodes"]}["Build Cancel Request Email"]["parameters"]["jsCode"]
+        runner = ("const [code, item] = process.argv.slice(1).map((v, i) => i ? JSON.parse(v) : v);"
+                  "console.log(JSON.stringify(new Function('$input', code)({ first: () => ({ json: item }) }).map(i => i.json)));")
+        return json.loads(subprocess.run(["node", "-e", runner, code, json.dumps(item)], capture_output=True, text=True, check=True).stdout)
+
+    CALL = {"callIntent": "cancel_request", "fullName": "Carlos Rivera", "phone": "+16727274656", "callId": "call-1",
+            "city": "Dallas", "state": "TX", "summary": "Caller found another job and wants to cancel."}
+
+    def test_only_a_cancel_request_sends_the_email(self):
+        for intent in ("reschedule", "new_application", "status_check", "other", ""):
+            self.assertEqual(self.cancel_email({**self.CALL, "callIntent": intent}), [], intent)
+        (mail,) = self.cancel_email(self.CALL)
+        self.assertEqual(mail["subject"], "⚠️ Callback cancel request – Carlos Rivera")
+        for text in ("Carlos Rivera", "+16727274656", "Dallas, TX", "found another job", "not removed",
+                     "https://cdl-admin.accelentai.com"):
+            self.assertIn(text, mail["html"], text)
+
+    def test_caller_words_cannot_inject_html_into_the_cancel_email(self):
+        (mail,) = self.cancel_email({**self.CALL, "summary": "<img src=x onerror=alert(1)>"})
+        self.assertNotIn("<img", mail["html"])
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [
