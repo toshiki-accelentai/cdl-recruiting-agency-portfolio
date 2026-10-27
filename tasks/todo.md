@@ -546,6 +546,17 @@ diagnose). Order is strict: A → B → C → apply.
       looked right. No recruiter email arrived: the owner found that the Gmail credential in n8n was set but not published (an owner-side
       n8n fix, not investigated further). So the recruiter emails (booked, moved, cancel request) are NOT yet verified end to end; after the
       credential is published, one more test call would confirm them.
+- [x] **Zoho call note without costs DEPLOYED 2026-10-27 (owner decision):** CDL 04 "Build Post Call Note" no longer shows total
+      cost or the STT/LLM/TTS/VAPI breakdown (cost stays in the database report). Drift check clean, read back, rollback copy saved.
+- [ ] **Webhook authentication: PAUSED after an incident (2026-10-27).** Goal: n8n webhooks (routing, intake, post-call) accept only
+      calls carrying X-Vapi-Secret. Done and harmless: secret `VAPI_WEBHOOK_SECRET` in `.env` (git-ignored); n8n Header Auth credential
+      "VAPI webhook secret (X-Vapi-Secret)" `TRovC3eL4rtqVROZ` (not attached to any webhook); VAPI custom credential (owner,
+      `af8341ac-...`). INCIDENT: attaching that credential as `server.credentialId` to the phone number, tool and both assistants made
+      the next real call fail with "number unavailable" (no VAPI call record, routing never reached). All four rolled back (a PATCH
+      without credentialId merges and keeps it: send `credentialId: null`); the owner's next call worked. Cause not confirmed (VAPI says
+      older orgs are still migrating to credential auth). Next attempt: prove it on a path that cannot block calls (draft assistant via a
+      web call, or a second test number) before touching the phone number; consider `server.headers` instead; independent review
+      before enforcing. Real actions: 4 VAPI attaches, 5 rollback writes, 1 failed real call (no records), 1 confirming call.
 - [ ] **Apply.**
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
