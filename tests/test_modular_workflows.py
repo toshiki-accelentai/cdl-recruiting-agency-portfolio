@@ -25,7 +25,8 @@ class ModularWorkflowTests(unittest.TestCase):
     def test_suite_has_four_single_responsibility_workflows(self):
         self.assertEqual(set(self.workflows), {"routing", "intake", "booking", "post_call"})
         for workflow in self.workflows.values():
-            self.assertLessEqual(len(workflow["nodes"]), 18, workflow["name"])
+            # 20: booking grew by the "replace previous callback" steps (2026-10-27); keep each workflow small.
+            self.assertLessEqual(len(workflow["nodes"]), 20, workflow["name"])
 
     def test_public_webhooks_are_isolated(self):
         paths = {}
@@ -273,7 +274,8 @@ class ModularWorkflowTests(unittest.TestCase):
                 node for node in workflow["nodes"]
                 if "googleapis.com/calendar" in str(node.get("parameters", {}).get("url", ""))
             ]
-            self.assertEqual(len(google_nodes), 5 if key == "booking" else 0, key)
+            # 7 = availability, create, confirm, restore, confirm restore, find others, cancel replaced.
+            self.assertEqual(len(google_nodes), 7 if key == "booking" else 0, key)
 
     def test_booking_uses_slot_lock_and_verifies_event_owner(self):
         booking = {node["name"]: node for node in self.workflows["booking"]["nodes"]}
@@ -398,7 +400,7 @@ class ModularWorkflowTests(unittest.TestCase):
         wf = self.workflows["booking"]
         names = {n["name"] for n in wf["nodes"]}
         self.assertNotIn("Return Booking Result", names)
-        self.assertNotIn("Build Booked Result", wf["connections"])
+        self.assertNotIn("Finish Booking Result", wf["connections"])  # the end of the booked path
         self.assertNotIn("Build Non-Booking Result", wf["connections"])
         # Kept on purpose: after a conditional (If-Match) restore loses a race, the read-back shows the
         # other caller owns the slot, so this caller hears "time taken" instead of "manual follow-up".
@@ -422,6 +424,97 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertEqual(self.booked_result(ctx, mine)["status"], "booked")  # a retry of the same call
         failed = self.booked_result({**ctx, "bookingReason": "available"}, {"error": {"message": "x"}})
         self.assertEqual(failed["status"], "manual_followup")
+
+    # --- one upcoming callback per phone: a new booking replaces the caller's other upcoming callbacks ---------
+
+    def booking_nodes(self):
+        return {n["name"]: n for n in self.workflows["booking"]["nodes"]}
+
+    def booking_edges(self):
+        wf = self.workflows["booking"]
+        return {src: [[t["node"] for t in out] for out in v["main"]] for src, v in wf["connections"].items()}
+
+    def test_new_events_carry_the_caller_phone_so_their_other_callbacks_can_be_found(self):
+        code = self.booking_nodes()["Build Calendar Event"]["parameters"]["jsCode"]
+        self.assertIn("callerPhone: $json.phone", code)
+
+    def test_only_a_confirmed_booking_looks_for_callbacks_to_replace(self):
+        e = self.booking_edges()
+        self.assertEqual(e["Build Booked Result"], [["Booked?"]])
+        self.assertEqual(e["Booked?"], [["Find Other Upcoming Callbacks"], ["Finish Booking Result"]])
+        self.assertEqual(e["Find Other Upcoming Callbacks"], [["Pick Callbacks to Replace"]])
+        self.assertEqual(e["Pick Callbacks to Replace"], [["Anything to Replace?"]])
+        self.assertEqual(e["Anything to Replace?"], [["Cancel Replaced Callback"], ["Finish Booking Result"]])
+        self.assertEqual(e["Cancel Replaced Callback"], [["Finish Booking Result"]])
+        self.assertNotIn("Finish Booking Result", e)  # the end of the booked path
+
+    def test_the_replace_steps_are_quick_and_never_fail_the_booking(self):
+        n = self.booking_nodes()
+        find, cancel = n["Find Other Upcoming Callbacks"], n["Cancel Replaced Callback"]
+        query = {q["name"]: q["value"] for q in find["parameters"]["queryParameters"]["parameters"]}
+        self.assertEqual(query["privateExtendedProperty"], "=callerPhone={{ $json.phone }}")
+        self.assertIn("timeMin", query)
+        self.assertEqual(cancel["parameters"]["method"], "DELETE")
+        for node in (find, cancel):
+            self.assertEqual(node["parameters"]["options"]["timeout"], 5000)
+            self.assertFalse(node.get("retryOnFail"))
+            self.assertEqual(node.get("onError"), "continueRegularOutput")
+
+    def run_booking_code(self, node, outputs, input_items):
+        code = self.booking_nodes()[node]["parameters"]["jsCode"]
+        runner = (
+            "const [code, outputs, input] = process.argv.slice(1).map((v, i) => i ? JSON.parse(v) : v);"
+            "const $ = (name) => { if (!(name in outputs)) throw new Error('not executed: ' + name);"
+            "  return { first: () => ({ json: outputs[name][0] }), all: () => outputs[name].map(j => ({ json: j })) }; };"
+            "const $input = { first: () => ({ json: input[0] }), all: () => input.map(j => ({ json: j })) };"
+            "console.log(JSON.stringify(new Function('$', '$input', code)($, $input).map(i => i.json)));"
+        )
+        out = subprocess.run(["node", "-e", runner, code, json.dumps(outputs), json.dumps(input_items)],
+                             capture_output=True, text=True, check=True).stdout
+        return json.loads(out)
+
+    BOOKED = {"status": "booked", "booked": True, "calendarEventId": "cdlslotNEW", "phone": "+12065550101"}
+
+    def test_only_the_callers_other_upcoming_events_are_picked(self):
+        listing = {"items": [
+            {"id": "cdlslotNEW", "status": "confirmed", "extendedProperties": {"private": {"callerPhone": "+12065550101"}}},
+            {"id": "cdlslotOLD", "status": "confirmed", "extendedProperties": {"private": {"callerPhone": "+12065550101"}}},
+            {"id": "cdlslotGONE", "status": "cancelled", "extendedProperties": {"private": {"callerPhone": "+12065550101"}}},
+            {"id": "cdlslotOTHER", "status": "confirmed", "extendedProperties": {"private": {"callerPhone": "+19995550000"}}},
+            {"id": "manual123", "status": "confirmed", "extendedProperties": {"private": {"callerPhone": "+12065550101"}}},
+        ]}
+        out = self.run_booking_code("Pick Callbacks to Replace", {"Build Booked Result": [self.BOOKED]}, [listing])
+        self.assertEqual([o["cancelId"] for o in out], ["cdlslotOLD"])
+
+    def test_nothing_to_replace_or_a_failed_search_gives_one_empty_item(self):
+        for listing in ({"items": []}, {"error": {"message": "timeout"}}):
+            out = self.run_booking_code("Pick Callbacks to Replace", {"Build Booked Result": [self.BOOKED]}, [listing])
+            self.assertEqual(len(out), 1)
+            self.assertIsNone(out[0]["cancelId"])
+        self.assertTrue(self.run_booking_code("Pick Callbacks to Replace", {"Build Booked Result": [self.BOOKED]},
+                                              [{"error": {"message": "timeout"}}])[0]["searchFailed"])
+
+    def test_the_result_says_how_many_callbacks_were_replaced(self):
+        picked = [{"cancelId": "cdlslotOLD"}, {"cancelId": "cdlslotOLD2"}]
+        both_ok = self.run_booking_code("Finish Booking Result", {
+            "Build Booked Result": [self.BOOKED], "Pick Callbacks to Replace": picked,
+            "Cancel Replaced Callback": [{}, {}]}, [{}, {}])
+        self.assertEqual(len(both_ok), 1)
+        self.assertEqual((both_ok[0]["replacedPrevious"], both_ok[0]["replaceFailed"]), (2, False))
+        one_failed = self.run_booking_code("Finish Booking Result", {
+            "Build Booked Result": [self.BOOKED], "Pick Callbacks to Replace": picked,
+            "Cancel Replaced Callback": [{}, {"error": {"message": "403"}}]}, [{}, {}])
+        self.assertEqual((one_failed[0]["replacedPrevious"], one_failed[0]["replaceFailed"]), (1, True))
+
+    def test_an_unbooked_result_passes_through_unchanged(self):
+        unbooked = {"status": "slot_taken", "booked": False, "phone": "+12065550101"}
+        out = self.run_booking_code("Finish Booking Result", {"Build Booked Result": [unbooked]}, [unbooked])
+        self.assertEqual(out, [{**unbooked, "replacedPrevious": 0, "replaceFailed": False}])
+
+    def test_nothing_found_means_zero_replaced_and_no_failure(self):
+        out = self.run_booking_code("Finish Booking Result", {
+            "Build Booked Result": [self.BOOKED], "Pick Callbacks to Replace": [{"cancelId": None}]}, [{"cancelId": None}])
+        self.assertEqual((out[0]["replacedPrevious"], out[0]["replaceFailed"], out[0]["status"]), (0, False, "booked"))
 
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")

@@ -9,10 +9,12 @@ from pathlib import Path
 
 try:
     from .build_production_workflow import (
-        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, node, stable_id)
+        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, google_request,
+        node, stable_id)
 except ImportError:
     from build_production_workflow import (
-        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, node, stable_id)
+        EXISTING_ASSISTANT_ID, NEW_ASSISTANT_ID, build as build_monolith, code, condition, connect, google_request,
+        node, stable_id)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -108,9 +110,83 @@ def build_booking(source: dict) -> dict:
                 "const intake = $input.first().json;",
             )
     # The sub-workflow returns the output of whichever result node ran last; no pass-through end node needed.
-    workflow["nodes"] = [trigger, *workflow["nodes"]]
+    workflow["nodes"] = [trigger, *workflow["nodes"], *replace_previous_callback_nodes()]
     connect(workflow["connections"], "Booking Input", "Validate Callback")
+    add_replace_previous_callback(workflow["connections"])
     return workflow
+
+
+CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/toshiki%40accelentai.com/events"
+# The booking answers a live tool call: these steps must be quick and may fail without failing the booking.
+REPLACE_TIMEOUT_MS = 5000
+
+
+def replace_previous_callback_nodes() -> list[dict]:
+    """Owner decision 2026-10-27: one upcoming callback per phone number. After a confirmed booking, the caller's
+    other upcoming callbacks (same callerPhone tag, our cdlslot ids) are cancelled. The new event is created first,
+    so a failure here leaves two events (visible), never none (a lost callback)."""
+    def quick_google(name, parameters, x, y):
+        n = google_request(name, parameters, x, y)
+        n["parameters"]["options"] = {"timeout": REPLACE_TIMEOUT_MS}
+        n["retryOnFail"] = False
+        n.pop("maxTries", None)
+        n.pop("waitBetweenTries", None)
+        return n
+    booked = condition("Booked?", "={{ $json.status === 'booked' }}", 1920, 80)
+    find = quick_google("Find Other Upcoming Callbacks", {
+        "method": "GET",
+        "url": CALENDAR_EVENTS_URL,
+        "sendQuery": True,
+        "queryParameters": {"parameters": [
+            {"name": "privateExtendedProperty", "value": "=callerPhone={{ $json.phone }}"},
+            {"name": "timeMin", "value": "={{ $now.toISO() }}"},
+            {"name": "singleEvents", "value": "true"},
+            {"name": "maxResults", "value": "20"},
+        ]},
+    }, 2180, 0)
+    pick = code("Pick Callbacks to Replace", """
+const booked = $('Build Booked Result').first().json;
+const listing = $input.first().json;
+if (listing.error || !Array.isArray(listing.items)) {
+  return [{ json: { cancelId: null, searchFailed: Boolean(listing.error) } }];
+}
+// Only our own slot events for this exact phone, never the one just booked or one already cancelled.
+const ids = listing.items
+  .filter((e) => e.id !== booked.calendarEventId && e.status !== 'cancelled' && String(e.id).startsWith('cdlslot')
+    && e.extendedProperties?.private?.callerPhone === booked.phone)
+  .map((e) => e.id);
+return ids.length ? ids.map((id) => ({ json: { cancelId: id } })) : [{ json: { cancelId: null, searchFailed: false } }];
+""", 2440, 0, helpers=False)
+    anything = condition("Anything to Replace?", "={{ Boolean($json.cancelId) }}", 2700, 0)
+    cancel = quick_google("Cancel Replaced Callback", {
+        "method": "DELETE",
+        "url": "=" + CALENDAR_EVENTS_URL + "/{{ $json.cancelId }}",
+        "sendQuery": True,
+        "queryParameters": {"parameters": [{"name": "sendUpdates", "value": "none"}]},
+    }, 2960, -80)
+    finish = code("Finish Booking Result", """
+const result = $('Build Booked Result').first().json;
+const ran = (name) => { try { return $(name).all().map((i) => i.json); } catch (e) { return []; } };  // a skipped node throws
+const picked = ran('Pick Callbacks to Replace');
+const wanted = picked.filter((p) => p.cancelId);
+const cancels = ran('Cancel Replaced Callback');
+const replaced = cancels.filter((c) => !c.error).length;
+const failed = picked.some((p) => p.searchFailed) || replaced < wanted.length;
+return [{ json: { ...result, replacedPrevious: replaced, replaceFailed: failed } }];
+""", 3220, 80, helpers=False)
+    return [booked, find, pick, anything, cancel, finish]
+
+
+def add_replace_previous_callback(connections: dict) -> None:
+    connections["Build Booked Result"] = {"main": [[]]}
+    connect(connections, "Build Booked Result", "Booked?")
+    connect(connections, "Booked?", "Find Other Upcoming Callbacks", 0)
+    connect(connections, "Booked?", "Finish Booking Result", 1)
+    connect(connections, "Find Other Upcoming Callbacks", "Pick Callbacks to Replace")
+    connect(connections, "Pick Callbacks to Replace", "Anything to Replace?")
+    connect(connections, "Anything to Replace?", "Cancel Replaced Callback", 0)
+    connect(connections, "Anything to Replace?", "Finish Booking Result", 1)
+    connect(connections, "Cancel Replaced Callback", "Finish Booking Result")
 
 
 def build_routing(source: dict) -> dict:

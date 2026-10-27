@@ -154,7 +154,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nreturn [{ json: {\n  ...$json,\n  eventBody: {\n    id: $json.eventId,\n    summary: `${$json.temperature} - CDL Candidate Callback - ${[$json.firstName, $json.lastName].filter(Boolean).join(' ')}`,\n    description: `VAPI Call ID: ${$json.callId}\nCandidate phone: ${$json.phone}\nZoho Candidate ID: ${$json.candidateId}`,\n    start: { dateTime: $json.startUtc, timeZone: 'America/Vancouver' },\n    end: { dateTime: $json.endUtc, timeZone: 'America/Vancouver' },\n    transparency: 'opaque',\n    reminders: { useDefault: true },\n    extendedProperties: { private: { vapiCallId: $json.callId, zohoCandidateId: $json.candidateId } },\n  },\n} }];\n"
+        "jsCode": "\nreturn [{ json: {\n  ...$json,\n  eventBody: {\n    id: $json.eventId,\n    summary: `${$json.temperature} - CDL Candidate Callback - ${[$json.firstName, $json.lastName].filter(Boolean).join(' ')}`,\n    description: `VAPI Call ID: ${$json.callId}\nCandidate phone: ${$json.phone}\nZoho Candidate ID: ${$json.candidateId}`,\n    start: { dateTime: $json.startUtc, timeZone: 'America/Vancouver' },\n    end: { dateTime: $json.endUtc, timeZone: 'America/Vancouver' },\n    transparency: 'opaque',\n    reminders: { useDefault: true },\n    // callerPhone lets a later booking by the same caller find and replace this one.\n    extendedProperties: { private: { vapiCallId: $json.callId, zohoCandidateId: $json.candidateId, callerPhone: $json.phone } },\n  },\n} }];\n"
       },
       "id": "732a9401-f9d5-598f-ae5c-2152fd21ef04",
       "name": "Build Calendar Event",
@@ -363,6 +363,184 @@
         3100,
         -100
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0771fdcb-c360-5b86-8b54-6d98c6d70989",
+              "leftValue": "={{ $json.status === 'booked' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ecf3e00b-df4e-5ac1-904e-a4b1e027b502",
+      "name": "Booked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/toshiki%40accelentai.com/events",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "privateExtendedProperty",
+              "value": "=callerPhone={{ $json.phone }}"
+            },
+            {
+              "name": "timeMin",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "singleEvents",
+              "value": "true"
+            },
+            {
+              "name": "maxResults",
+              "value": "20"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "b913d3a4-6b26-5c7b-a986-362da6431c37",
+      "name": "Find Other Upcoming Callbacks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2180,
+        0
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1sf9UUIeS6G5wyhc",
+          "name": "Google Calendar account"
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst booked = $('Build Booked Result').first().json;\nconst listing = $input.first().json;\nif (listing.error || !Array.isArray(listing.items)) {\n  return [{ json: { cancelId: null, searchFailed: Boolean(listing.error) } }];\n}\n// Only our own slot events for this exact phone, never the one just booked or one already cancelled.\nconst ids = listing.items\n  .filter((e) => e.id !== booked.calendarEventId && e.status !== 'cancelled' && String(e.id).startsWith('cdlslot')\n    && e.extendedProperties?.private?.callerPhone === booked.phone)\n  .map((e) => e.id);\nreturn ids.length ? ids.map((id) => ({ json: { cancelId: id } })) : [{ json: { cancelId: null, searchFailed: false } }];\n"
+      },
+      "id": "8e110274-6001-5190-99bd-adecf2d01d91",
+      "name": "Pick Callbacks to Replace",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2558e556-02cb-57a7-9d26-074c13e88206",
+              "leftValue": "={{ Boolean($json.cancelId) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e2fccb02-a906-58a9-9749-6fbd9a7d157a",
+      "name": "Anything to Replace?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/toshiki%40accelentai.com/events/{{ $json.cancelId }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sendUpdates",
+              "value": "none"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "a0099093-e120-51ba-b184-fca283141706",
+      "name": "Cancel Replaced Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2960,
+        -80
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "1sf9UUIeS6G5wyhc",
+          "name": "Google Calendar account"
+        }
+      },
+      "retryOnFail": false,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst result = $('Build Booked Result').first().json;\nconst ran = (name) => { try { return $(name).all().map((i) => i.json); } catch (e) { return []; } };  // a skipped node throws\nconst picked = ran('Pick Callbacks to Replace');\nconst wanted = picked.filter((p) => p.cancelId);\nconst cancels = ran('Cancel Replaced Callback');\nconst replaced = cancels.filter((c) => !c.error).length;\nconst failed = picked.some((p) => p.searchFailed) || replaced < wanted.length;\nreturn [{ json: { ...result, replacedPrevious: replaced, replaceFailed: failed } }];\n"
+      },
+      "id": "1f32e824-6c99-5544-aaba-6c6d0e0ba39a",
+      "name": "Finish Booking Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3220,
+        80
+      ]
     }
   ],
   "connections": {
@@ -513,6 +691,86 @@
         [
           {
             "node": "Validate Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Booked Result": {
+      "main": [
+        [
+          {
+            "node": "Booked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booked?": {
+      "main": [
+        [
+          {
+            "node": "Find Other Upcoming Callbacks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Booking Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Other Upcoming Callbacks": {
+      "main": [
+        [
+          {
+            "node": "Pick Callbacks to Replace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Callbacks to Replace": {
+      "main": [
+        [
+          {
+            "node": "Anything to Replace?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anything to Replace?": {
+      "main": [
+        [
+          {
+            "node": "Cancel Replaced Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Booking Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Replaced Callback": {
+      "main": [
+        [
+          {
+            "node": "Finish Booking Result",
             "type": "main",
             "index": 0
           }

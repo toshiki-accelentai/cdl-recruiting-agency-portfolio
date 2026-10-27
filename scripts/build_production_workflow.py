@@ -382,7 +382,8 @@ return [{ json: {
     end: { dateTime: $json.endUtc, timeZone: 'America/Vancouver' },
     transparency: 'opaque',
     reminders: { useDefault: true },
-    extendedProperties: { private: { vapiCallId: $json.callId, zohoCandidateId: $json.candidateId } },
+    // callerPhone lets a later booking by the same caller find and replace this one.
+    extendedProperties: { private: { vapiCallId: $json.callId, zohoCandidateId: $json.candidateId, callerPhone: $json.phone } },
   },
 } }];
 """, 3620, -180, helpers=False),
