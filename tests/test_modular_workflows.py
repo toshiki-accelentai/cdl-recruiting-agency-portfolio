@@ -586,6 +586,29 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertNotIn("<script>", mail["html"])
         self.assertIn("&lt;script&gt;", mail["html"])
 
+    def existing_lead_prompt(self):
+        return (ROOT / "config" / "vapi" / "prompts" / "existing-lead.md").read_text(encoding="utf-8")
+
+    def test_the_existing_lead_agent_says_moved_only_when_the_tool_says_it_replaced_a_callback(self):
+        prompt = self.existing_lead_prompt()
+        self.assertIn("`replacedPrevious`", prompt)
+        self.assertIn("I've moved your callback", prompt)
+        self.assertIn("If `replacedPrevious` is missing or 0", prompt)
+
+    def test_a_returning_caller_who_wants_to_cancel_is_offered_a_move_first_and_never_told_it_is_cancelled(self):
+        """Owner decision 2026-10-27: no cancel tool, on purpose. Cancelling loses a lead, so offer to move it first."""
+        prompt = self.existing_lead_prompt()
+        self.assertIn("**Wants to cancel", prompt)
+        self.assertIn("offer to move it first", prompt)
+        self.assertIn("A recruiter will confirm", prompt)
+        self.assertIn("Never say the callback is cancelled", prompt)
+        self.assertIn("you cannot cancel", prompt)
+
+    def test_the_existing_lead_prompt_has_an_example_for_a_moved_callback_and_for_a_cancel_request(self):
+        prompt = self.existing_lead_prompt()
+        self.assertIn("### Moving a callback", prompt)
+        self.assertIn("### Wants to cancel", prompt)
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [
