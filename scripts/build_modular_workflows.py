@@ -339,6 +339,84 @@ def add_api_key_auth(workflow: dict, credential_id: str, credential_name: str) -
     return patched
 
 
+
+RECRUITER_EMAIL = "toshiki@accelentai.com"
+DASHBOARD_URL = "https://cdl-admin.accelentai.com"
+
+_BUILD_RECRUITER_EMAIL_JS = r"""
+// Runs after the caller has the answer. Same two emails as the client build: booked, or a person must book it.
+// While the caller is still choosing a time (taken, outside hours, missing detail) nothing is sent.
+const r = $input.first().json;
+if (!['booked', 'manual_followup'].includes(r.status)) return [];
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const oneLine = (v) => String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
+const name = oneLine([r.firstName, r.lastName].filter(Boolean).join(' ')) || 'Unknown';
+const where = `${r.city || ''}${r.state ? ', ' + r.state : ''}${r.zipCode ? ' ' + r.zipCode : ''}`.trim();
+const when = r.startUtc
+  ? new Date(r.startUtc).toLocaleString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', month: 'short',
+      day: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(/ /g, ' ') + ' Pacific'
+  : (r.preferredCallbackTime || 'not given');
+const rows = [
+  ['Name', name], ['Location', where], ['Phone', r.phone], ['Experience', r.experienceText],
+  ['Readiness', r.readiness], ['Lead Temperature', r.temperature],
+  [r.status === 'booked' ? 'Scheduled Callback Time' : 'Requested Callback Time', when],
+].map(([k, v]) => `<b>${k}:</b> ${esc(v)}<br>`).join('\n');
+const link = `Details:<br><a href="__DASHBOARD__">__DASHBOARD__</a><br><br>Thank you,<br>Recruiting Automation System`;
+if (r.status === 'booked') {
+  const n = Number(r.replacedPrevious) || 0;
+  const moved = n > 0
+    ? `<p>This booking replaces ${n} earlier callback${n === 1 ? '' : 's'} for the same phone number; the earlier calendar event was cancelled.</p>`
+    : '';
+  const warn = r.replaceFailed ? '<p><b>Check the calendar:</b> an earlier callback for this phone could not be cancelled.</p>' : '';
+  return [{ json: {
+    subject: `✅ Callback Appointment Scheduled with Lead ${name} ${oneLine(r.temperature)}`.trim() + (n > 0 ? ' (moved)' : ''),
+    html: `A new driver lead has been received:<br><br>\n${rows}<br>\n${moved}${warn}${link}`,
+  } }];
+}
+return [{ json: {
+  subject: '⚠️ Appointment Booking Failed – Manual Action Required',
+  html: `<p>Hi Team,</p><p>The system was unable to automatically create a callback appointment for the following lead.<br>
+Please review the details and manually schedule a callback in your calendar at your earliest convenience.</p><hr>
+<p><b>The lead details:</b></p>\n${rows}<br>\n${link}`,
+} }];
+""".replace("__DASHBOARD__", DASHBOARD_URL)
+
+
+def add_recruiter_emails(workflow: dict, credential_id: str, credential_name: str) -> dict:
+    """Return a copy of an Intake workflow that emails the recruiters after answering the caller.
+
+    Restores the client build's two Gmail emails (booked; booking failed, manual action required). They hang off
+    'Respond Booking Result', so the caller never waits for them, and a mail failure never fails the call record.
+    The Gmail credential id is instance-local, so it is passed in, like the API key. Idempotent; touches no other
+    node; used on the hand-edited live workflow.
+    """
+    patched = deepcopy(workflow)
+    names = {n["name"] for n in patched["nodes"]}
+    if "Email Recruiters" in names:
+        return patched
+    anchor = next((n for n in patched["nodes"] if n["name"] == "Respond Booking Result"), None)
+    if anchor is None:
+        raise ValueError("workflow has no 'Respond Booking Result' node")
+    x, y = anchor["position"]
+    build = code("Build Recruiter Email", _BUILD_RECRUITER_EMAIL_JS, x, y + 220, helpers=False)
+    gmail = node(
+        "Email Recruiters",
+        "n8n-nodes-base.gmail",
+        {"sendTo": RECRUITER_EMAIL, "subject": "={{ $json.subject }}", "emailType": "html",
+         "message": "={{ $json.html }}", "options": {"appendAttribution": False}},
+        x + 260, y + 220, 2.1,
+        credentials={"gmailOAuth2": {"id": credential_id, "name": credential_name}},
+        onError="continueRegularOutput",
+    )
+    patched["nodes"].extend([build, gmail])
+    connections = patched["connections"]
+    connections.setdefault("Respond Booking Result", {"main": [[]]})
+    if not connections["Respond Booking Result"]["main"]:
+        connections["Respond Booking Result"]["main"] = [[]]
+    connections["Respond Booking Result"]["main"][0].append({"node": "Build Recruiter Email", "type": "main", "index": 0})
+    connect(connections, "Build Recruiter Email", "Email Recruiters")
+    return patched
+
 ZOHO_WRITER_NODES = frozenset({
     "Find Candidate for Intake", "Build Candidate Write Request", "Write Candidate",
     "Resolve Candidate Result", "Candidate Saved?", "Respond Candidate Failure",

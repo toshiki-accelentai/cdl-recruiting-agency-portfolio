@@ -451,7 +451,7 @@ return [{ json: {
 """, 3620, 20, helpers=False),
         respond(
             "Respond Booking Result",
-            "={{ {results:[{toolCallId:$json.toolCallId,result:JSON.stringify({status:$json.status,saved:true,booked:$json.booked,confirmedTime:$json.booked?$json.preferredCallbackTime:null,calendarUrl:$json.calendarUrl,message:$json.callerMessage,callId:$json.callId,candidateId:$json.candidateId})}]} }}",
+            "={{ {results:[{toolCallId:$json.toolCallId,result:JSON.stringify({status:$json.status,saved:true,booked:$json.booked,confirmedTime:$json.booked?$json.preferredCallbackTime:null,calendarUrl:$json.calendarUrl,replacedPrevious:$json.replacedPrevious||0,message:$json.callerMessage,callId:$json.callId,candidateId:$json.candidateId})}]} }}",
             4140,
             -80,
         ),

@@ -516,6 +516,76 @@ class ModularWorkflowTests(unittest.TestCase):
             "Build Booked Result": [self.BOOKED], "Pick Callbacks to Replace": [{"cancelId": None}]}, [{"cancelId": None}])
         self.assertEqual((out[0]["replacedPrevious"], out[0]["replaceFailed"], out[0]["status"]), (0, False, "booked"))
 
+    # --- recruiter emails after the caller has the answer (as in the client build) -------------------------------
+
+    def with_emails(self, workflow=None):
+        import copy
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_modular_workflows import add_recruiter_emails
+        return add_recruiter_emails(copy.deepcopy(workflow or self.workflows["intake"]), "cred-123", "Gmail Accelent AI")
+
+    def test_the_caller_hears_whether_an_earlier_callback_was_replaced(self):
+        body = {n["name"]: n for n in self.workflows["intake"]["nodes"]}["Respond Booking Result"]["parameters"]["responseBody"]
+        self.assertIn("replacedPrevious:$json.replacedPrevious||0", body)
+
+    def test_recruiter_emails_run_after_the_answer_to_the_caller(self):
+        wf = self.with_emails()
+        targets = [t["node"] for t in wf["connections"]["Respond Booking Result"]["main"][0]]
+        self.assertIn("Build Recruiter Email", targets)
+        self.assertEqual([t["node"] for t in wf["connections"]["Build Recruiter Email"]["main"][0]], ["Email Recruiters"])
+        gmail = {n["name"]: n for n in wf["nodes"]}["Email Recruiters"]
+        self.assertEqual(gmail["type"], "n8n-nodes-base.gmail")
+        self.assertEqual(gmail["parameters"]["sendTo"], "toshiki@accelentai.com")
+        self.assertEqual(gmail["credentials"], {"gmailOAuth2": {"id": "cred-123", "name": "Gmail Accelent AI"}})
+        self.assertEqual(gmail.get("onError"), "continueRegularOutput")  # a mail problem never fails the call's record
+
+    def test_recruiter_emails_patch_is_idempotent_and_touches_nothing_else(self):
+        before = self.workflows["intake"]
+        once, twice = self.with_emails(), self.with_emails(self.with_emails())
+        self.assertEqual(len(once["nodes"]), len(before["nodes"]) + 2)
+        self.assertEqual(once, twice)
+        old = {n["name"]: n for n in before["nodes"]}
+        self.assertTrue(all(n == old[n["name"]] for n in once["nodes"] if n["name"] in old))
+
+    def recruiter_email(self, result):
+        code = {n["name"]: n for n in self.with_emails()["nodes"]}["Build Recruiter Email"]["parameters"]["jsCode"]
+        runner = ("const [code, item] = process.argv.slice(1).map((v, i) => i ? JSON.parse(v) : v);"
+                  "console.log(JSON.stringify(new Function('$input', code)({ first: () => ({ json: item }) }).map(i => i.json)));")
+        return json.loads(subprocess.run(["node", "-e", runner, code, json.dumps(result)],
+                                         capture_output=True, text=True, check=True).stdout)
+
+    LEAD = {"firstName": "Carlos", "lastName": "Rivera", "phone": "+16727274656", "city": "Dallas", "state": "TX",
+            "zipCode": "75201", "experienceText": "5 years", "readiness": "within 7 days", "temperature": "MEDIUM",
+            "preferredCallbackTime": "2026-09-28T10:00:00", "startUtc": "2026-09-28T17:00:00.000Z"}  # summer: no DST question
+
+    def test_a_booked_callback_emails_the_recruiters_with_the_lead_details(self):
+        (mail,) = self.recruiter_email({**self.LEAD, "status": "booked", "booked": True})
+        self.assertEqual(mail["subject"], "✅ Callback Appointment Scheduled with Lead Carlos Rivera MEDIUM")
+        for text in ("Carlos Rivera", "Dallas, TX 75201", "+16727274656", "5 years", "within 7 days", "MEDIUM",
+                     "Mon, Sep 28, 10:00 AM Pacific", "https://cdl-admin.accelentai.com"):
+            self.assertIn(text, mail["html"], text)
+
+    def test_a_replaced_callback_says_so_in_the_email(self):
+        (mail,) = self.recruiter_email({**self.LEAD, "status": "booked", "booked": True, "replacedPrevious": 1})
+        self.assertIn("(moved)", mail["subject"])
+        self.assertIn("replaces 1 earlier callback", mail["html"])
+
+    def test_a_booking_that_needs_a_person_sends_the_manual_action_email(self):
+        (mail,) = self.recruiter_email({**self.LEAD, "status": "manual_followup", "booked": False, "startUtc": None})
+        self.assertEqual(mail["subject"], "⚠️ Appointment Booking Failed – Manual Action Required")
+        self.assertIn("manually schedule", mail["html"])
+        self.assertIn("2026-09-28T10:00:00", mail["html"])  # the requested time, as asked
+
+    def test_no_email_while_the_caller_is_still_choosing_a_time(self):
+        for status in ("slot_taken", "slot_unavailable", "invalid_request"):
+            self.assertEqual(self.recruiter_email({**self.LEAD, "status": status, "booked": False}), [], status)
+
+    def test_caller_words_cannot_inject_html_into_the_email(self):
+        (mail,) = self.recruiter_email({**self.LEAD, "firstName": "<script>x</script>", "status": "booked", "booked": True})
+        self.assertNotIn("<script>", mail["html"])
+        self.assertIn("&lt;script&gt;", mail["html"])
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [

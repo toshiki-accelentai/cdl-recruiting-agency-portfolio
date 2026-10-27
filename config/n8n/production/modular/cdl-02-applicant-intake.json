@@ -285,7 +285,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {results:[{toolCallId:$json.toolCallId,result:JSON.stringify({status:$json.status,saved:true,booked:$json.booked,confirmedTime:$json.booked?$json.preferredCallbackTime:null,calendarUrl:$json.calendarUrl,message:$json.callerMessage,callId:$json.callId,candidateId:$json.candidateId})}]} }}",
+        "responseBody": "={{ {results:[{toolCallId:$json.toolCallId,result:JSON.stringify({status:$json.status,saved:true,booked:$json.booked,confirmedTime:$json.booked?$json.preferredCallbackTime:null,calendarUrl:$json.calendarUrl,replacedPrevious:$json.replacedPrevious||0,message:$json.callerMessage,callId:$json.callId,candidateId:$json.candidateId})}]} }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
