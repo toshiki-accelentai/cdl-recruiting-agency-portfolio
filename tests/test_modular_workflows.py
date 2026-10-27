@@ -669,6 +669,14 @@ class ModularWorkflowTests(unittest.TestCase):
         (mail,) = self.cancel_email({**self.CALL, "summary": "<img src=x onerror=alert(1)>"})
         self.assertNotIn("<img", mail["html"])
 
+    def test_the_zoho_post_call_note_shows_no_call_costs(self):
+        """Owner decision 2026-10-27: recruiters do not need what a call cost; it stays in the database report."""
+        code = {n["name"]: n for n in self.workflows["post_call"]["nodes"]}["Build Post Call Note"]["parameters"]["jsCode"]
+        for text in ("Total cost", "Cost breakdown", "money("):
+            self.assertNotIn(text, code)
+        for text in ("Readiness:", "ZIP code:", "Summary:", "Transcript:"):
+            self.assertIn(text, code)
+
     def test_every_node_with_the_helpers_carries_the_current_helper_text(self):
         helpers = (ROOT / "workflow-src" / "cdl_helpers.js").read_text(encoding="utf-8")
         embedding = [
@@ -727,7 +735,7 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("encodeURIComponent", lookup_url)
         self.assertFalse(lookup.get("sendQuery", False))
 
-    def test_post_call_note_exposes_readiness_postcode_and_cost(self):
+    def test_post_call_note_exposes_readiness_and_postcode(self):
         post_call = {node["name"]: node for node in self.workflows["post_call"]["nodes"]}
         normalize = post_call["Normalize Post Call"]["parameters"]["jsCode"]
         build = post_call["Build Post Call Note"]["parameters"]["jsCode"]
@@ -736,7 +744,7 @@ class ModularWorkflowTests(unittest.TestCase):
         self.assertIn("costBreakdown", normalize)
         self.assertIn("Readiness:", build)
         self.assertIn("Postcode analysis:", build)
-        self.assertIn("Total cost: $", build)
+        self.assertNotIn("Total cost", build)  # owner decision 2026-10-27: no costs in the recruiter note
         self.assertIn("AI Call Summary & Full Transcript", build)
 
     def test_code_node_references_exist_in_each_workflow(self):

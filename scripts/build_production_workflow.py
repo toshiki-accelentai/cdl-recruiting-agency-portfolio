@@ -538,15 +538,12 @@ return [{ json: {
         code("Build Post Call Note", """
 const call = $('Normalize Post Call').first().json;
 const candidate = Array.isArray($json.data) ? $json.data[0] : null;
-const money = value => Number(value ?? 0).toFixed(4);
 const zipValid = /^\d{5}(?:-\d{4})?$/.test(call.zipCode || '');
 const location = [call.city, call.state].filter(Boolean).join(', ') || 'not provided';
 const content = [
   `VAPI Call ID: ${call.callId}`,
   `Ended reason: ${call.endedReason || 'unknown'}`,
   `Duration seconds: ${call.durationSeconds}`,
-  `Total cost: $${money(call.cost)}`,
-  `Cost breakdown: STT $${money(call.costBreakdown?.stt)}, LLM $${money(call.costBreakdown?.llm)}, TTS $${money(call.costBreakdown?.tts)}, VAPI $${money(call.costBreakdown?.vapi)}`,
   [
     'Candidate snapshot:',
     `Readiness: ${call.readiness || 'not provided'}`,
