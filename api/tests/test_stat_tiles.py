@@ -3,7 +3,7 @@
  Calls today        -> Call activity, day=today            (needs the API to filter calls by business day)
  Awaiting contact   -> Applicants, status=to_call
  High readiness     -> Applicants, status=to_call and readiness=hot
- Zoho sync issues   -> Call activity, sync=failed
+ Zoho sync issues   -> Call activity, sync=problem (failed or retrying; see test_sync_tile.py)
 """
 import re
 from pathlib import Path
@@ -61,7 +61,7 @@ def html():
 
 
 @pytest.mark.parametrize("target", ["/#activity?day=today", "/#applicants?status=needs_contact",
-                                    "/#applicants?status=needs_contact&amp;readiness=hot", "/#activity?sync=failed"])
+                                    "/#applicants?status=needs_contact&amp;readiness=hot", "/#activity?sync=problem"])
 def test_each_tile_links_to_its_filtered_view(target):
     summary = html().split('id="summary"')[1].split("</section>")[0]
     assert f'href="{target}"' in summary, target

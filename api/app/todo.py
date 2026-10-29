@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends
 
 from app.auth import current_user
 from app.exposure import for_user
-from app.dashboard import HANG_UP, SELECT_CALLS, to_item
+from app.dashboard import HANG_UP, SELECT_CALLS, SYNC_PROBLEM, to_item
 from app.db import db_connection
 from app.schemas import BUSINESS_TZ
 
@@ -44,7 +44,7 @@ ORDER BY CASE a.temperature WHEN 'HOT' THEN 0 WHEN 'MEDIUM' THEN 1 WHEN 'WARM' T
 TODAY = "created_at >= date_trunc('day', now() AT TIME ZONE %s) AT TIME ZONE %s"
 CALLS_TODAY = "SELECT count(*) FROM calls WHERE " + TODAY
 HANG_UPS_TODAY = "SELECT count(*) FROM calls c WHERE c." + TODAY + " AND " + HANG_UP
-SYNC_PROBLEMS = "SELECT count(*) FROM outbox WHERE status = 'failed'"
+SYNC_PROBLEMS = "SELECT count(*) FROM outbox o WHERE " + SYNC_PROBLEM  # failed, or retrying because Zoho did not answer
 
 
 def to_call_back_item(row: tuple) -> dict:

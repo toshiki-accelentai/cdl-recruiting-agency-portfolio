@@ -59,7 +59,7 @@
           <a class="stat-tile" href="/#activity?day=today"><span class="stat-tile-label">Calls today</span><strong data-stat="calls_today">0</strong></a>
           <a class="stat-tile" href="/#applicants?status=needs_contact"><span class="stat-tile-label">Awaiting contact</span><strong data-stat="to_call">0</strong></a>
           <a class="stat-tile" href="/#applicants?status=needs_contact&amp;readiness=hot"><span class="stat-tile-label">High readiness</span><strong data-stat="hot_waiting">0</strong></a>
-          <a class="stat-tile" href="/#activity?sync=failed" id="stat-sync"><span class="stat-tile-label">Zoho sync issues</span><strong data-stat="sync_problems">0</strong></a>
+          <a class="stat-tile" href="/#activity?sync=problem" id="stat-sync"><span class="stat-tile-label">Zoho sync issues</span><strong data-stat="sync_problems">0</strong></a>
         </section>
 
         <section class="section" id="attention-section" aria-labelledby="attention-title" hidden>
@@ -89,7 +89,7 @@
         <section class="activity-panel panel" aria-label="Call activity list">
           <div class="activity-toolbar">
             <label class="filter-control"><span>Review</span><select id="activity-review" class="input"><option value="">All calls</option><option value="true">Needs review</option><option value="false">No review needed</option><option value="hang_up">Hang-ups only</option></select></label>
-            <label class="filter-control"><span>Zoho sync</span><select id="activity-sync" class="input"><option value="">Any status</option><option value="pending">Waiting</option><option value="sent">Sent</option><option value="failed">Failed</option></select></label>
+            <label class="filter-control"><span>Zoho sync</span><select id="activity-sync" class="input"><option value="">Any status</option><option value="problem">Needs attention</option><option value="pending">Waiting</option><option value="sent">Sent</option><option value="failed">Failed</option></select></label>
             <label class="filter-control"><span>Follow-up</span><select id="activity-follow-up" class="input"><option value="">Any status</option><option value="to_call">To contact</option><option value="called">Called</option><option value="no_answer">No answer</option><option value="done">Done</option></select></label>
             <label class="filter-control"><span>Day</span><select id="activity-day" class="input"><option value="">Any day</option><option value="today">Today</option></select></label>
             <label class="filter-control"><span>Order</span><select id="activity-sort" class="input"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="needs_review">Review first</option><option value="temperature">Readiness</option></select></label>

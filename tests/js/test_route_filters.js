@@ -10,6 +10,7 @@ assert.deepEqual(filters.parse("#applicants?status=needs_contact&readiness=hot")
   { route: "applicants", params: { status: "needs_contact", readiness: "hot" } });
 assert.deepEqual(filters.parse("#applicants?status=to_call"), { route: "applicants", params: { status: "to_call" } });
 assert.deepEqual(filters.parse("#activity?sync=failed"), { route: "activity", params: { sync: "failed" } });
+assert.deepEqual(filters.parse("#activity?sync=problem"), { route: "activity", params: { sync: "problem" } });
 
 // plain routes and the leading slash form carry no filters
 assert.deepEqual(filters.parse("#overview"), { route: "overview", params: {} });
