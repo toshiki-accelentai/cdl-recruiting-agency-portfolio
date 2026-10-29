@@ -66,6 +66,7 @@
           <div class="section-head"><h2 id="attention-title">Needs a closer look</h2><span class="count" id="attention-count"></span><a class="text-link" href="/#activity">View activity</a></div>
           <div class="panel"><ul class="rows" id="attention-list"></ul></div>
         </section>
+        <p class="data-scope" id="hang-ups-note" hidden><a class="text-link" href="/#activity?review=hang_up"><span data-stat="hang_ups_today">0</span> <span id="hang-ups-word">hang-ups</span> from unknown callers today</a>, not listed here.</p>
 
         <section class="section" aria-labelledby="callback-title">
           <div class="section-head"><h2 id="callback-title">Applicants to contact</h2><span class="count" id="callback-count"></span></div>
@@ -87,7 +88,7 @@
         <div class="page-head"><div><h1 id="activity-title">Call activity</h1><p class="page-sub">Inbound calls, callback requests, and Zoho sync status.</p></div><button class="btn btn-icon-text" id="activity-refresh" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span>Refresh</span></button></div>
         <section class="activity-panel panel" aria-label="Call activity list">
           <div class="activity-toolbar">
-            <label class="filter-control"><span>Review</span><select id="activity-review" class="input"><option value="">All calls</option><option value="true">Needs review</option><option value="false">No review needed</option></select></label>
+            <label class="filter-control"><span>Review</span><select id="activity-review" class="input"><option value="">All calls</option><option value="true">Needs review</option><option value="false">No review needed</option><option value="hang_up">Hang-ups only</option></select></label>
             <label class="filter-control"><span>Zoho sync</span><select id="activity-sync" class="input"><option value="">Any status</option><option value="pending">Waiting</option><option value="sent">Sent</option><option value="failed">Failed</option></select></label>
             <label class="filter-control"><span>Follow-up</span><select id="activity-follow-up" class="input"><option value="">Any status</option><option value="to_call">To contact</option><option value="called">Called</option><option value="no_answer">No answer</option><option value="done">Done</option></select></label>
             <label class="filter-control"><span>Day</span><select id="activity-day" class="input"><option value="">Any day</option><option value="today">Today</option></select></label>

@@ -32,9 +32,12 @@
       var person = call.applicant;
       if (!person || person.id == null) return;
       var key = String(person.id);
-      if (!latestById[key] || new Date(call.created_at).getTime() > new Date(latestById[key].call.created_at).getTime()) {
-        latestById[key] = { person: person, call: call };
-      }
+      var entry = latestById[key];
+      var time = new Date(call.created_at).getTime();
+      if (!entry) entry = latestById[key] = { person: person, call: call, callbackAt: null, callbackFrom: -Infinity };
+      else if (time > new Date(entry.call.created_at).getTime()) { entry.person = person; entry.call = call; }
+      // The most recent callback asked for, so a later call without one (a hang-up) does not hide it.
+      if (call.preferred_callback_at && time > entry.callbackFrom) { entry.callbackAt = call.preferred_callback_at; entry.callbackFrom = time; }
     });
     var rows = Object.keys(latestById).map(function (id) { return latestById[id]; });
     rows.sort(function (a, b) {
@@ -79,8 +82,8 @@
         var place = [person.city, person.state].filter(Boolean).join(", ") || person.zip_code || "Location not given";
         var readiness = el("span", { cls: "readiness-cell" }, Desk.heatChip(person.temperature));
         if (person.readiness) readiness.appendChild(el("small", { text: person.readiness }));
-        var callback = latest.preferred_callback_at
-          ? el("span", { cls: "callback-cell", text: Desk.whenText(latest.preferred_callback_at) })
+        var callback = row.callbackAt
+          ? el("span", { cls: "callback-cell", text: Desk.whenText(row.callbackAt) })
           : el("span", { cls: "callback-cell muted", text: "No time given" });
         var callDate = el("span", { cls: "last-call-cell", text: Desk.agoText(latest.created_at), attrs: { title: Desk.whenText(latest.created_at) } });
         var link = el("a", { cls: "btn btn-sm table-open", attrs: { href: "/applicants/" + person.id, "aria-label": "Open applicant " + name } }, el("span", { text: "Open" }), Desk.icon("arrow"));
@@ -139,7 +142,9 @@
     ["review", "sync", "follow-up"].forEach(function (key) {
       var id = key === "follow-up" ? "activity-follow-up" : "activity-" + key;
       var value = $(id).value;
-      if (value) params.set(key === "review" ? "needs_review" : key === "follow-up" ? "follow_up" : key, value);
+      if (!value) return;
+      if (key === "review" && value === "hang_up") params.set("kind", "hang_up");
+      else params.set(key === "review" ? "needs_review" : key === "follow-up" ? "follow_up" : key, value);
     });
     return "/api/calls?" + params.toString();
   }
@@ -159,7 +164,10 @@
     if (phone) meta.appendChild(Desk.phoneLink(phone));
     if (person && person.temperature) meta.appendChild(Desk.heatChip(person.temperature));
     var badges = el("div", { cls: "activity-badges" });
-    if (call.needs_review) addActivityBadge(badges, "status-chip status-attention", "Needs review");
+    // A hang-up from an unknown caller is kept but is not a recruiter's problem: a plain chip, not "Needs review".
+    var hangUp = call.review_reason === "no_intake" && !(person && person.id);
+    if (hangUp) addActivityBadge(badges, "status-chip", "Hang-up");
+    else if (call.needs_review) addActivityBadge(badges, "status-chip status-attention", "Needs review");
     if (call.sync && call.sync.status === "failed") addActivityBadge(badges, "status-chip status-danger", "Zoho sync failed");
     else if (call.sync && call.sync.status === "pending") addActivityBadge(badges, "status-chip status-waiting", "Waiting to sync");
     else if (call.sync && call.sync.status === "sent") addActivityBadge(badges, "status-chip", "Sent to Zoho");
@@ -169,7 +177,8 @@
     item.appendChild(el("div", { cls: "activity-marker", attrs: { "aria-hidden": "true" } }, el("span", {})));
     var body = el("div", { cls: "activity-body" }, el("div", { cls: "activity-title-row" }, who, badges), meta);
     if (call.preferred_callback_at) body.appendChild(el("p", { cls: "activity-callback", text: "Requested callback: " + Desk.whenText(call.preferred_callback_at) }));
-    if (call.needs_review) body.appendChild(el("p", { cls: "activity-review-reason", text: REASON[call.review_reason] || "A recruiter should review this call." }));
+    if (hangUp) body.appendChild(el("p", { cls: "activity-review-reason", text: "Ended before any details were saved. The number matches no applicant." }));
+    else if (call.needs_review) body.appendChild(el("p", { cls: "activity-review-reason", text: REASON[call.review_reason] || "A recruiter should review this call." }));
     if (call.summary) body.appendChild(el("p", { cls: "activity-summary", text: call.summary }));
     if (call.sync && call.sync.status === "failed") {
       var syncText = "Saved here, not in Zoho yet. " + call.sync.attempts + (call.sync.attempts === 1 ? " try." : " tries.");

@@ -208,6 +208,10 @@
     });
     document.querySelectorAll("[data-stat]").forEach(function (node) { node.textContent = String(summary[node.dataset.stat]); });
     $("stat-sync").classList.toggle("is-problem", summary.sync_problems > 0);
+    // Hang-ups from unknown callers are only counted, so they never push a real problem down the list.
+    var hangUps = Number(summary.hang_ups_today) || 0;
+    $("hang-ups-note").hidden = hangUps === 0;
+    $("hang-ups-word").textContent = hangUps === 1 ? "hang-up" : "hang-ups";
     $("callback-count").textContent = String(rows.length);
     var total = rows.length + data.attention.length;
     if (Desk.currentRoute === "overview") document.title = (total ? "(" + total + ") " : "") + "Overview | Frontline CDL";

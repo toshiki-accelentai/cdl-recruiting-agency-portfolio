@@ -122,7 +122,8 @@ def test_detail_calls_carry_summary_transcript_and_recording_flag(web):
 
 
 def test_list_and_todo_rows_carry_the_summary_but_never_the_transcript(web):
-    call_id = add_call(name="Unknown", phone=None, needs_review=True, review_reason="no_intake")
+    # a real problem, so it is listed (an unknown caller's hang-up is only counted: see test_hang_ups.py)
+    call_id = add_call(name="Unknown", phone=None, needs_review=True, review_reason="invalid_phone")
     add_report(call_id)
     listed = web.get("/api/calls").json()["items"][0]
     attention = web.get("/api/todo").json()["attention"][0]

@@ -36,11 +36,13 @@ UPDATE calls SET summary = COALESCE(%(summary)s, summary),
 WHERE vapi_call_id = %(vapi_call_id)s RETURNING id
 """
 
-# The call never reached the intake step (a non-driver, a hang-up): keep it, flagged, with no applicant.
+# The call never reached the intake step (a non-driver, a hang-up, a cancel request): keep it, flagged.
+# A caller ID that matches an applicant links the call to that person (same match as the caller lookup),
+# so a known driver's call shows by name; anyone else stays unlinked, a "hang-up".
 INSERT_PLACEHOLDER = """
 INSERT INTO calls (vapi_call_id, applicant_id, raw_payload, needs_review, review_reason,
                    summary, transcript, has_recording, report_received_at, caller_number)
-VALUES (%(vapi_call_id)s, NULL, %(stub)s, true, 'no_intake',
+VALUES (%(vapi_call_id)s, (SELECT id FROM applicants WHERE phone_e164 = %(caller)s), %(stub)s, true, 'no_intake',
         %(summary)s, %(transcript)s, %(has_recording)s, now(), %(caller)s)
 ON CONFLICT (vapi_call_id) DO UPDATE SET
     summary = COALESCE(EXCLUDED.summary, calls.summary),

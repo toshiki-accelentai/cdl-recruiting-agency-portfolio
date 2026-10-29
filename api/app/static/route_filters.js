@@ -8,7 +8,7 @@
   var FOLLOW_UP = ["to_call", "called", "no_answer", "done"];
   var ALLOWED = {
     applicants: { status: ["all", "needs_contact"].concat(FOLLOW_UP), readiness: ["hot", "medium", "warm", "cold"] },
-    activity: { sync: ["pending", "sent", "failed"], review: ["true", "false"], follow_up: FOLLOW_UP, day: ["today"] }
+    activity: { sync: ["pending", "sent", "failed"], review: ["true", "false", "hang_up"], follow_up: FOLLOW_UP, day: ["today"] }
   };
 
   function has(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }

@@ -43,8 +43,13 @@ LEFT JOIN applicants a ON a.id = c.applicant_id
 LEFT JOIN outbox o ON o.call_id = c.id
 """
 
+# A hang-up: the call ended before the agent saved details, and the caller ID matches nobody (or there is none).
+# Kept, but not a recruiter's problem: the Overview counts these instead of listing them.
+HANG_UP = "(c.review_reason = 'no_intake' AND c.applicant_id IS NULL)"
+
 FILTERS = """
 WHERE (CAST(%(needs_review)s AS boolean) IS NULL OR c.needs_review = CAST(%(needs_review)s AS boolean))
+  AND (CAST(%(kind)s AS text) IS NULL OR """ + HANG_UP + """)
   AND (CAST(%(sync)s AS text) IS NULL OR o.status = CAST(%(sync)s AS text))
   AND (CAST(%(follow_up)s AS text) IS NULL OR a.follow_up_status = CAST(%(follow_up)s AS text))
   AND (CAST(%(day)s AS text) IS NULL
@@ -88,11 +93,12 @@ def list_calls(
     sync: Literal["pending", "sent", "failed"] | None = None,
     follow_up: Literal["to_call", "called", "no_answer", "done"] | None = None,
     day: Literal["today"] | None = None,  # calls of the business day so far, the same rule as "calls today" on the Overview
+    kind: Literal["hang_up"] | None = None,  # only the hang-ups the Overview leaves out of "Needs a closer look"
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     user: dict = Depends(current_user),
 ):
-    params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up, "day": day,
+    params = {"needs_review": needs_review, "sync": sync, "follow_up": follow_up, "day": day, "kind": kind,
               "tz": BUSINESS_TZ.key, "limit": limit, "offset": offset}
     with db_connection() as conn:
         total = conn.execute(

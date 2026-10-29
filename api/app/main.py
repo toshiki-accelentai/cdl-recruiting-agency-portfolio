@@ -131,7 +131,7 @@ def save_intake(conn: psycopg.Connection, payload: dict, req: IntakeRequest) -> 
             # Either a replay (change nothing), or the end-of-call report got here first and made a
             # "no_intake" placeholder: then this intake completes that call instead of being dropped.
             placeholder = conn.execute(
-                "SELECT id FROM calls WHERE vapi_call_id = %s AND applicant_id IS NULL "
+                "SELECT id FROM calls WHERE vapi_call_id = %s "
                 "AND review_reason = 'no_intake' FOR UPDATE", (vapi_call_id,)).fetchone()
             if placeholder is None:  # a real replay: undo the applicant upsert too
                 duplicate = True

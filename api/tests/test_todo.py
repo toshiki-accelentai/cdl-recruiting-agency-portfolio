@@ -46,7 +46,7 @@ def test_todo_needs_a_login(clean_tables):
 def test_empty_database_gives_empty_lists(web):
     body = web.get("/api/todo").json()
     assert body["attention"] == [] and body["call_back"] == []
-    assert body["summary"] == {"calls_today": 0, "hot_waiting": 0, "to_call": 0, "sync_problems": 0}
+    assert body["summary"] == {"calls_today": 0, "hot_waiting": 0, "to_call": 0, "sync_problems": 0, "hang_ups_today": 0}
 
 
 # --- Needs attention: one row per call, only broken calls ------------------------------------

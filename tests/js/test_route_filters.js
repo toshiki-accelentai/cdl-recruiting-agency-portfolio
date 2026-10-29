@@ -33,5 +33,7 @@ assert.deepEqual(filters.parse(null), { route: "overview", params: {} });
 // the other filters of Call activity
 assert.deepEqual(filters.parse("#activity?review=true&follow_up=no_answer"),
   { route: "activity", params: { review: "true", follow_up: "no_answer" } });
+// The Overview's "hang-ups from unknown callers" link opens the quiet list.
+assert.deepEqual(filters.parse("#activity?review=hang_up"), { route: "activity", params: { review: "hang_up" } });
 
 console.log("route filters: tile links, plain routes, unknown or unsafe input all handled");
