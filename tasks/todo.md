@@ -827,3 +827,11 @@ change together in Phase 3:
       `/api/me` 401 signed out. 556 API tests and 3 JS tests on the release worktree (no new test: no DOM test harness exists); the fix was
       replayed in a browser with the live applicant JSON (fails before, renders after). NOT verified: the real dashboard page after deploy (owner).
       Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
+- [x] **DEMO SERVER UPDATED to `87ad83d` 2026-10-30 16:34 Vancouver (approved by the owner)**, branch `release/applicantfix-20261030` (worktree
+      `cdl-release-applicantfix` = live real API `26589a4` + `87ad83d` (= `eabc76b`: the applicant page logs the real error)). Brings the demo from
+      `b545f0b` to the hang-up rule, the sync tile, the repeat-caller lock and the applicant-page fix (11 files). Source replaced, `demo-api` rebuilt
+      alone (database, Caddy, compose, env, recordings untouched). Rollback copy: `/opt/cdl-demo/src.before-20261030-163440`. Verified: live `app` + `migrations`
+      identical to the release (63/63 files by SHA-256), `demo-api` healthy, uid 10001, `DEMO_MODE=1`, 0 error lines in logs, migration 013 recorded
+      (demo data intact: 39 applicants, 47 calls, 1 login), reset timer active, public: login 200, `/api/todo` and `/api/calls?day=today` 401
+      signed out, `/docs` 404, `/healthz` 200, real site 200. 556 API tests and 3 JS tests on the release worktree. Real actions: 1 source copy,
+      1 container rebuild, 1 migration (no demo rows changed), 0 Zoho/VAPI/n8n calls. NOT verified: the signed-in demo look (owner).
