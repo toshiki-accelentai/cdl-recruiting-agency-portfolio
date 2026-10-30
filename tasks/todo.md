@@ -24,9 +24,9 @@ learning routine in `docs/learning/README.md` → "Session routine".
       `failed`. Out of scope: a monitoring stack, DNS changes (flake not reproducible).
 - [ ] **10/19–10/25 — C done.** Read-only, NOT public (local or shown only on camera,
       so no auth work): recent calls, outbox status, Zoho sync result.
-- [ ] **10/26–10/29 — Recording + write-up.** Record the B2 drill (+ dashboard).
-      README + case study in this order: business problem and outcome → n8n/VAPI
-      design → why Python was added for reliability. Known gaps listed honestly.
+- [x] **10/26–10/29 — Recording + write-up.** B2 drill + dashboard recorded 10/30 (see "Record the B2 demo" below); README, case
+      study and recording plan drafted by another session (`b3c06b0`). Known gaps listed honestly: still to be checked against reality
+      in the pre-publish step.
 - [ ] **10/30–10/31 — Pre-publish check → publish.** No secrets, connection strings or
       the server IP in files or git history; test data (names, phones) fictional or
       anonymized; "Known issues" section matches reality; someone else can run the
@@ -103,7 +103,7 @@ diagnose). Order is strict: A → B → C → apply.
       `compose.yaml.old-local-db`. Real-action report: container swap + 2 server files only;
       0 Zoho writes, 0 calls.
       **Access quirk:** `hermes-vps` does not resolve from this PC; use
-      `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45`. Claude Code's auto-mode
+      `ssh -i ~/.ssh/<ssh-key> <ssh-user>@<server-ip>`. Claude Code's auto-mode
       classifier blocks remote *writes* even with allow rules in `.claude/settings.local.json`;
       read-only ssh works, writes are handed to the user's PowerShell.
       **2026-10-08: step (5) DONE and verified.** 1 real VAPI web call (Test Driver Alpha,
@@ -147,7 +147,7 @@ diagnose). Order is strict: A → B → C → apply.
         untouched). Pre-change copies in the session scratchpad only. UNCOMMITTED: the two prompt
         files, `deploy_vapi_prompt_only.py`, this note.
       - **LIVE STATE LEFT BEHIND:** the API container `cdl-api-cdl-api-1` is STOPPED for the next
-        test (worker still up). Restart: `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45
+        test (worker still up). Restart: `ssh -i ~/.ssh/<ssh-key> <ssh-user>@<server-ip>
         "sudo -n docker start cdl-api-cdl-api-1"`. n8n CDL 02 + 03 are ACTIVE on purpose (user
         decision 2026-10-08: it is a demo, stay published). While the API is down, any call will
         hit the save-failure path.
@@ -190,7 +190,7 @@ diagnose). Order is strict: A → B → C → apply.
          keep `n8n_app` for the API only. Stop (do NOT delete) the old `db` container/volume.
       b) secrets reach the server by file copy, never printed: `DATABASE_URL` from
          `api/deploy/.env.supabase`; `ZOHO_CLIENT_ID/SECRET/REFRESH_TOKEN` from the repo-root `.env`;
-         write to `/opt/cdl-api/.env` with `chmod 600`, owner hermesadmin.
+         write to `/opt/cdl-api/.env` with `chmod 600`, owner <ssh-user>.
       c) copy `api/app`, `migrations`, `requirements.txt`, `Dockerfile` to `/opt/cdl-api/src`,
          `sudo -n docker compose up -d --build`, then verify: both containers healthy, API log shows
          migrations up to date against Supabase, worker log "outbox worker started", n8n container
@@ -207,7 +207,7 @@ diagnose). Order is strict: A → B → C → apply.
       worker gets ZOHO_* in the server `.env` (chmod 600); add a `worker` service to
       `api/deploy/compose.yaml` and drop the local `db` service there; (5) end-to-end: one real
       call -> Supabase row -> Zoho. Then B2 (CRM-down demo, record it).
-      Server: `hermesadmin@hermes-vps`, docker needs `sudo -n`. n8n Intake + Booking must be
+      Server: `<ssh-user>@hermes-vps`, docker needs `sudo -n`. n8n Intake + Booking must be
       deactivated again after any test window (currently inactive).
 - [x] **B2** "CRM is down" drill DONE 2026-10-09 (not recorded; runbook in
       `docs/B2-CRM-DOWN-DRILL.md`, status board `scripts/outbox_status.py`, read-only).
@@ -220,8 +220,21 @@ diagnose). Order is strict: A → B → C → apply.
       each, no duplicates; final: calls 6 = sent 6, pending 0, failed 0. The server `.env` is
       back to 4 keys. Real actions: 2 VAPI calls, 2 Zoho candidates + 2 notes (via the worker).
       Leftovers: delete the 2 drill calendar events by hand.
-- [ ] **Record the B2 demo** (headline interview demo): redo the runbook on camera after C/B3,
-      ideally with the dashboard showing leads while Zoho is down.
+- [x] **Record the B2 demo: RECORDED 2026-10-30 (owner, Loom).** Script `docs/RECORDING-READ-ALOUD.md` plus three slides in
+      `docs/assets/` (problem, design, failure modes; Inter embedded). Callers: Tom Baker (…0159, normal call, Zoho id …736001) and Morgan
+      Lee (…0158, during the outage). Outage: break and restore were run by hand off camera; Morgan's call row 74 went `pending` (5 tries,
+      network error) and drained by itself after the restore (`sent`, 6 tries). Final state read by Claude: `pending=0 failed=0`, worker has
+      no `ZOHO_RECRUIT_API_DOMAIN`, server `.env` back to its normal keys. Real actions: 2 worker recreations (break, restore), 2 owner web
+      calls per take, test rows on live (see RECORDING PREP above), 0 Claude phone calls. NOT checked by Claude: the video itself (picture,
+      audio, anything secret on screen), and whether Morgan's Zoho candidate still exists: the database says `sent` with id …732007, but
+      Zoho returns nothing for that id or phone now (probably deleted by hand after the recording, to confirm).
+      Findings fixed on the way (all live): the "Zoho sync issues" tile stayed 0 during an outage (now counts retrying rows, `819b33e`),
+      hang-ups from unknown callers crowded "Needs a closer look" (`ea5054a`), a later call hid the booked callback time.
+      Lessons: Loom's Chrome extension records tab audio only in tab mode (the VAPI call was silent in window/screen modes); a repeat
+      caller phone is a returning caller (Existing Lead agent), so a re-take needs the old rows and the Zoho candidate deleted first;
+      the agent mis-heard "Washington", "Denver" ("Amber") and a read-out phone number: use short, common words and slow digits.
+      Still to do by hand: delete the test events in Google Calendar (Mon 11/2 10:00, 11:00, 1:00 pm; Tue 11/3 10:00) and any test
+      candidates left in Zoho.
 - [x] **B3** (done 2026-10-12) Logging/observability + deploy + API key (VPS DNS flake: retry added, root cause not found, see FINDING (B3) above).
       **2026-10-10 progress:** (1) DNS flake could NOT be reproduced
       (120 lookups in the worker container + 160 direct to the 4 Hetzner resolvers: 0 failures; old
@@ -546,6 +559,59 @@ diagnose). Order is strict: A → B → C → apply.
       looked right. No recruiter email arrived: the owner found that the Gmail credential in n8n was set but not published (an owner-side
       n8n fix, not investigated further). So the recruiter emails (booked, moved, cancel request) are NOT yet verified end to end; after the
       credential is published, one more test call would confirm them.
+- [x] **RECRUITER EMAILS VERIFIED 2026-10-28 (approved by the owner).** The two Gmail nodes pointed at different credentials: CDL 02
+      `Email Recruiters` used `nv1f7RnYunWDnLew` ("Gmail account - Accelent AI", the one the owner published), CDL 04 `Email Recruiters
+      About Cancel` still used `yGxElJkT2ajNHX5z` (the id n8n had rejected). Repointed CDL 04's node to `nv1f…` (node-only patch; dry run,
+      drift check, read-back: other 10 nodes and connections unchanged, still active). Rollback copy in the session scratchpad
+      (`rollback_cdl04_gmail_cred.json`). Owner then placed 2 real Existing Lead calls (move, then cancel request) and reported that both
+      emails arrived (reported by the owner; Claude did not inspect the executions). Real actions: 1 n8n workflow update, 2 owner phone
+      calls, 2 emails, usual test writes to the owner's Zoho/Calendar. Leftover: delete the test calendar event by hand.
+- [x] **HANG-UP RULE DEPLOYED 2026-10-28 17:27 Vancouver (approved by the owner), release `release/hangups-20261028`**
+      (worktree `cdl-release-hangups` = live `release/details-20261026` `de94b46` + `f102190` (= `ea5054a` on feat/python-api);
+      the other session's `release/lock-20261027` was NOT live and is not included). Owner decision: a call that ended before the
+      agent saved details is kept, but an unknown/no caller ID is a "hang-up" (left out of "Needs a closer look", counted on the
+      Overview, listed under Call activity > Hang-ups only); a known caller ID links the call to that applicant and stays listed by
+      name. A later call with no callback time no longer hides the booked one. Migration 013 linked old hang-ups by main phone.
+      Rollback copies: `src.before-20261028-172706`, `compose.yaml.before-20261028-172706`. Verified: live app identical to the release
+      (62/62 files by SHA-256), compose and `.env.api` unchanged (fingerprints match), both containers healthy, key checks 401/401/422,
+      0 error lines in logs, migration 013 recorded, no_intake calls: 6 linked (all Carlos Rivera = owner's own number) and 3 hang-ups,
+      "Needs a closer look" 9 -> 6 rows, public login 200 and `/api/todo` 401 signed out. 564 API tests on feat/python-api, 535 on the
+      release worktree, 6 mutation checks caught. The release worktree fails 1 old VAPI prompt-text unittest that the live release
+      fails too (not shipped by an API deploy). Real actions: 1 deploy run, 1 migration (6 calls linked), 0 phone calls, 0 Zoho writes.
+      NOT verified: the signed-in look on the real dashboard (owner). Open: no "mark reviewed" action exists.
+      **Then (approved by the owner, dry run first):** cleared `needs_review` on the owner's 6 Carlos Rivera test calls (ids 10, 12,
+      13, 15, 20, 22; review_reason kept) in one transaction. Read back: 0 of them flagged, "Needs a closer look" rows 0, row counts
+      unchanged (applicants 8, calls 21, outbox 12). Real actions: 1 UPDATE of 6 rows on live, 0 Zoho writes. To undo: set
+      `needs_review = true` on those 6 ids.
+- [x] **RECORDING PREP on live 2026-10-29 (approved by the owner).** (1) The owner's 5 old test applicants (Test 1 1, Test Drive Charlie,
+      Drill Wang, Joel Michael, Carlos Rivera) were set to follow-up `done` (dashboard's Done change, audit-logged). (2) Six FICTIONAL
+      applicants to contact were added to the real database so the queue shows its ordering: Daniel Ortiz, Aaron Brooks (HOT), Linda Torres,
+      Greg Mitchell (MEDIUM), Nina Patel (WARM), Rob Jensen (COLD); phones `+1...555020x`, one call each marked `{"seed":"recording-2026-10-29"}`
+      in raw_payload, NO outbox rows (nothing in Zoho, nothing queued), no calendar events. Dry run first (rolled back), then applied.
+      To remove them again: run the same script with `--undo` (deletes exactly those calls and applicants). Real actions: 6 applicants + 6
+      calls inserted, 5 follow-up changes, 0 phone calls, 0 Zoho writes. Then, at the owner's request (a recording with the old dashboard had to be
+      redone), Tom Baker (0157, from the owner's dry-run call) was deleted with `delete_by_phone.py` (dry run first: 1 applicant, 1 call,
+      1 outbox row; DB only). His Zoho candidate, the VAPI call log and the calendar event (Mon 11/2 10:00) are NOT removed: delete by hand. The status board shows them as NO OUTBOX: use `--limit 2` on camera.
+- [x] **SYNC TILE DEPLOYED 2026-10-29 12:56 Vancouver (approved by the owner), release `release/synctile-20261029`** (worktree
+      `cdl-release-synctile` = live `release/hangups-20261028` `f102190` + `c59bb40` (= `819b33e` on feat/python-api)). Found while recording the
+      CRM-down drill: "Zoho sync issues" stayed 0 during an outage, because a row never fails when Zoho is down, it stays pending and retries.
+      Now the tile and a new Call activity filter "Needs attention" (`sync=problem`) count failed rows plus pending rows already tried at least
+      once; a fresh pending row (0 tries) does not count. Rollback copies: `src.before-20261029-125601`, `compose.yaml.before-20261029-125601`.
+      Verified: live app identical to the release (62/62 files by SHA-256), compose and `.env.api` unchanged, both containers healthy, key
+      checks 401/401/422, 0 error lines in logs, worker has no Zoho break set, public login 200 and `/api/todo` 401 signed out. 572 API tests
+      on feat/python-api (8 new, 6 mutation checks caught), 543 on the release worktree, 3 JS tests. NOT verified: the tile showing 1 in a
+      real outage on the live dashboard (owner will see it in the re-recorded drill). Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
+      Same day, before it: the drill's Zoho break was restored (worker recreated, `.env` back to its normal keys) and the drill's test caller
+      Morgan Lee (…4158) was deleted from the database with `delete_by_phone.py` before the worker could send him (nothing reached Zoho).
+- [x] **REPEAT-CALLER LOCK DEPLOYED 2026-10-30 09:59 Vancouver (approved by the owner), release `release/lock-20261029` `8984f63`**
+      (worktree `cdl-release-lock2` = live `release/synctile-20261029` `c59bb40` + `8984f63` (= `eec5aaf` on feat/python-api)). The older
+      `release/lock-20261027` (`792e6ac`, built on `de94b46`) was approved first but NOT deployed: live had moved to `c59bb40`, so it would have
+      rolled back the hang-up and sync-tile releases. Owner decision (option 1): a field a recruiter corrected in the dashboard is kept when the
+      same phone number calls again; untouched fields still follow the newest call; a readiness or temperature correction keeps the temperature.
+      Rollback copies: `src.before-20261030-095852`, `compose.yaml.before-20261030-095852`. Verified: live identical to the release (63/63 files
+      by SHA-256; only `app/main.py` changed vs `c59bb40`), compose unchanged, both containers healthy, key checks 401/401/422, 0 error lines in
+      logs, public `/healthz` 200, `/login` 200, `/api/calls` and `/api/me` 401 signed out. 556 API tests on the release worktree (13 new),
+      3 JS tests. NOT verified: a real repeat call after a dashboard correction. Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
 - [x] **Zoho call note without costs DEPLOYED 2026-10-27 (owner decision):** CDL 04 "Build Post Call Note" no longer shows total
       cost or the STT/LLM/TTS/VAPI breakdown (cost stays in the database report). Drift check clean, read back, rollback copy saved.
 - [ ] **Webhook authentication: PAUSED after an incident (2026-10-27).** Goal: n8n webhooks (routing, intake, post-call) accept only
