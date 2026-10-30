@@ -244,7 +244,8 @@
   function callRow(call) {
     var chips = el("div", { cls: "call-chips" });
     if (call.needs_review) chips.appendChild(el("span", { cls: "chip chip-warn", text: "Needs review" }));
-    chips.appendChild(syncChip(call));
+    var sync = syncChip(call); // null for a call that never went to Zoho (a linked hang-up has no outbox row)
+    if (sync) chips.appendChild(sync);
 
     var row = el("li", { cls: "call-row" },
       el("div", { cls: "call-top" },
