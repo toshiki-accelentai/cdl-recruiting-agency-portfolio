@@ -172,6 +172,9 @@ Listed honestly. None of them loses a saved lead.
 - **The "cancel request" label is judged by the AI.** VAPI's end-of-call analysis decides whether a
   call was a cancel request; that triggers the recruiter email. How reliably it labels this has not
   been measured.
+- **Correcting city or state does not fix the ZIP.** The "keep what a recruiter corrected" rule works one
+  field at a time. If a recruiter fixes the city, a later call can still update the ZIP, so a record can
+  briefly show a city and a ZIP from different places. A recruiter has to fix both.
 - **No cancel tool, on purpose.** Owner decision: a cancelled callback is often a lost lead. The
   Existing Lead agent offers to move the callback first; if the caller still wants to cancel, it
   notes the request and recruiters get an email. The calendar event is not removed automatically.
