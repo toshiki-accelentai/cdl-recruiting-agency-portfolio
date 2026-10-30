@@ -818,3 +818,12 @@ change together in Phase 3:
   create, event get, and event cleanup passed through the same credential and
   HTTP-request pattern used by production.
 - Production safeguard: enforce unique phone/dedupe in Zoho before activation.
+- [x] **APPLICANT PAGE FIX DEPLOYED 2026-10-30 15:48 Vancouver (approved by the owner), release `release/applicantfix-20261030` `26589a4`**
+      (worktree `cdl-release-applicantfix` = live `release/lock-20261029` `8984f63` + `26589a4` (= `6bf309f` on feat/python-api)). Found when the
+      owner opened Carlos Rivera on live: "Couldn't load this applicant". Cause: a hang-up linked to a known caller has no outbox row, so
+      `syncChip` returned null and `appendChild(null)` threw; the catch hid it behind the connection message. Only `applicant.js` changed (2 lines).
+      Rollback copies: `src.before-20261030-154750`, `compose.yaml.before-20261030-154750`. Verified: live identical to the release (63/63 files by
+      SHA-256), both containers healthy, key checks 401/401/422, 0 error lines in logs, public `/healthz` 200, `/login` 200, `/api/calls` and
+      `/api/me` 401 signed out. 556 API tests and 3 JS tests on the release worktree (no new test: no DOM test harness exists); the fix was
+      replayed in a browser with the live applicant JSON (fails before, renders after). NOT verified: the real dashboard page after deploy (owner).
+      Real actions: 1 deploy run, 0 migrations, 0 calls, 0 Zoho writes.
