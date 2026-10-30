@@ -141,14 +141,15 @@ Verified means a real check against the live system, recorded in [`tasks/todo.md
 | Area | Verified | Not verified |
 |---|---|---|
 | Save first, CRM after | Real calls saved, outbox `sent`, one Zoho candidate (2026-10-08, 10-12) | |
-| CRM-down drill | 2 calls during a Zoho outage, both delivered after, no duplicates (2026-10-09) | Not yet recorded on video |
+| CRM-down drill | 2 calls during a Zoho outage, both delivered after, no duplicates (2026-10-09); recorded on video (2026-10-30) | |
 | Save failure path | API stopped: agent said it could not save (2026-10-09) | |
 | Caller lookup | Routing calls on live: known caller found in 1.1 s, unknown 3.1 s (2026-10-24) | Zoho fallback with the API switched off |
 | Returning-caller details | Lookup and routing on live; mocked voice simulations (2026-10-26) | A Zoho-only caller |
 | Callback time replay fix | 427 API tests, deployed (2026-10-26) | A real call where the first time is rejected and the second accepted |
 | Callback replacement, moving vs. cancelling | First real test call: conversation, calendar replacement and dashboard looked right (2026-10-27) | |
 | Recruiter emails | Two real Existing Lead calls (move, then cancel request): both emails arrived (2026-10-28, reported by the owner) | Executions not inspected independently |
-| Dashboard corrections to Zoho | Unit tests with a fake Zoho | A correction reaching the real Zoho on live |
+| Repeat caller keeps recruiter corrections | Real calls (2026-10-30): a corrected city stayed when the caller gave another; untouched fields (ZIP, experience, readiness, temperature) followed the call | |
+| Dashboard corrections to Zoho | Unit tests with a fake Zoho; on live the correction's outbox row went `sent` in 1 s (2026-10-30) | The Zoho record itself was not inspected |
 
 ## 7. Known issues
 
@@ -202,14 +203,14 @@ py -3.11 scripts/run_api_tests.py           # API tests against a local Postgres
 
 The API tests need Docker Desktop with the `api-db-1` container running (`api/docker-compose.yml`)
 and the API's own virtual environment (`api/requirements-dev.txt`). Run only one API test run at a
-time: each run drops and recreates the shared test database. Last recorded results: 525 API tests
-on the release worktree (2026-10-26), 76 workflow and contract tests (2026-10-27).
+time: each run drops and recreates the shared test database. Last recorded results: 556 API tests
+on the release worktree and 3 JS test files (2026-10-30), 77 workflow and contract tests (2026-10-30).
 
 ## 9. Repository layout
 
 ```
 api/app/          FastAPI app: intake, call reports, caller lookup, worker, Zoho client, dashboard
-api/migrations/   plain SQL migrations (001 to 012) and a small runner
+api/migrations/   plain SQL migrations (001 to 013) and a small runner
 api/tests/        API tests (pytest, real Postgres)
 config/vapi/      assistant prompts and config, exported from live, secrets removed
 config/n8n/       workflow JSON, exported from live, secrets removed
