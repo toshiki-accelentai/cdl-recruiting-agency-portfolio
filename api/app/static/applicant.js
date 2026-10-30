@@ -54,7 +54,8 @@
       state.editing = false;
       $("error-slot").replaceChildren();
       render();
-    }).catch(function () {
+    }).catch(function (error) {
+      console.error(error); // a drawing bug lands here too, so keep the real cause visible
       var retry = el("button", { cls: "btn", text: "Retry", attrs: { type: "button" } });
       retry.addEventListener("click", load);
       $("error-slot").replaceChildren(el("div", { cls: "banner", attrs: { role: "alert" } },
@@ -423,7 +424,8 @@
       request("PATCH", "/api/applicants/" + person.id + "/follow-up", { note: area.value }).then(function () {
         toast("Note saved.", null);
         return load();
-      }).catch(function () {
+      }).catch(function (error) {
+        console.error(error);
         save.disabled = false;
         status.textContent = "Couldn't save. Try again.";
       });
@@ -495,10 +497,11 @@
     request("PATCH", "/api/applicants/" + id + "/follow-up", { status: next }).then(function () {
       toast("Marked as " + STATUS_LABEL[next] + ".", "Undo", function () {
         request("PATCH", "/api/applicants/" + id + "/follow-up", { status: previous }).then(load)
-          .catch(function () { toast("Couldn't undo. Try again.", null); });
+          .catch(function (error) { console.error(error); toast("Couldn't undo. Try again.", null); });
       });
       return load();
-    }).catch(function () {
+    }).catch(function (error) {
+      console.error(error);
       toast("Couldn't save that. Nothing was changed.", null);
     }).then(function () { state.busy = false; });
   }
