@@ -147,7 +147,7 @@ Verified means a real check against the live system, recorded in [`tasks/todo.md
 | Returning-caller details | Lookup and routing on live; mocked voice simulations (2026-10-26) | A Zoho-only caller |
 | Callback time replay fix | 427 API tests, deployed (2026-10-26) | A real call where the first time is rejected and the second accepted |
 | Callback replacement, moving vs. cancelling | First real test call: conversation, calendar replacement and dashboard looked right (2026-10-27) | |
-| Recruiter emails | | Not yet seen arriving (see Known issues) |
+| Recruiter emails | Two real Existing Lead calls (move, then cancel request): both emails arrived (2026-10-28, reported by the owner) | Executions not inspected independently |
 | Dashboard corrections to Zoho | Unit tests with a fake Zoho | A correction reaching the real Zoho on live |
 
 ## 7. Known issues
@@ -160,9 +160,6 @@ Listed honestly. None of them loses a saved lead.
   rolled back and the next call worked. The cause is not confirmed. The next attempt will be tested
   on a path that cannot block real calls, with an independent review before it is enforced. The
   API itself does require an API key from n8n.
-- **Recruiter emails not yet seen arriving.** The "booked", "moved" and "cancel request" Gmail emails
-  are built in n8n. On the first real test call none arrived because the Gmail credential was saved
-  but not published; it has been published since, but no test call has confirmed the emails.
 - **Time zone after November 1, 2026.** The business time zone is `America/Vancouver`. In current
   time-zone data, British Columbia stays on UTC-7 all year from November 2026 (checked locally:
   2026-11-15 shows `-0700`), while US Pacific (Washington, Oregon, California) moves to UTC-8. The

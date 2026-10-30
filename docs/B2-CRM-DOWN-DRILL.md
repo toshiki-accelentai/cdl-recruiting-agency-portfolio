@@ -11,7 +11,7 @@ Last run: 2026-10-09 (not recorded; recording is a separate final task after Pha
 
 ## Before you start
 - API and worker are up on hermes-vps; n8n CDL 02 + 03 are active (so web calls reach the API).
-- Server access: `ssh -i ~/.ssh/hermes-hetzner hermesadmin@62.238.51.45`. Server writes are run
+- Server access: `ssh -i ~/.ssh/<ssh-key> <ssh-user>@<server-ip>`. Server writes are run
   by hand in PowerShell (Claude Code's classifier blocks remote writes).
 - Status board (read-only, prints no secrets):
   `api\.venv\Scripts\python.exe scripts\outbox_status.py --limit 5 --zoho`

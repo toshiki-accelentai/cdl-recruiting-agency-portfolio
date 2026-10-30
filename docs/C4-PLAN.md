@@ -30,7 +30,7 @@ cannot reach real data even if the code has a bug. This is the usual choice for 
 | 7 | How Zoho is shown: on the real dashboard (owner login) with an owner-only "Open in Zoho" link, in a live walkthrough or a recording. The demo shows the sync state only ("waiting for Zoho" stays visible because no worker runs) | DECIDED by the owner 2026-10-20 (as recommended). Replaces the earlier "fictional candidates in the owner's Zoho" step, which is no longer needed |
 
 | 8 | Proof of "production level" is the evidence (a 2-3 minute video of a real call reaching Zoho, the B2 Zoho-down drill, tests, this review), not the public demo. Until 10/31 the public demo is a showroom: fictional data plus one or two sample recordings. A public demo phone line (visitors call a demo agent and see their call appear; demo server only, no Zoho; call length cap, recorded-call notice, masked phones) is AFTER publish, if time allows | DECIDED by the owner 2026-10-20 |
-| 9 | Hostnames (Cloudflare DNS, records set to "DNS only"): the PUBLIC DEMO keeps `cdl-demo.accelentai.com`; the REAL dashboard moves to `cdl-admin.accelentai.com` (one new A record to 62.238.51.45) | DECIDED by the owner 2026-10-23 (Option A, as recommended) |
+| 9 | Hostnames (Cloudflare DNS, records set to "DNS only"): the PUBLIC DEMO keeps `cdl-demo.accelentai.com`; the REAL dashboard moves to `cdl-admin.accelentai.com` (one new A record to <server-ip>) | DECIDED by the owner 2026-10-23 (Option A, as recommended) |
 
 Zoho deep link for the real dashboard (region `.com`):
 `https://recruit.zoho.com/recruit/org935020705/EntityInfo.do?module=Candidates&id=<zoho_candidate_id>&submodule=Candidates`

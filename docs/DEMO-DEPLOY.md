@@ -18,11 +18,11 @@ Zoho id, the nightly reset works twice in a row, a restart comes back healthy, `
 - Build the demo source from a CLEAN release worktree of the exact commit to release (never the shared working
   tree, see CLAUDE.md). It is the folder `api/` minus `.venv`, `tests`, `deploy`: `app`, `migrations`,
   `requirements.txt`, `Dockerfile`, `.dockerignore`.
-- Cloudflare: add ONE record, type A, name `cdl-admin`, value `62.238.51.45`, proxy status **DNS only** (grey cloud).
+- Cloudflare: add ONE record, type A, name `cdl-admin`, value `<server-ip>`, proxy status **DNS only** (grey cloud).
   `cdl-demo` already exists with the same value.
 
 ## Step 1: prepare the server (no traffic yet)
-1. `sudo mkdir -p /opt/cdl-demo/{src,recordings,secrets}`; owner `hermesadmin`.
+1. `sudo mkdir -p /opt/cdl-demo/{src,recordings,secrets}`; owner `<ssh-user>`.
 2. `docker network create --internal demo_edge` (internal: no member can reach the internet).
 3. Copy: the source tar into `src/`, `api/deploy/demo/compose.yaml`, the two WAV files from `demo-recordings/` into
    `recordings/`.

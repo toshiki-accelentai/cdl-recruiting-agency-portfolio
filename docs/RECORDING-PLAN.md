@@ -63,7 +63,7 @@ can be several minutes away. Two honest options:
 - The demo site uses fictional data and has no CRM behind it; this video uses my own sandbox Zoho.
 - Webhook authentication between the voice platform and n8n is not switched on yet: the first try
   broke inbound calls and was rolled back.
-- Recruiter emails are built but not yet seen arriving end to end.
+- Recruiter emails arrive in the inbox (owner confirmed, 2026-10-28 and again 2026-10-30).
 
 ## After recording
 

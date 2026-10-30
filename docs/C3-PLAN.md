@@ -4,7 +4,7 @@ Status 2026-10-19 (night): steps 1 to 5 are DONE except the owner's own browser 
 https://cdl-demo.accelentai.com (not advertised, demo password still private).
 - Step 1 code `bc592c1`; step 2 deploy 16:13 Vancouver (rollback `src.before-20261019-161345`, `compose.yaml.before-20261019-161345`);
   19 of 19 checks inside the container, both logins 200, Supabase unchanged.
-- Step 3 DNS: the owner added `A cdl-demo -> 62.238.51.45`, DNS only (grey), verified at both Cloudflare nameservers and 1.1.1.1/8.8.8.8.
+- Step 3 DNS: the owner added `A cdl-demo -> <server-ip>`, DNS only (grey), verified at both Cloudflare nameservers and 1.1.1.1/8.8.8.8.
 - Step 4 Caddy (approved): backup `/opt/n8n/Caddyfile.before-20261019-233253` (250 bytes), site block appended (1171 bytes), `caddy validate`
   OK, graceful reload OK. Let's Encrypt certificate (TLS 1.3) valid 2026-10-19 to 2027-01-17, renewed automatically by Caddy.
   Rollback: `cat <backup> | sudo tee /opt/n8n/Caddyfile` then `docker exec n8n-caddy-1 caddy reload --config /etc/caddy/Caddyfile`.
@@ -52,7 +52,7 @@ endpoints only n8n should call, cannot read `/docs`, and the existing n8n site k
 |---|---|---|---|---|
 | 1 | Code, test-first, no live change: (a) `FastAPI(docs_url=None, redoc_url=None, openapi_url=None)`; (b) a public `GET /healthz` and switch the compose healthcheck to it; (c) refuse `POST /calls` and `POST /call-reports` when a `X-Forwarded-For` header is present (Caddy adds it; n8n's internal call never has it); (d) login throttle: too many failed attempts per username and per client address gives 429 for a few minutes | Claude | no | unit tests, mutation checks |
 | 2 | Deploy API and compose (healthcheck change goes with the app change, never one without the other) | Claude, approved | yes (about 30 to 60 s without call saving) | `docker compose ps` healthy, in-container checks |
-| 3 | DNS: add an `A` record `<demo-host>` -> `62.238.51.45`, "DNS only" (grey cloud) so Caddy can get its certificate | Owner, in Cloudflare | yes | `nslookup` |
+| 3 | DNS: add an `A` record `<demo-host>` -> `<server-ip>`, "DNS only" (grey cloud) so Caddy can get its certificate | Owner, in Cloudflare | yes | `nslookup` |
 | 4 | Caddy: back up `/opt/n8n/Caddyfile`, append the site block below, `caddy validate`, then `caddy reload` (graceful; an invalid file is refused and the old config keeps running) | Claude, approved | yes (also touches the n8n site's proxy, 0 s expected) | `curl` from outside, n8n site still 200 |
 | 5 | Check from outside and in a real browser (see "Verification") | Claude + owner | no | table below |
 | 6 | Independent review of login, cookie, throttle and headers BEFORE the link or the demo password goes on a resume | Reviewer agent first, human optional | no | written findings |

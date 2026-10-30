@@ -2,8 +2,10 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\deploy_api_to_vps.ps1
 # Safe to read first. It never prints a secret. Stops at the first failing step.
 $ErrorActionPreference = "Stop"
-$key    = Join-Path $env:USERPROFILE ".ssh\hermes-hetzner"
-$remote = "hermesadmin@62.238.51.45"
+# Set once per machine, never committed: CDL_DEPLOY_KEY = full path of the ssh key, CDL_DEPLOY_REMOTE = user@server-ip
+$key    = $env:CDL_DEPLOY_KEY
+$remote = $env:CDL_DEPLOY_REMOTE
+if (-not $key -or -not $remote) { throw "set CDL_DEPLOY_KEY and CDL_DEPLOY_REMOTE first" }
 $dir    = "/opt/cdl-api"
 $stamp  = Get-Date -Format "yyyyMMdd-HHmmss"
 $tmp    = Join-Path $env:TEMP "cdl-api-src-$stamp.tar"
