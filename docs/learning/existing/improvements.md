@@ -2,7 +2,7 @@
 
 A running list, added to during Phase U. Each item: what, where, impact, and
 which planned step fixes it. This becomes the "why I built the Python API"
-section of `../interview-story.md`.
+section of `../build-notes.md`.
 
 Status: **observed** = seen in the config/code, **confirmed** = reproduced.
 

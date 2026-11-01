@@ -230,4 +230,5 @@ I am learning Python and SQL through this project, and I built it with Claude Co
   note, the public demo with fictional data only, and approving every live change.
 - **Claude Code's work**: most of the code, tests and deploy scripts, the drift checks before each
   live change, and the simulated test calls. My notes on what I predicted, decided and debugged
-  myself are in [`docs/learning/interview-story.md`](docs/learning/interview-story.md).
+  myself are in [`docs/learning/build-notes.md`](docs/learning/build-notes.md); a few entries were
+  drafted by Claude from our sessions and are labelled as such.

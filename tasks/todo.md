@@ -296,7 +296,7 @@ diagnose). Order is strict: A → B → C → apply.
       real run: one live Zoho smoke test of a correction (writes to the sandbox Zoho; user decides),
       create the demo + admin users with a script (not written yet; passwords never in chat/git).
       Three debug drills done (flipped name check, NULL in the worker query, `session_version = 1`);
-      notes in `docs/learning/interview-story.md`.
+      notes in `docs/learning/build-notes.md`.
       **NEXT: C2 (HTML pages served by FastAPI).** Decided 2026-10-15: first screen = (B) a
       "To do" list, one row per PERSON (needs-review calls, Zoho sync failed, `to_call`, "called
       again" marker; problems first, then HOT→COLD, then earliest callback), full calls table
@@ -363,7 +363,7 @@ diagnose). Order is strict: A → B → C → apply.
       include `callback_phone`; Caddy/DNS (C3); rate limit and nightly reset (C4).
       **Teaching style for this owner (in CLAUDE.md):** plain words + the real term, one small
       chunk then one check question, glossary entry per new term.
-      **Uncommitted docs:** CLAUDE.md, glossary.md, learning README, interview-story.md, this file.
+      **Uncommitted docs:** CLAUDE.md, glossary.md, learning README, build-notes.md, this file.
       **C3 PLAN written 2026-10-17, NOT executed: `docs/C3-PLAN.md`.** Caddy already runs (`n8n-caddy-1`, same network as
       `cdl-api`), DNS is at Cloudflare. Needs from the owner: the hostname (recommended `cdl-demo.accelentai.com`), the
       order (recommended: code hardening and login throttle first), and a decision that the 7 test applicants are replaced
@@ -634,11 +634,11 @@ diagnose). Order is strict: A → B → C → apply.
       debug it alone. Areas: intake path (`POST /calls`, dedupe, `needs_review`), outbox +
       worker (retry/backoff, stored Zoho id + fallback), auth (`session_version`, roles),
       corrections (409 on a taken phone, audit log), the CRM-down drill, the test suite
-      (what each mutation check proves). Output: finish `docs/learning/interview-story.md`
+      (what each mutation check proves). Output: finish `docs/learning/build-notes.md`
       and a one-page "known gaps" list I can state honestly. Deadline: before the first
       interview, not before publish; it never blocks the 10/31 publish date.
 - Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
-  checks (these are folded into the interview-prep review above).
+  checks (these are folded into the study-notes review above).
 
 **Open decision, revisit when planning Phase A/B:** how much of n8n survives?
 Not a full replace — this is a portfolio piece aimed at companies that run n8n

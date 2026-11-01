@@ -38,7 +38,7 @@ Goal: be able to explain every piece of this project in my own words by the
    Claude asks for this before implementing and waits for my answer.
 2. **When checking state — write the SQL myself first.** Outbox, calls,
    applicants queries in Supabase; then compare with Claude's version.
-3. **After finishing — explain back (3 lines)** in `interview-story.md`:
+3. **After finishing — explain back (3 lines)** in `build-notes.md`:
    what I did / why / the option I rejected.
 4. **Name the Claude Code piece used** (subagent / hook / skill / MCP / plan
    mode) and why — or why none was needed. One line under the same entry.
@@ -88,4 +88,4 @@ it alone first). SQL is explained inside the chunk that uses it.
 
 ## Reference
 - [glossary.md](glossary.md): every term, one line each
-- `interview-story.md`: STAR narrative (starts at the end of Phase U)
+- `build-notes.md`: STAR narrative (starts at the end of Phase U)

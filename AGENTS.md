@@ -119,7 +119,7 @@ being fixed here and the matching API parsing is fixed there. Editing and commit
 The owner is learning through this project (publish target 2026-10-31, schedule in
 `tasks/todo.md`). Each session follows `docs/learning/README.md` → "Session routine":
 ask for a one-line prediction before implementing, let the owner write state-check SQL
-first, and end by prompting a 3-line entry in `docs/learning/interview-story.md`
+first, and end by prompting a 3-line entry in `docs/learning/build-notes.md`
 (the owner writes it; Claude only fact-checks).
 
 ## Safety

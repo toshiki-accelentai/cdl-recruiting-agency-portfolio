@@ -1,4 +1,4 @@
-# Interview story bank
+# Build notes
 
 One entry per work session (see `README.md` → "Session routine").
 Write in my own words; Claude can check facts, not write the entry.
@@ -19,7 +19,6 @@ Template:
 2. To make it easy to log everyone out at once when a password changes or someone abuses the demo login (session_version).
 3. Passwords are hashed with argon2id and a random salt, never stored as plain text.
 - Rejected option: JWT. It can't be cancelled before it expires, so changing the password wouldn't log out people who are already in.
-- Predicted: (C1b ordering prediction: to fill in)
 
 ## 2026-10-14 — Debug drills 1 and 2
 - Bug 1: the name check in the correction code was flipped (a missing `not`), so calls that a recruiter had fixed stayed flagged "needs review".
