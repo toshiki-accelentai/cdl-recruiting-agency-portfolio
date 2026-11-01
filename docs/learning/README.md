@@ -1,7 +1,7 @@
 # Learning track
 
 This project doubles as my Python + SQL + automation-engineering curriculum.
-Every step ships with a doc I can study before an interview. Full plan:
+Every step ships with a doc I can study and explain back. Full plan:
 `tasks/todo.md` → "Production-grade + learning track".
 
 ## How each step works
@@ -9,25 +9,25 @@ Every step ships with a doc I can study before an interview. Full plan:
 1. Claude Code implements (test-first) or, in Phase U, explains existing code.
 2. I read the doc, then **run it myself**.
 3. I do the **Break it & fix it** exercise without help first.
-4. I answer the interview questions out loud, then compare with the model answers.
+4. I answer the review questions out loud, then compare with the model answers.
 5. Only then does the box below get ticked.
 
 Doc template: Goal · Why it matters · Concepts · Walkthrough (file:line) ·
-Try it yourself · Break it & fix it · Interview Q&A · Glossary terms.
+Try it yourself · Break it & fix it · Review Q&A · Glossary terms.
 
-From U8 onward, the Q&A section splits in two, kept separate: **Interview
+From U8 onward, the Q&A section splits in two, kept separate: **Review
 questions** (design-reasoning and how AI tools were directed/verified — not
 code mechanics) and **Concept check** (plain Python/SQL/new-concept
-comprehension questions, for learning the language itself, not interview
-prep).
+comprehension questions, for learning the language itself, not
+for rehearsing answers).
 
 ## Priority shift (2026-10-03)
 
 Mentor's guidance: ~60% code understanding is enough for an AI Automation
 Specialist role. **Ship the project and start applying first**; close
-line-by-line study happens later, while waiting on interviews. From here,
+line-by-line study happens later, while waiting to hear back. From here,
 Phase A/B docs are short: architecture, data flow, the CRM-outage demo, and
-interview talking points. Deep walkthroughs are deferred.
+key talking points. Deep walkthroughs are deferred.
 
 ## Session routine (from 2026-10-11, +15 min per work session)
 
@@ -67,7 +67,7 @@ Story bank already earned (write these up first, week of 10/12):
 Running list: [improvements.md](existing/improvements.md)
 
 From Phase A on, each chunk's doc is short: what it does · data flow · key
-design decision · 2–3 interview talking points · **one debug drill** (solve
+design decision · 2–3 key talking points · **one debug drill** (solve
 it alone first). SQL is explained inside the chunk that uses it.
 
 ### Phase A: Receive and store

@@ -188,7 +188,7 @@ will use pinned (fake) data.
 Bring me the three values from step 5 and we will mark W6 **confirmed** or
 **refuted** in `improvements.md`. I have not made any changes to n8n or VAPI.
 
-## Interview questions
+## Review questions
 
 **Q: What happens if Zoho fails while a driver is on the phone?**
 A: The caller never just hears silence. Each Zoho call retries a few times,

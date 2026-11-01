@@ -133,13 +133,13 @@ first, and end by prompting a 3-line entry in `docs/learning/build-notes.md`
 - The owner decides the user outcome, business rules, constraints, and acceptance criteria. Claude may propose designs and implement bounded changes.
 - After each meaningful change, briefly explain what changed, why, the main code path (with file and line references), and how it was verified. State what the owner decided and what Claude generated; never imply the owner authored AI-generated code.
 - When debugging as a learning exercise, show the expected and observed behavior and point to the relevant test or code. Invite the owner's hypothesis before giving a hint when practical. If the owner asks for a direct fix, make the fix and explain it briefly afterward.
-- Build interview readiness by helping the owner explain and verify a few critical paths: deterministic booking or temperature rules, API-to-database-to-CRM handling, and a recruiter dashboard flow. Do not require memorizing every line or dependency.
-- Keep interview notes factual: distinguish the original workflow and its real results from the portfolio rebuild, and distinguish owner decisions from AI implementation.
+- Build explanation readiness by helping the owner explain and verify a few critical paths: deterministic booking or temperature rules, API-to-database-to-CRM handling, and a recruiter dashboard flow. Do not require memorizing every line or dependency.
+- Keep build notes factual: distinguish the original workflow and its real results from the portfolio rebuild, and distinguish owner decisions from AI implementation.
 
 ## How to talk to the owner (plain words, real vocabulary)
 
 The owner is not an experienced developer yet and must also learn the technical words for
-interviews. Never make them ask for a simpler version.
+technical conversations. Never make them ask for a simpler version.
 
 - Plain words first: say what a thing does in everyday language, with a short real-life
   comparison when it helps (front desk, courier, delivery slip).

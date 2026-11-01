@@ -136,7 +136,7 @@ Two independent bugs to find by reading, not running:
 Bring me what you find on both — these are the kind of gaps that don't show
 up in a happy-path manual test.
 
-## Interview questions
+## Review questions
 
 **Q: Why does the timezone conversion code loop up to 3 times instead of
 computing the answer directly?**

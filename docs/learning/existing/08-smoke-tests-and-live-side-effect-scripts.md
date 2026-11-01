@@ -206,7 +206,7 @@ not just a rule someone has to remember.
 
 Bring me what you find on both.
 
-## Interview questions
+## Review questions
 
 **Q: Why can't these scripts just use `urllib.request` to call the Zoho or
 Google API directly, the way `export_config.py` calls VAPI's API in U6?**
@@ -253,7 +253,7 @@ from what the script is trying to prove, not from a single blanket rule.
 ## Concept check
 
 Plain Python (and one timezone/SQL-adjacent) comprehension questions — these
-are for understanding the language, not for rehearsing an interview answer.
+are for understanding the language, not for rehearsing an answer.
 
 1. **`try`/`finally` nesting order.** In
    `delete_google_calendar_event.py:48-53`:

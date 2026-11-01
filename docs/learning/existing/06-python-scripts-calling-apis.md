@@ -117,7 +117,7 @@ Two things to find by reading, not running:
 
 Bring me what you find on both.
 
-## Interview questions
+## Review questions
 
 **Q: Why does `deploy_vapi_tool.py` fetch the live resource before deciding
 whether to update it, instead of just PATCHing the desired file straight

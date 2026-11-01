@@ -99,7 +99,7 @@ This is why the upcoming Python API listens to the **end-of-call report**:
 it's the one message that arrives for *every* call, even the ones where the
 driver hung up half-way. (AUDIT #21 was about exactly this.)
 
-## Where can it fail? (the interviewer's favourite question)
+## Where can it fail? (the question reviewers ask first)
 
 | Failure | What happens today | Lead lost? |
 |---|---|---|
@@ -110,7 +110,7 @@ driver hung up half-way. (AUDIT #21 was about exactly this.)
 | Calendar down | Candidate saved, AI says a recruiter will follow up | no (lead saved, booking not) |
 
 Those "yes" rows are the whole reason for Phase A/B. Keep this table — it is
-your interview answer to *"why did you add a database?"*. More detail in
+your answer to *"why did you add a database?"*. More detail in
 [improvements.md](improvements.md).
 
 ## Try it yourself
@@ -122,7 +122,7 @@ your interview answer to *"why did you add a database?"*. More detail in
 3. In the n8n UI, open **CDL 02 - Applicant Intake** and find the three
    "Respond" nodes. For each, say in one sentence *when* the caller hears it.
 
-## Interview questions
+## Review questions
 
 **Q: Walk me through what happens when a driver calls.**
 A: The number isn't tied to one fixed assistant, so VAPI first asks my

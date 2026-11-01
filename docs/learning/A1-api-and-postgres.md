@@ -48,7 +48,7 @@ docker compose up -d db
 .venv/Scripts/python.exe -m uvicorn app.main:app --reload
 ```
 
-## Interview talking points
+## Key talking points
 
 - "I split the write into two tables and wrapped them in one transaction, then
   wrote a test that forces the second insert to fail and checks the first one

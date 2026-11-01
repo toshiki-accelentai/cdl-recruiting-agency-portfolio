@@ -46,8 +46,8 @@ learning routine in `docs/learning/README.md` → "Session routine".
 
 **Ship-first plan (2026-10-03, mentor guidance):** ~60% code understanding is
 enough. Build fast, start applying, and save deep study for while waiting on
-interviews. Each chunk: Claude implements test-first → short doc (what it
-does, data flow, key design decision, 2–3 interview talking points) → **one
+replies. Each chunk: Claude implements test-first → short doc (what it
+does, data flow, key design decision, 2–3 key talking points) → **one
 debug drill** the learner solves alone (a planted bug or a real failure to
 diagnose). Order is strict: A → B → C → apply.
 
@@ -627,16 +627,16 @@ diagnose). Order is strict: A → B → C → apply.
 - [ ] **Public demo phone line (after publish, only if time allows; decided 2026-10-20).** Visitors call a demo
       agent and see their call appear on the demo dashboard. Demo server only, no Zoho; call length cap, recorded-call
       notice, masked phones; costs a number plus per-minute fees.
-- [ ] **Interview-prep code review (last item, after publish and first applications; added
+- [ ] **Study-notes code review (last item, after publish and first applications; added
       2026-10-13).** One or more sessions to read and understand the finished portfolio code
-      well enough to defend it in an interview. Per area: walk the data flow out loud without
+      well enough to defend it when asked. Per area: walk the data flow out loud without
       notes, answer "why this design, what did you reject", then plant or find one bug and
       debug it alone. Areas: intake path (`POST /calls`, dedupe, `needs_review`), outbox +
       worker (retry/backoff, stored Zoho id + fallback), auth (`session_version`, roles),
       corrections (409 on a taken phone, audit log), the CRM-down drill, the test suite
       (what each mutation check proves). Output: finish `docs/learning/build-notes.md`
       and a one-page "known gaps" list I can state honestly. Deadline: before the first
-      interview, not before publish; it never blocks the 10/31 publish date.
+      technical conversation, not before publish; it never blocks the 10/31 publish date.
 - Deferred until after applying: U9 checkpoint, deep walkthroughs, concept
   checks (these are folded into the study-notes review above).
 

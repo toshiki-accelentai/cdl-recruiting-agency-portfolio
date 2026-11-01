@@ -142,7 +142,7 @@ use pinned (fake) data.
 Bring me what you saw in step 5 and 6, and we'll note whether the ownership
 check actually behaves the way node 14's code claims.
 
-## Interview questions
+## Review questions
 
 **Q: How does this workflow avoid double-booking the same slot when VAPI
 retries a tool call?**

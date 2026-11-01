@@ -172,7 +172,7 @@ n8n's own workflow format instead of, say, a database migration.
 
 Bring me what you find on both.
 
-## Interview questions
+## Review questions
 
 **Q: Why generate n8n workflows from Python instead of building them by hand
 in the n8n editor?**

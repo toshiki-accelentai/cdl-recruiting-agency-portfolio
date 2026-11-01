@@ -122,7 +122,7 @@ settings are `saveDataErrorExecution: all`, `saveDataSuccessExecution: none`
    (Answer at the bottom — try first.)
 5. Delete the copy afterwards.
 
-## Interview questions
+## Review questions
 
 **Q: How do you handle errors in n8n?**
 A: Two layers. Each node retries on transient failures, and instead of
